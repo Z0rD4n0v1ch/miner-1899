@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шахтёр - 2D игра</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #ffa500;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        #gameCanvas {
+            border: 3px solid #444;
+            background: #000;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #ui {
+            margin-top: 15px;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            min-width: 800px;
+            text-align: center;
+        }
+
+        .stat {
+            display: inline-block;
+            margin: 0 15px;
+            padding: 8px 15px;
+            background: #1a1a1a;
+            border-radius: 5px;
+            border: 1px solid #555;
+        }
+
+        .stat-label {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .stat-value {
+            color: #ffa500;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #savePanel {
+            margin-top: 15px;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #ffa500;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #ff8c00;
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #555;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #666;
+        }
+
+        .btn-danger {
+            background: #dc143c;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #b01030;
+        }
+
+        #controls {
+            margin-top: 15px;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        #controls p {
+            margin: 5px 0;
+            color: #bbb;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #444;
+            border: 1px solid #666;
+            border-radius: 3px;
+            color: #ffa500;
+            font-weight: bold;
+        }
+
+        #legend {
+            margin-top: 15px;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #666;
+        }
+
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2a2a2a;
+            border: 3px solid #444;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            color: #ffa500;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .save-slot {
+            background: #1a1a1a;
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .save-slot:hover {
+            border-color: #ffa500;
+            transform: translateX(5px);
+        }
+
+        .save-slot-empty {
+            opacity: 0.5;
+            font-style: italic;
+        }
+
+        .save-slot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .save-slot-title {
+            color: #ffa500;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .save-slot-info {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .save-slot-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2a2a2a;
+            border: 2px solid #ffa500;
+            border-radius: 8px;
+            padding: 15px 20px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 2px solid #555;
+            border-radius: 5px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #ffa500;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>⛏️ Шахтёр <span style="font-size:14px;color:#888;font-weight:normal">v1.1.0</span></h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div id="ui">
+        <div class="stat">
+            <div class="stat-label">Глубина</div>
+            <div class="stat-value" id="depth">0м</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Золото</div>
+            <div class="stat-value" id="gold">0</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Драгоценности</div>
+            <div class="stat-value" id="gems">0</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Очки</div>
+            <div class="stat-value" id="score">0</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Время игры</div>
+            <div class="stat-value" id="playtime">0:00</div>
+        </div>
+    </div>
+
+    <div id="savePanel">
+        <button class="btn" onclick="saveGame()">💾 Сохранить</button>
+        <button class="btn" onclick="loadGame()">📂 Загрузить</button>
+        <button class="btn btn-secondary" onclick="exportSave()">⬇️ Экспорт</button>
+        <button class="btn btn-secondary" onclick="importSave()">⬆️ Импорт</button>
+        <button class="btn btn-danger" onclick="newGame()">🆕 Новая игра</button>
+    </div>
+
+    <div id="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background: #8b4513;"></div>
+            <span>Земля</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #666;"></div>
+            <span>Камень</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ffd700;"></div>
+            <span>Золото</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ffff;"></div>
+            <span>Алмазы</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff1493;"></div>
+            <span>Рубины</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #dc143c;"></div>
+            <span>Лава</span>
+        </div>
+    </div>
+
+    <div id="controls">
+        <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
+        <p><span class="key">Пробел</span> - Копать блок перед собой</p>
+        <p><span class="key">ESC</span> - Меню сохранений</p>
+        <p>Чем глубже копаешь, тем ценнее ресурсы!</p>
+    </div>
+
+    <!-- Модальное окно сохранений -->
+    <div id="saveModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">💾 Сохранения</div>
+            <div id="saveSlotsList"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeSaveModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно загрузки -->
+    <div id="loadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">📂 Загрузить игру</div>
+            <div id="loadSlotsList"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeLoadModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно имени сохранения -->
+    <div id="saveNameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Название сохранения</div>
+            <input type="text" id="saveNameInput" placeholder="Моя шахта" maxlength="30">
+            <div class="modal-buttons">
+                <button class="btn" onclick="confirmSaveName()">Сохранить</button>
+                <button class="btn btn-secondary" onclick="closeSaveNameModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрытый input для импорта -->
+    <input type="file" id="importFileInput" accept=".json">
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Константы
+        const TILE_SIZE = 20;
+        const WORLD_WIDTH = 50;
+        const WORLD_HEIGHT = 100;
+        const VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
+        const VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
+        const SAVE_VERSION = 1;
+        const GAME_VERSION = '1.1.0';
+        const AUTOSAVE_INTERVAL = 30000; // 30 секунд
+
+        // Типы блоков
+        const BLOCK_TYPES = {
+            AIR: 0,
+            DIRT: 1,
+            STONE: 2,
+            GOLD: 3,
+            DIAMOND: 4,
+            RUBY: 5,
+            LAVA: 6,
+            BEDROCK: 7
+        };
+
+        // Цвета блоков
+        const BLOCK_COLORS = {
+            [BLOCK_TYPES.AIR]: '#87CEEB',
+            [BLOCK_TYPES.DIRT]: '#8B4513',
+            [BLOCK_TYPES.STONE]: '#666666',
+            [BLOCK_TYPES.GOLD]: '#FFD700',
+            [BLOCK_TYPES.DIAMOND]: '#00FFFF',
+            [BLOCK_TYPES.RUBY]: '#FF1493',
+            [BLOCK_TYPES.LAVA]: '#DC143C',
+            [BLOCK_TYPES.BEDROCK]: '#222222'
+        };
+
+        // Игровое состояние
+        let world = [];
+        let worldSeed = Date.now();
+        let player = {
+            x: WORLD_WIDTH / 2,
+            y: 5,
+            vx: 0,
+            vy: 0,
+            onGround: false,
+            direction: 1
+        };
+
+        let camera = {
+            x: 0,
+            y: 0
+        };
+
+        let stats = {
+            gold: 0,
+            gems: 0,
+            score: 0,
+            playtime: 0
+        };
+
+        let gameState = {
+            paused: false,
+            startTime: Date.now()
+        };
+
+        let keys = {};
+        let pendingSaveSlot = null;
+
+        // Простая функция шума
+        function simpleNoise(x, y, seed = 0) {
+            const n = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453;
+            return n - Math.floor(n);
+        }
+
+        // Генерация мира
+        function generateWorld(seed = worldSeed) {
+            worldSeed = seed;
+            world = [];
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                world[y] = [];
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    if (y < 5) {
+                        world[y][x] = BLOCK_TYPES.AIR;
+                    }
+                    else if (y < 15) {
+                        const noise = simpleNoise(x * 0.1, y * 0.1, seed + 1);
+                        if (noise > 0.3) {
+                            world[y][x] = BLOCK_TYPES.DIRT;
+                        } else {
+                            world[y][x] = BLOCK_TYPES.AIR;
+                        }
+                    }
+                    else if (y < WORLD_HEIGHT - 1) {
+                        const noise = simpleNoise(x * 0.1, y * 0.1, seed + 2);
+                        
+                        if (noise > 0.65) {
+                            world[y][x] = BLOCK_TYPES.AIR;
+                        }
+                        else if (y > 70 && noise < 0.1) {
+                            world[y][x] = BLOCK_TYPES.LAVA;
+                        }
+                        else {
+                            const oreChance = simpleNoise(x * 0.5, y * 0.5, seed + 3);
+                            
+                            if (y > 20 && y < 60 && oreChance > 0.92) {
+                                world[y][x] = BLOCK_TYPES.GOLD;
+                            }
+                            else if (y > 50 && oreChance > 0.97) {
+                                world[y][x] = BLOCK_TYPES.DIAMOND;
+                            }
+                            else if (y > 40 && oreChance > 0.98) {
+                                world[y][x] = BLOCK_TYPES.RUBY;
+                            }
+                            else {
+                                world[y][x] = BLOCK_TYPES.STONE;
+                            }
+                        }
+                    }
+                    else {
+                        world[y][x] = BLOCK_TYPES.BEDROCK;
+                    }
+                }
+            }
+
+            // Стартовая площадка
+            for (let x = Math.floor(WORLD_WIDTH / 2) - 3; x < Math.floor(WORLD_WIDTH / 2) + 3; x++) {
+                for (let y = 3; y < 5; y++) {
+                    world[y][x] = BLOCK_TYPES.AIR;
+                }
+                world[5][x] = BLOCK_TYPES.STONE;
+            }
+        }
+
+        // Получить блок
+        function getBlock(x, y) {
+            const bx = Math.floor(x);
+            const by = Math.floor(y);
+            if (bx < 0 || bx >= WORLD_WIDTH || by < 0 || by >= WORLD_HEIGHT) {
+                return BLOCK_TYPES.BEDROCK;
+            }
+            return world[by][bx];
+        }
+
+        // Установить блок
+        function setBlock(x, y, type) {
+            const bx = Math.floor(x);
+            const by = Math.floor(y);
+            if (bx >= 0 && bx < WORLD_WIDTH && by >= 0 && by < WORLD_HEIGHT) {
+                world[by][bx] = type;
+            }
+        }
+
+        // Проверка столкновения
+        function isBlocked(x, y) {
+            const block = getBlock(x, y);
+            return block !== BLOCK_TYPES.AIR;
+        }
+
+        // Обновление физики игрока
+        function updatePlayer(dt) {
+            if (gameState.paused) return;
+
+            const speed = 3;
+            const gravity = 0.5;
+            const jumpPower = 8;
+
+            // Управление (используем e.code для работы на любой раскладке)
+            if (keys['KeyA'] || keys['ArrowLeft']) {
+                player.vx = -speed;
+                player.direction = -1;
+            } else if (keys['KeyD'] || keys['ArrowRight']) {
+                player.vx = speed;
+                player.direction = 1;
+            } else {
+                player.vx = 0;
+            }
+
+            if ((keys['KeyW'] || keys['ArrowUp']) && player.onGround) {
+                player.vy = -jumpPower;
+                player.onGround = false;
+            }
+
+            player.vy += gravity;
+            if (player.vy > 15) player.vy = 15;
+
+            let newX = player.x + player.vx * dt;
+            if (!isBlocked(newX, player.y) && !isBlocked(newX, player.y + 0.9)) {
+                player.x = newX;
+            }
+
+            let newY = player.y + player.vy * dt;
+            
+            player.onGround = false;
+            if (player.vy > 0) {
+                if (isBlocked(player.x, newY + 1) || isBlocked(player.x + 0.9, newY + 1)) {
+                    player.y = Math.floor(newY);
+                    player.vy = 0;
+                    player.onGround = true;
+                } else {
+                    player.y = newY;
+                }
+            } else if (player.vy < 0) {
+                if (isBlocked(player.x, newY) || isBlocked(player.x + 0.9, newY)) {
+                    player.y = Math.ceil(newY);
+                    player.vy = 0;
+                } else {
+                    player.y = newY;
+                }
+            }
+
+            if (player.x < 0) player.x = 0;
+            if (player.x > WORLD_WIDTH - 1) player.x = WORLD_WIDTH - 1;
+            if (player.y < 0) player.y = 0;
+
+            const playerBlock = getBlock(player.x, player.y);
+            if (playerBlock === BLOCK_TYPES.LAVA) {
+                player.x = WORLD_WIDTH / 2;
+                player.y = 3;
+                player.vy = 0;
+                stats.score = Math.max(0, stats.score - 50);
+                showNotification('💀 Лава! -50 очков');
+            }
+        }
+
+        // Копание
+        function dig() {
+            let targetX = Math.floor(player.x + player.direction);
+            let targetY = Math.floor(player.y);
+
+            if (keys['KeyS'] || keys['ArrowDown']) {
+                targetY = Math.floor(player.y + 1);
+                targetX = Math.floor(player.x);
+            }
+
+            const block = getBlock(targetX, targetY);
+
+            if (block !== BLOCK_TYPES.AIR && block !== BLOCK_TYPES.BEDROCK) {
+                switch (block) {
+                    case BLOCK_TYPES.GOLD:
+                        stats.gold++;
+                        stats.score += 10;
+                        break;
+                    case BLOCK_TYPES.DIAMOND:
+                        stats.gems++;
+                        stats.score += 50;
+                        break;
+                    case BLOCK_TYPES.RUBY:
+                        stats.gems++;
+                        stats.score += 100;
+                        break;
+                    case BLOCK_TYPES.DIRT:
+                        stats.score += 1;
+                        break;
+                    case BLOCK_TYPES.STONE:
+                        stats.score += 2;
+                        break;
+                }
+
+                setBlock(targetX, targetY, BLOCK_TYPES.AIR);
+                updateUI();
+            }
+        }
+
+        // Обновление камеры
+        function updateCamera() {
+            camera.x = Math.floor(player.x - VIEWPORT_WIDTH / 2);
+            camera.y = Math.floor(player.y - VIEWPORT_HEIGHT / 2);
+
+            if (camera.x < 0) camera.x = 0;
+            if (camera.y < 0) camera.y = 0;
+            if (camera.x > WORLD_WIDTH - VIEWPORT_WIDTH) camera.x = WORLD_WIDTH - VIEWPORT_WIDTH;
+            if (camera.y > WORLD_HEIGHT - VIEWPORT_HEIGHT) camera.y = WORLD_HEIGHT - VIEWPORT_HEIGHT;
+        }
+
+        // Рендеринг
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
+                for (let x = 0; x < VIEWPORT_WIDTH; x++) {
+                    const worldX = x + camera.x;
+                    const worldY = y + camera.y;
+                    const block = getBlock(worldX, worldY);
+
+                    ctx.fillStyle = BLOCK_COLORS[block];
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+                    if (block !== BLOCK_TYPES.AIR) {
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                        ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+
+            const playerScreenX = (player.x - camera.x) * TILE_SIZE;
+            const playerScreenY = (player.y - camera.y) * TILE_SIZE;
+
+            ctx.fillStyle = '#FFA500';
+            ctx.fillRect(playerScreenX + 2, playerScreenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(playerScreenX + 4, playerScreenY + 2, TILE_SIZE - 8, 6);
+
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            if (player.direction === 1) {
+                ctx.moveTo(playerScreenX + TILE_SIZE - 2, playerScreenY + TILE_SIZE / 2);
+                ctx.lineTo(playerScreenX + TILE_SIZE + 4, playerScreenY + TILE_SIZE / 2 - 4);
+            } else {
+                ctx.moveTo(playerScreenX + 2, playerScreenY + TILE_SIZE / 2);
+                ctx.lineTo(playerScreenX - 4, playerScreenY + TILE_SIZE / 2 - 4);
+            }
+            ctx.stroke();
+        }
+
+        // Обновление UI
+        function updateUI() {
+            document.getElementById('depth').textContent = Math.floor(Math.max(0, player.y - 5)) + 'м';
+            document.getElementById('gold').textContent = stats.gold;
+            document.getElementById('gems').textContent = stats.gems;
+            document.getElementById('score').textContent = stats.score;
+            
+            const totalSeconds = Math.floor(stats.playtime);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            document.getElementById('playtime').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // ============ СИСТЕМА СОХРАНЕНИЙ ============
+
+        // Сжатие мира (RLE - Run Length Encoding)
+        function compressWorld() {
+            const flat = [];
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    flat.push(world[y][x]);
+                }
+            }
+
+            const compressed = [];
+            let current = flat[0];
+            let count = 1;
+
+            for (let i = 1; i < flat.length; i++) {
+                if (flat[i] === current) {
+                    count++;
+                } else {
+                    compressed.push(current, count);
+                    current = flat[i];
+                    count = 1;
+                }
+            }
+            compressed.push(current, count);
+
+            return compressed;
+        }
+
+        // Распаковка мира
+        function decompressWorld(compressed) {
+            const flat = [];
+            for (let i = 0; i < compressed.length; i += 2) {
+                const value = compressed[i];
+                const count = compressed[i + 1];
+                for (let j = 0; j < count; j++) {
+                    flat.push(value);
+                }
+            }
+
+            world = [];
+            let idx = 0;
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                world[y] = [];
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    world[y][x] = flat[idx++];
+                }
+            }
+        }
+
+        // Создание объекта сохранения
+        function createSaveData(label = 'Сохранение') {
+            return {
+                version: SAVE_VERSION,
+                label: label,
+                savedAt: Date.now(),
+                seed: worldSeed,
+                playtime: stats.playtime,
+                world: {
+                    width: WORLD_WIDTH,
+                    height: WORLD_HEIGHT,
+                    data: compressWorld()
+                },
+                player: {
+                    x: player.x,
+                    y: player.y,
+                    direction: player.direction
+                },
+                stats: {
+                    gold: stats.gold,
+                    gems: stats.gems,
+                    score: stats.score
+                }
+            };
+        }
+
+        // Загрузка из объекта сохранения
+        function loadSaveData(saveData) {
+            if (saveData.version !== SAVE_VERSION) {
+                showNotification('⚠️ Несовместимая версия сохранения');
+                return false;
+            }
+
+            worldSeed = saveData.seed;
+            stats.playtime = saveData.playtime || 0;
+            
+            decompressWorld(saveData.world.data);
+            
+            player.x = saveData.player.x;
+            player.y = saveData.player.y;
+            player.vx = 0;
+            player.vy = 0;
+            player.onGround = false;
+            player.direction = saveData.player.direction;
+
+            stats.gold = saveData.stats.gold;
+            stats.gems = saveData.stats.gems;
+            stats.score = saveData.stats.score;
+
+            gameState.startTime = Date.now() - (stats.playtime * 1000);
+
+            updateUI();
+            return true;
+        }
+
+        // Сохранение в слот
+        function saveToSlot(slotId, label) {
+            const saveData = createSaveData(label);
+            localStorage.setItem(`miner_save_${slotId}`, JSON.stringify(saveData));
+            showNotification(`💾 Сохранено: ${label}`);
+        }
+
+        // Загрузка из слота
+        function loadFromSlot(slotId) {
+            const data = localStorage.getItem(`miner_save_${slotId}`);
+            if (!data) {
+                showNotification('⚠️ Слот пуст');
+                return false;
+            }
+
+            try {
+                const saveData = JSON.parse(data);
+                if (loadSaveData(saveData)) {
+                    showNotification(`📂 Загружено: ${saveData.label}`);
+                    closeLoadModal();
+                    return true;
+                }
+            } catch (e) {
+                showNotification('❌ Ошибка загрузки');
+                console.error(e);
+            }
+            return false;
+        }
+
+        // Удаление слота
+        function deleteSlot(slotId) {
+            if (confirm('Удалить это сохранение?')) {
+                localStorage.removeItem(`miner_save_${slotId}`);
+                showNotification('🗑️ Сохранение удалено');
+                updateSaveSlotsList();
+                updateLoadSlotsList();
+            }
+        }
+
+        // Автосохранение
+        function autoSave() {
+            const saveData = createSaveData('Автосохранение');
+            localStorage.setItem('miner_autosave', JSON.stringify(saveData));
+        }
+
+        // Загрузка автосохранения при старте
+        function tryLoadAutosave() {
+            const data = localStorage.getItem('miner_autosave');
+            if (data) {
+                try {
+                    const saveData = JSON.parse(data);
+                    if (confirm('Найдено автосохранение. Продолжить?')) {
+                        loadSaveData(saveData);
+                        return true;
+                    }
+                } catch (e) {
+                    console.error('Ошибка загрузки автосохранения', e);
+                }
+            }
+            return false;
+        }
+
+        // Экспорт в файл
+        function exportSave() {
+            const saveData = createSaveData('Экспорт');
+            const json = JSON.stringify(saveData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `miner_save_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('⬇️ Сохранение экспортировано');
+        }
+
+        // Импорт из файла
+        function importSave() {
+            const input = document.getElementById('importFileInput');
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const saveData = JSON.parse(event.target.result);
+                        if (loadSaveData(saveData)) {
+                            showNotification('⬆️ Сохранение импортировано');
+                        }
+                    } catch (err) {
+                        showNotification('❌ Ошибка импорта');
+                        console.error(err);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // Новая игра
+        function newGame() {
+            if (confirm('Начать новую игру? Несохранённый прогресс будет потерян.')) {
+                worldSeed = Date.now();
+                generateWorld(worldSeed);
+                player.x = WORLD_WIDTH / 2;
+                player.y = 5;
+                player.vx = 0;
+                player.vy = 0;
+                player.direction = 1;
+                stats.gold = 0;
+                stats.gems = 0;
+                stats.score = 0;
+                stats.playtime = 0;
+                gameState.startTime = Date.now();
+                updateUI();
+                showNotification('🆕 Новая игра начата');
+            }
+        }
+
+        // UI модалок
+        function saveGame() {
+            document.getElementById('saveModal').classList.add('active');
+            gameState.paused = true;
+            updateSaveSlotsList();
+        }
+
+        function loadGame() {
+            document.getElementById('loadModal').classList.add('active');
+            gameState.paused = true;
+            updateLoadSlotsList();
+        }
+
+        function closeSaveModal() {
+            document.getElementById('saveModal').classList.remove('active');
+            gameState.paused = false;
+        }
+
+        function closeLoadModal() {
+            document.getElementById('loadModal').classList.remove('active');
+            gameState.paused = false;
+        }
+
+        function openSaveNameModal(slotId) {
+            pendingSaveSlot = slotId;
+            document.getElementById('saveNameModal').classList.add('active');
+            document.getElementById('saveNameInput').value = `Шахта ${slotId}`;
+            document.getElementById('saveNameInput').focus();
+        }
+
+        function closeSaveNameModal() {
+            document.getElementById('saveNameModal').classList.remove('active');
+            pendingSaveSlot = null;
+        }
+
+        function confirmSaveName() {
+            const label = document.getElementById('saveNameInput').value.trim() || 'Без названия';
+            if (pendingSaveSlot !== null) {
+                saveToSlot(pendingSaveSlot, label);
+                closeSaveNameModal();
+                closeSaveModal();
+            }
+        }
+
+        function updateSaveSlotsList() {
+            const container = document.getElementById('saveSlotsList');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= 3; i++) {
+                const data = localStorage.getItem(`miner_save_${i}`);
+                const slot = document.createElement('div');
+                slot.className = 'save-slot';
+
+                if (data) {
+                    try {
+                        const save = JSON.parse(data);
+                        const date = new Date(save.savedAt).toLocaleString('ru-RU');
+                        const playtime = Math.floor(save.playtime / 60);
+                        
+                        slot.innerHTML = `
+                            <div class="save-slot-header">
+                                <div class="save-slot-title">Слот ${i}: ${save.label}</div>
+                            </div>
+                            <div class="save-slot-info">
+                                💾 ${date}<br>
+                                ⏱️ Время: ${playtime} мин | 💰 Золото: ${save.stats.gold} | 💎 Гемы: ${save.stats.gems} | 🏆 Очки: ${save.stats.score}
+                            </div>
+                            <div class="save-slot-actions">
+                                <button class="btn btn-small" onclick="openSaveNameModal(${i})">Перезаписать</button>
+                                <button class="btn btn-small btn-danger" onclick="deleteSlot(${i})">Удалить</button>
+                            </div>
+                        `;
+                    } catch (e) {
+                        slot.innerHTML = `<div class="save-slot-title">Слот ${i}: Повреждён</div>`;
+                    }
+                } else {
+                    slot.classList.add('save-slot-empty');
+                    slot.innerHTML = `
+                        <div class="save-slot-title">Слот ${i}: Пусто</div>
+                        <div class="save-slot-actions">
+                            <button class="btn btn-small" onclick="openSaveNameModal(${i})">Сохранить</button>
+                        </div>
+                    `;
+                }
+
+                container.appendChild(slot);
+            }
+        }
+
+        function updateLoadSlotsList() {
+            const container = document.getElementById('loadSlotsList');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= 3; i++) {
+                const data = localStorage.getItem(`miner_save_${i}`);
+                const slot = document.createElement('div');
+                slot.className = 'save-slot';
+
+                if (data) {
+                    try {
+                        const save = JSON.parse(data);
+                        const date = new Date(save.savedAt).toLocaleString('ru-RU');
+                        const playtime = Math.floor(save.playtime / 60);
+                        
+                        slot.innerHTML = `
+                            <div class="save-slot-header">
+                                <div class="save-slot-title">Слот ${i}: ${save.label}</div>
+                            </div>
+                            <div class="save-slot-info">
+                                💾 ${date}<br>
+                                ⏱️ Время: ${playtime} мин | 💰 Золото: ${save.stats.gold} | 💎 Гемы: ${save.stats.gems} | 🏆 Очки: ${save.stats.score}
+                            </div>
+                        `;
+                        slot.onclick = () => loadFromSlot(i);
+                    } catch (e) {
+                        slot.innerHTML = `<div class="save-slot-title">Слот ${i}: Повреждён</div>`;
+                    }
+                } else {
+                    slot.classList.add('save-slot-empty');
+                    slot.innerHTML = `<div class="save-slot-title">Слот ${i}: Пусто</div>`;
+                }
+
+                container.appendChild(slot);
+            }
+        }
+
+        // Уведомления
+        function showNotification(message) {
+            const notif = document.createElement('div');
+            notif.className = 'notification';
+            notif.textContent = message;
+            document.body.appendChild(notif);
+
+            setTimeout(() => {
+                notif.remove();
+            }, 3000);
+        }
+
+        // Игровой цикл
+        let lastTime = 0;
+        function gameLoop(currentTime) {
+            const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
+            lastTime = currentTime;
+
+            if (!gameState.paused) {
+                stats.playtime = (Date.now() - gameState.startTime) / 1000;
+                updatePlayer(dt);
+                updateCamera();
+            }
+            
+            render();
+            updateUI();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Обработка клавиатуры
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            
+            if (e.code === 'Space') {
+                e.preventDefault();
+                dig();
+            }
+
+            if (e.code === 'Escape') {
+                e.preventDefault();
+                if (gameState.paused) {
+                    closeSaveModal();
+                    closeLoadModal();
+                    closeSaveNameModal();
+                } else {
+                    saveGame();
+                }
+            }
+
+            // Enter для подтверждения в модалке
+            if (e.code === 'Enter' && document.getElementById('saveNameModal').classList.contains('active')) {
+                confirmSaveName();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Автосохранение каждые 30 секунд
+        setInterval(autoSave, AUTOSAVE_INTERVAL);
+
+        // Инициализация
+        if (!tryLoadAutosave()) {
+            generateWorld();
+        }
+        updateUI();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
