@@ -1,4 +1,4 @@
-# ⛏️ Шахтёр
+# ⛏️ Miner 1899
 
 2D-игра про шахтёра с процедурно генерируемой шахтой. Чистый HTML + Canvas + JavaScript — без сборки, без зависимостей, без npm.
 
@@ -35,8 +35,8 @@
 Никакой сборки не нужно — просто открыть файл:
 
 ```bash
-git clone https://github.com/ТВОЙ_НИК/miner-game.git
-cd miner-game
+git clone https://github.com/ТВОЙ_НИК/miner-1899.git
+cd miner-1899
 open index.html          # macOS
 # xdg-open index.html    # Linux
 # start index.html       # Windows
@@ -57,12 +57,12 @@ Workflow уже лежит в `.github/workflows/deploy.yml` — он публи
 
 **Settings → Pages → Build and deployment → Source: GitHub Actions**
 
-После пуша игра будет доступна по адресу `https://ТВОЙ_НИК.github.io/miner-game/`.
+После пуша игра будет доступна по адресу `https://ТВОЙ_НИК.github.io/miner-1899/`.
 
 ## Структура проекта
 
 ```
-miner-game/
+miner-1899/
 ├── index.html                     # вся игра: разметка, стили, логика
 ├── README.md
 ├── CHANGELOG.md                   # история версий
@@ -79,6 +79,8 @@ miner-game/
 
 - `GAME_VERSION` — версия игры, растёт при любом обновлении.
 - `SAVE_VERSION` — версия **формата сохранений**. Повышается только если старые сохранения перестают читаться. Это защищает прогресс игроков от ломающих изменений.
+
+Переименование проекта — пример изменения, которое **не** трогает `SAVE_VERSION`: формат данных не изменился, значит сохранения игроков продолжают работать.
 
 Все значимые изменения — в [CHANGELOG.md](CHANGELOG.md).
 
