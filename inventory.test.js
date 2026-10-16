@@ -47,7 +47,7 @@ function check(name, cond) {
     else { failed++; console.log('  ✗ ' + name); }
 }
 function reset() {
-    run(`backpack = emptyBackpack(); stats.money = 0; stats.score = 0;
+    run(`backpack = emptyBackpack(); stats.money = 0; stats.score = 0; pickaxeTier = 0;
          player.x = WORLD_WIDTH / 2; player.y = SURFACE_Y - 1; player.direction = 1;
          keys = {};`);
     notes.length = 0;
@@ -77,6 +77,7 @@ run('setBlock(51, 100, BLOCK_TYPES.STONE); dig();');
 check('камень даёт очки, но не место в рюкзаке', run('stats.score') === 12 && run('backpackCount()') === 1);
 reset();
 run(`for (let i = 0; i < BACKPACK_CAPACITY; i++) addToBackpack(BLOCK_TYPES.GOLD);
+     pickaxeTier = 1;   // алмаз копается только железной киркой
      player.y = 100; player.x = 50; setBlock(51, 100, BLOCK_TYPES.DIAMOND); dig();`);
 check('при полном рюкзаке блок всё равно выкапывается', run('getBlock(51, 100)') === run('BLOCK_TYPES.AIR'));
 check('при полном рюкзаке руда пропадает и очков нет', run('backpack.diamond') === 0 && run('stats.score') === 0);
@@ -120,7 +121,7 @@ run('for (let i = 0; i < 19; i++) addToBackpack(BLOCK_TYPES.GOLD); updateUI();')
 check('полный рюкзак подсвечен', els.backpack.classList.contains('full') && els.backpackFill.classList.contains('full'));
 
 console.log('Сохранения');
-check('SAVE_VERSION = 3', run('SAVE_VERSION') === 3);
+check('SAVE_VERSION = 4', run('SAVE_VERSION') === 4);
 reset();
 run(`generateWorld(12345);
      addToBackpack(BLOCK_TYPES.GOLD); addToBackpack(BLOCK_TYPES.DIAMOND);
@@ -128,7 +129,7 @@ run(`generateWorld(12345);
 const save = run('JSON.stringify(createSaveData("t"))');
 check('в сохранении есть рюкзак и деньги', JSON.parse(save).backpack.diamond === 1 && JSON.parse(save).stats.money === 240);
 run('backpack = emptyBackpack(); stats.money = 0; stats.score = 0;');
-check('загрузка v3 проходит', run(`loadSaveData(JSON.parse(${JSON.stringify(save)}))`) === true);
+check('загрузка текущей версии проходит', run(`loadSaveData(JSON.parse(${JSON.stringify(save)}))`) === true);
 check('рюкзак восстановлен', run('backpack.gold') === 1 && run('backpack.diamond') === 1);
 check('деньги и очки восстановлены', run('stats.money') === 240 && run('stats.score') === 77);
 const v2 = JSON.parse(save);
