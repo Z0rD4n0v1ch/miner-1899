@@ -64,6 +64,30 @@
             font-weight: bold;
         }
 
+        .stat-value.full {
+            color: #dc143c;
+        }
+
+        .backpack-bar {
+            width: 90px;
+            height: 6px;
+            margin-top: 4px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .backpack-fill {
+            height: 100%;
+            width: 0;
+            background: #ffa500;
+            transition: width 0.15s;
+        }
+
+        .backpack-fill.full {
+            background: #dc143c;
+        }
+
         #savePanel {
             margin-top: 15px;
             padding: 15px;
@@ -302,7 +326,7 @@
     </style>
 </head>
 <body>
-    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.1.1</span></h1>
+    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.3.0</span></h1>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     
     <div id="ui">
@@ -311,12 +335,13 @@
             <div class="stat-value" id="depth">0м</div>
         </div>
         <div class="stat">
-            <div class="stat-label">Золото</div>
-            <div class="stat-value" id="gold">0</div>
+            <div class="stat-label">Рюкзак</div>
+            <div class="stat-value" id="backpack">0/20</div>
+            <div class="backpack-bar"><div class="backpack-fill" id="backpackFill"></div></div>
         </div>
         <div class="stat">
-            <div class="stat-label">Драгоценности</div>
-            <div class="stat-value" id="gems">0</div>
+            <div class="stat-label">Деньги</div>
+            <div class="stat-value" id="money">0 руб.</div>
         </div>
         <div class="stat">
             <div class="stat-label">Очки</div>
@@ -367,6 +392,7 @@
         <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
         <p><span class="key">Пробел</span> - Копать блок перед собой</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
+        <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней.</p>
         <p>Чем глубже копаешь, тем ценнее ресурсы!</p>
     </div>
 
@@ -413,12 +439,21 @@
 
         // Константы
         const TILE_SIZE = 20;
-        const WORLD_WIDTH = 50;
-        const WORLD_HEIGHT = 100;
+
+        // Размеры мира. Высота 800 рядов даёт шахту глубиной ~790 м.
+        const WORLD_WIDTH = 120;
+        const WORLD_HEIGHT = 800;
+
+        // Слои мира
+        const SURFACE_Y = 8;             // с этого ряда начинается земля (выше — небо)
+        const DIRT_DEPTH = 6;            // рядов земли под поверхностью
+        const BEDROCK_ROWS = 3;          // нижние ряды — неразрушимое дно
+        const DEPTH_ORIGIN = SURFACE_Y;  // уровень, на котором глубина = 0
+
         const VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
         const VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
-        const SAVE_VERSION = 1;
-        const GAME_VERSION = '1.1.1';
+        const SAVE_VERSION = 3;          // 2: размеры мира; 3: рюкзак и деньги
+        const GAME_VERSION = '1.3.0';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
         // Типы блоков
@@ -445,12 +480,24 @@
             [BLOCK_TYPES.BEDROCK]: '#222222'
         };
 
+        // Руда: что кладётся в рюкзак и почём продаётся
+        const ORES = {
+            [BLOCK_TYPES.GOLD]:    { key: 'gold',    name: 'Золото', price: 10,  score: 10 },
+            [BLOCK_TYPES.DIAMOND]: { key: 'diamond', name: 'Алмаз',  price: 50,  score: 50 },
+            [BLOCK_TYPES.RUBY]:    { key: 'ruby',    name: 'Рубин',  price: 100, score: 100 }
+        };
+        const BACKPACK_CAPACITY = 20;
+
+        // Лавка скупщика: стоит на поверхности справа от точки старта
+        const SHOP_X = Math.floor(WORLD_WIDTH / 2) + 5;
+        const SHOP_WIDTH = 3;
+
         // Игровое состояние
         let world = [];
         let worldSeed = Date.now();
         let player = {
-            x: WORLD_WIDTH / 2,
-            y: 5,
+            x: Math.floor(WORLD_WIDTH / 2),
+            y: SURFACE_Y - 2,
             vx: 0,
             vy: 0,
             onGround: false,
@@ -463,11 +510,17 @@
         };
 
         let stats = {
-            gold: 0,
-            gems: 0,
+            money: 0,
             score: 0,
             playtime: 0
         };
+
+        // Содержимое рюкзака: штук каждой руды
+        let backpack = emptyBackpack();
+
+        function emptyBackpack() {
+            return { gold: 0, diamond: 0, ruby: 0 };
+        }
 
         let gameState = {
             paused: false,
@@ -477,68 +530,153 @@
         let keys = {};
         let pendingSaveSlot = null;
 
-        // Простая функция шума
-        function simpleNoise(x, y, seed = 0) {
-            const n = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453;
-            return n - Math.floor(n);
+        // ============ ШУМ ============
+        // Раньше здесь был sin()-хеш: соседние блоки получали случайные значения,
+        // поэтому «пещеры» были одиночными дырками, а руда — крупинками.
+        // Теперь это настоящий плавный шум: значения между узлами интерполируются,
+        // отчего полости и жилы руды получаются связными.
+
+        // Детерминированный хеш пары координат
+        function hash2(x, y, seed) {
+            let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(seed | 0, 1274126177);
+            h = Math.imul(h ^ (h >>> 13), 1274126177);
+            h ^= h >>> 16;
+            return (h >>> 0) / 4294967296;
         }
+
+        // Шум считается на РЕШЁТКЕ, а не на каждом блоке.
+        // Прямой пересчёт давал 4 вызова hash2 на блок на каждую октаву —
+        // для 96 000 блоков это ~1.4 секунды. Значения в узлах решётки
+        // считаются один раз (их в сотни раз меньше), а между узлами
+        // результат интерполируется при выборке.
+
+        function buildLayer(seed, cell, w, h) {
+            const cols = Math.ceil(w / cell) + 2;
+            const rows = Math.ceil(h / cell) + 2;
+            const grid = new Float64Array(cols * rows);
+            for (let r = 0; r < rows; r++)
+                for (let c = 0; c < cols; c++)
+                    grid[r * cols + c] = hash2(c, r, seed);
+            return { grid, cols, cell };
+        }
+
+        function sampleLayer(layer, x, y) {
+            const grid = layer.grid, cols = layer.cols, cell = layer.cell;
+            const fx = x / cell, fy = y / cell;
+            const c0 = Math.floor(fx), r0 = Math.floor(fy);
+            const tx = fx - c0, ty = fy - r0;
+            const sx = tx * tx * (3 - 2 * tx);
+            const sy = ty * ty * (3 - 2 * ty);
+
+            const base = r0 * cols + c0;
+            const n00 = grid[base], n10 = grid[base + 1];
+            const n01 = grid[base + cols], n11 = grid[base + cols + 1];
+
+            const a = n00 + (n10 - n00) * sx;
+            const b = n01 + (n11 - n01) * sx;
+            return a + (b - a) * sy;
+        }
+
+        // Фрактальный шум: слои с удвоением частоты и затуханием амплитуды
+        function buildFbm(seed, scale, octaves, w, h) {
+            const layers = [];
+            let amp = 1, norm = 0, sc = scale;
+            for (let i = 0; i < octaves; i++) {
+                layers.push({ layer: buildLayer(seed + i * 131, 1 / sc, w, h), amp });
+                norm += amp;
+                amp *= 0.5;
+                sc *= 2;
+            }
+            return function (x, y) {
+                let sum = 0;
+                for (let i = 0; i < layers.length; i++) {
+                    sum += sampleLayer(layers[i].layer, x, y) * layers[i].amp;
+                }
+                return sum / norm;
+            };
+        }
+
+        // Настройки генерации (подобраны тестами gen.test.js)
+        const GEN = {
+            caveScale: 0.085, caveGateBase: 0.615, caveGateDepthBonus: 0.115,
+            lavaScale: 0.06,  lavaThreshold: 0.60,  lavaStartDepth: 0.55,
+            goldScale: 0.30,  goldThreshold: 0.91,  goldPeak: 0.40, goldWidth: 0.38,
+            diamondScale: 0.36, diamondThreshold: 0.93,  diamondFrom: 0.45,
+            rubyScale: 0.40,  rubyThreshold: 0.95,   rubyFrom: 0.62
+        };
 
         // Генерация мира
         function generateWorld(seed = worldSeed) {
             worldSeed = seed;
             world = [];
+            const stoneTop = SURFACE_Y + DIRT_DEPTH;
+            const bedrockTop = WORLD_HEIGHT - BEDROCK_ROWS;
+            const depthSpan = Math.max(1, bedrockTop - stoneTop);
+
+            // все шумовые поля строятся один раз до обхода блоков
+            const caveNoise = buildFbm(seed + 101, GEN.caveScale, 3, WORLD_WIDTH, WORLD_HEIGHT);
+            const lavaNoise = buildFbm(seed + 202, GEN.lavaScale, 2, WORLD_WIDTH, WORLD_HEIGHT);
+            const goldNoise = buildFbm(seed + 301, GEN.goldScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
+            const diamondNoise = buildFbm(seed + 401, GEN.diamondScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
+            const rubyNoise = buildFbm(seed + 501, GEN.rubyScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
+
             for (let y = 0; y < WORLD_HEIGHT; y++) {
-                world[y] = [];
+                const row = new Array(WORLD_WIDTH);
                 for (let x = 0; x < WORLD_WIDTH; x++) {
-                    if (y < 5) {
-                        world[y][x] = BLOCK_TYPES.AIR;
-                    }
-                    else if (y < 15) {
-                        const noise = simpleNoise(x * 0.1, y * 0.1, seed + 1);
-                        if (noise > 0.3) {
-                            world[y][x] = BLOCK_TYPES.DIRT;
+                    // небо
+                    if (y < SURFACE_Y) { row[x] = BLOCK_TYPES.AIR; continue; }
+                    // неразрушимое дно
+                    if (y >= bedrockTop) { row[x] = BLOCK_TYPES.BEDROCK; continue; }
+
+                    // глубина: 0 у поверхности, 1 у дна
+                    const d = (y - stoneTop) / depthSpan;
+
+                    // земля — сплошная корка, пещеры её не пробивают
+                    if (y < stoneTop) { row[x] = BLOCK_TYPES.DIRT; continue; }
+
+                    // пещеры: чем глубже, тем просторнее
+                    const caveGate = GEN.caveGateBase - d * GEN.caveGateDepthBonus;
+                    if (caveNoise(x, y) > caveGate) {
+                        // часть глубоких полостей заполнена лавой
+                        if (d > GEN.lavaStartDepth &&
+                            lavaNoise(x, y) > GEN.lavaThreshold) {
+                            row[x] = BLOCK_TYPES.LAVA;
                         } else {
-                            world[y][x] = BLOCK_TYPES.AIR;
+                            row[x] = BLOCK_TYPES.AIR;
+                        }
+                        continue;
+                    }
+
+                    // руда: жилы зависят от глубины
+                    // золото — колокол вокруг goldPeak: редко у поверхности и на дне
+                    const goldBand = Math.abs(d - GEN.goldPeak) / GEN.goldWidth;
+                    if (goldBand < 1) {
+                        const goldGate = GEN.goldThreshold - (1 - goldBand * goldBand) * 0.035;
+                        if (goldNoise(x, y) > goldGate) {
+                            row[x] = BLOCK_TYPES.GOLD; continue;
                         }
                     }
-                    else if (y < WORLD_HEIGHT - 1) {
-                        const noise = simpleNoise(x * 0.1, y * 0.1, seed + 2);
-                        
-                        if (noise > 0.65) {
-                            world[y][x] = BLOCK_TYPES.AIR;
-                        }
-                        else if (y > 70 && noise < 0.1) {
-                            world[y][x] = BLOCK_TYPES.LAVA;
-                        }
-                        else {
-                            const oreChance = simpleNoise(x * 0.5, y * 0.5, seed + 3);
-                            
-                            if (y > 20 && y < 60 && oreChance > 0.92) {
-                                world[y][x] = BLOCK_TYPES.GOLD;
-                            }
-                            else if (y > 50 && oreChance > 0.97) {
-                                world[y][x] = BLOCK_TYPES.DIAMOND;
-                            }
-                            else if (y > 40 && oreChance > 0.98) {
-                                world[y][x] = BLOCK_TYPES.RUBY;
-                            }
-                            else {
-                                world[y][x] = BLOCK_TYPES.STONE;
-                            }
-                        }
+                    if (d >= GEN.diamondFrom &&
+                        diamondNoise(x, y) > GEN.diamondThreshold) {
+                        row[x] = BLOCK_TYPES.DIAMOND; continue;
                     }
-                    else {
-                        world[y][x] = BLOCK_TYPES.BEDROCK;
+                    if (d >= GEN.rubyFrom &&
+                        rubyNoise(x, y) > GEN.rubyThreshold) {
+                        row[x] = BLOCK_TYPES.RUBY; continue;
                     }
+
+                    row[x] = BLOCK_TYPES.STONE;
                 }
+                world[y] = row;
             }
 
-            // Стартовая площадка
-            for (let x = Math.floor(WORLD_WIDTH / 2) - 3; x < Math.floor(WORLD_WIDTH / 2) + 3; x++) {
-                for (let y = 3; y < 5; y++) {
+            // Стартовая площадка по центру
+            const cx = Math.floor(WORLD_WIDTH / 2);
+            for (let x = cx - 3; x <= cx + 2; x++) {
+                for (let y = SURFACE_Y - 3; y < SURFACE_Y; y++) {
                     world[y][x] = BLOCK_TYPES.AIR;
                 }
-                world[5][x] = BLOCK_TYPES.STONE;
+                world[SURFACE_Y][x] = BLOCK_TYPES.STONE;
             }
         }
 
@@ -546,7 +684,9 @@
         function getBlock(x, y) {
             const bx = Math.floor(x);
             const by = Math.floor(y);
-            if (bx < 0 || bx >= WORLD_WIDTH || by < 0 || by >= WORLD_HEIGHT) {
+            // выше мира — небо (пусто), ниже и по бокам — неразрушимая порода
+            if (by < 0) return BLOCK_TYPES.AIR;
+            if (bx < 0 || bx >= WORLD_WIDTH || by >= WORLD_HEIGHT) {
                 return BLOCK_TYPES.BEDROCK;
             }
             return world[by][bx];
@@ -626,10 +766,60 @@
             const playerBlock = getBlock(player.x, player.y);
             if (playerBlock === BLOCK_TYPES.LAVA) {
                 player.x = WORLD_WIDTH / 2;
-                player.y = 3;
+                player.y = SURFACE_Y - 2;
                 player.vy = 0;
                 stats.score = Math.max(0, stats.score - 50);
                 showNotification('💀 Лава! -50 очков');
+            }
+        }
+
+        // ============ РЮКЗАК И ЛАВКА ============
+
+        function backpackCount() {
+            return backpack.gold + backpack.diamond + backpack.ruby;
+        }
+
+        function backpackValue() {
+            let total = 0;
+            for (const type in ORES) {
+                total += backpack[ORES[type].key] * ORES[type].price;
+            }
+            return total;
+        }
+
+        // Положить добытый блок в рюкзак.
+        // 'added' — положили, 'full' — места нет, 'not-ore' — это не руда
+        function addToBackpack(blockType) {
+            const ore = ORES[blockType];
+            if (!ore) return 'not-ore';
+            if (backpackCount() >= BACKPACK_CAPACITY) return 'full';
+            backpack[ore.key]++;
+            return 'added';
+        }
+
+        // Игрок стоит у лавки: над поверхностью и пересекается с ней по x
+        function isAtShop() {
+            return player.y < SURFACE_Y &&
+                   player.x + 1 > SHOP_X &&
+                   player.x < SHOP_X + SHOP_WIDTH;
+        }
+
+        // Продать всё содержимое рюкзака. Возвращает выручку.
+        function sellBackpack() {
+            const earned = backpackValue();
+            const count = backpackCount();
+            if (count === 0) return 0;
+            stats.money += earned;
+            backpack = emptyBackpack();
+            showNotification(`💰 Продано: ${count} шт. за ${earned} руб.`);
+            updateUI();
+            return earned;
+        }
+
+        // Вызывается каждый кадр: продажа происходит, как только игрок подошёл
+        function checkShop() {
+            if (isAtShop() && backpackCount() > 0) {
+                sellBackpack();
             }
         }
 
@@ -646,25 +836,19 @@
             const block = getBlock(targetX, targetY);
 
             if (block !== BLOCK_TYPES.AIR && block !== BLOCK_TYPES.BEDROCK) {
-                switch (block) {
-                    case BLOCK_TYPES.GOLD:
-                        stats.gold++;
-                        stats.score += 10;
-                        break;
-                    case BLOCK_TYPES.DIAMOND:
-                        stats.gems++;
-                        stats.score += 50;
-                        break;
-                    case BLOCK_TYPES.RUBY:
-                        stats.gems++;
-                        stats.score += 100;
-                        break;
-                    case BLOCK_TYPES.DIRT:
-                        stats.score += 1;
-                        break;
-                    case BLOCK_TYPES.STONE:
-                        stats.score += 2;
-                        break;
+                const result = addToBackpack(block);
+                if (result === 'added') {
+                    stats.score += ORES[block].score;
+                    if (backpackCount() === BACKPACK_CAPACITY) {
+                        showNotification('🎒 Рюкзак полон — неси руду в лавку');
+                    }
+                } else if (result === 'full') {
+                    // блок всё равно выкапывается, но руда пропадает
+                    showNotification(`🎒 Нет места: ${ORES[block].name} потеряно`);
+                } else if (block === BLOCK_TYPES.DIRT) {
+                    stats.score += 1;
+                } else if (block === BLOCK_TYPES.STONE) {
+                    stats.score += 2;
                 }
 
                 setBlock(targetX, targetY, BLOCK_TYPES.AIR);
@@ -703,6 +887,8 @@
                 }
             }
 
+            renderShop();
+
             const playerScreenX = (player.x - camera.x) * TILE_SIZE;
             const playerScreenY = (player.y - camera.y) * TILE_SIZE;
 
@@ -725,11 +911,49 @@
             ctx.stroke();
         }
 
+        // Лавка: домик на поверхности, рисуется поверх неба и не мешает ходить
+        function renderShop() {
+            const sx = (SHOP_X - camera.x) * TILE_SIZE;
+            const groundY = (SURFACE_Y - camera.y) * TILE_SIZE;
+            const w = SHOP_WIDTH * TILE_SIZE;
+            const wallH = 2 * TILE_SIZE;
+            if (groundY < 0 || groundY - wallH - TILE_SIZE > canvas.height) return;
+            if (sx + w < 0 || sx > canvas.width) return;
+
+            // стены
+            ctx.fillStyle = '#6B3E1E';
+            ctx.fillRect(sx, groundY - wallH, w, wallH);
+            // крыша
+            ctx.fillStyle = '#3A2410';
+            ctx.beginPath();
+            ctx.moveTo(sx - 4, groundY - wallH);
+            ctx.lineTo(sx + w / 2, groundY - wallH - TILE_SIZE);
+            ctx.lineTo(sx + w + 4, groundY - wallH);
+            ctx.closePath();
+            ctx.fill();
+            // дверь
+            ctx.fillStyle = '#2A1A0A';
+            ctx.fillRect(sx + w / 2 - 6, groundY - 24, 12, 24);
+            // вывеска
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 11px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('ЛАВКА', sx + w / 2, groundY - wallH - TILE_SIZE - 4);
+            ctx.textAlign = 'left';
+        }
+
         // Обновление UI
         function updateUI() {
-            document.getElementById('depth').textContent = Math.floor(Math.max(0, player.y - 5)) + 'м';
-            document.getElementById('gold').textContent = stats.gold;
-            document.getElementById('gems').textContent = stats.gems;
+            document.getElementById('depth').textContent = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN)) + 'м';
+            const count = backpackCount();
+            const full = count >= BACKPACK_CAPACITY;
+            const bp = document.getElementById('backpack');
+            bp.textContent = `${count}/${BACKPACK_CAPACITY}`;
+            bp.classList.toggle('full', full);
+            const fill = document.getElementById('backpackFill');
+            fill.style.width = (count / BACKPACK_CAPACITY * 100) + '%';
+            fill.classList.toggle('full', full);
+            document.getElementById('money').textContent = `${stats.money} руб.`;
             document.getElementById('score').textContent = stats.score;
             
             const totalSeconds = Math.floor(stats.playtime);
@@ -807,15 +1031,35 @@
                     direction: player.direction
                 },
                 stats: {
-                    gold: stats.gold,
-                    gems: stats.gems,
+                    money: stats.money,
                     score: stats.score
+                },
+                backpack: {
+                    gold: backpack.gold,
+                    diamond: backpack.diamond,
+                    ruby: backpack.ruby
                 }
             };
         }
 
+        // Перевод сохранения версии 2 в версию 3.
+        // В v2 не было ни денег, ни рюкзака: старые счётчики золота и гемов
+        // были просто статистикой, поэтому рюкзак начинается пустым,
+        // а очки, мир и позиция игрока переносятся как есть.
+        function migrateSave(saveData) {
+            if (saveData.version === 2) {
+                return Object.assign({}, saveData, {
+                    version: 3,
+                    stats: { money: 0, score: saveData.stats.score || 0 },
+                    backpack: emptyBackpack()
+                });
+            }
+            return saveData;
+        }
+
         // Загрузка из объекта сохранения
         function loadSaveData(saveData) {
+            saveData = migrateSave(saveData);
             if (saveData.version !== SAVE_VERSION) {
                 showNotification('⚠️ Несовместимая версия сохранения');
                 return false;
@@ -833,9 +1077,12 @@
             player.onGround = false;
             player.direction = saveData.player.direction;
 
-            stats.gold = saveData.stats.gold;
-            stats.gems = saveData.stats.gems;
+            stats.money = saveData.stats.money;
             stats.score = saveData.stats.score;
+            backpack = emptyBackpack();
+            for (const key in backpack) {
+                backpack[key] = (saveData.backpack && saveData.backpack[key]) || 0;
+            }
 
             gameState.startTime = Date.now() - (stats.playtime * 1000);
 
@@ -949,13 +1196,13 @@
                 worldSeed = Date.now();
                 generateWorld(worldSeed);
                 player.x = WORLD_WIDTH / 2;
-                player.y = 5;
+                player.y = SURFACE_Y - 2;
                 player.vx = 0;
                 player.vy = 0;
                 player.direction = 1;
-                stats.gold = 0;
-                stats.gems = 0;
+                stats.money = 0;
                 stats.score = 0;
+                backpack = emptyBackpack();
                 stats.playtime = 0;
                 gameState.startTime = Date.now();
                 updateUI();
@@ -1028,7 +1275,7 @@
                             </div>
                             <div class="save-slot-info">
                                 💾 ${date}<br>
-                                ⏱️ Время: ${playtime} мин | 💰 Золото: ${save.stats.gold} | 💎 Гемы: ${save.stats.gems} | 🏆 Очки: ${save.stats.score}
+                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${save.stats.money ?? 0} руб. | 🏆 Очки: ${save.stats.score}
                             </div>
                             <div class="save-slot-actions">
                                 <button class="btn btn-small" onclick="openSaveNameModal(${i})">Перезаписать</button>
@@ -1073,7 +1320,7 @@
                             </div>
                             <div class="save-slot-info">
                                 💾 ${date}<br>
-                                ⏱️ Время: ${playtime} мин | 💰 Золото: ${save.stats.gold} | 💎 Гемы: ${save.stats.gems} | 🏆 Очки: ${save.stats.score}
+                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${save.stats.money ?? 0} руб. | 🏆 Очки: ${save.stats.score}
                             </div>
                         `;
                         slot.onclick = () => loadFromSlot(i);
@@ -1110,6 +1357,7 @@
             if (!gameState.paused) {
                 stats.playtime = (Date.now() - gameState.startTime) / 1000;
                 updatePlayer(dt);
+                checkShop();
                 updateCamera();
             }
             
