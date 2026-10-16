@@ -9,7 +9,6 @@
 #   ./sync.sh release 1.2.0     выпустить версию: bump + тег + push
 #   ./sync.sh pull              забрать изменения с GitHub
 #   ./sync.sh status            что происходит: ветка, коммиты, теги
-#   ./sync.sh pages             включить GitHub Pages через gh
 #   ./sync.sh help              эта справка
 #
 # Переменные окружения (все необязательные):
@@ -399,36 +398,6 @@ cmd_release() {
     fi
 }
 
-# ---------- pages ----------
-
-cmd_pages() {
-    require_repo
-    head_ "GitHub Pages"
-
-    if ! command -v gh >/dev/null 2>&1; then
-        warn "GitHub CLI (gh) не установлен — включи Pages руками:"
-        printf '  Settings → Pages → Source: GitHub Actions\n'
-        return 0
-    fi
-
-    if ! gh auth status >/dev/null 2>&1; then
-        die "gh не авторизован. Выполни: gh auth login"
-    fi
-
-    info "включаю Pages с источником GitHub Actions..."
-    if gh api --method POST "repos/${GITHUB_USER}/${REPO_NAME}/pages" \
-        -f "source[branch]=${BRANCH}" -f "source[path]=/" >/dev/null 2>&1 \
-       || gh api --method PUT "repos/${GITHUB_USER}/${REPO_NAME}/pages" \
-        -f "build_type=workflow" >/dev/null 2>&1; then
-        ok "Pages включён"
-    else
-        warn "автоматически не получилось — включи вручную: Settings → Pages → Source: GitHub Actions"
-    fi
-
-    printf '\n%sАдрес сайта:%s https://%s.github.io/%s/\n' "$C_DIM" "$C_OFF" "$GITHUB_USER" "$REPO_NAME"
-    printf '%sНа бесплатном плане Pages работает только для ПУБЛИЧНЫХ репозиториев.%s\n' "$C_WARN" "$C_OFF"
-}
-
 # ---------- help ----------
 
 cmd_help() {
@@ -440,7 +409,6 @@ cmd_help() {
     printf '  %s./sync.sh release%s 1.2.0     выпустить версию: bump + тег + push\n' "$C_BOLD" "$C_OFF"
     printf '  %s./sync.sh pull%s              забрать изменения с GitHub\n' "$C_BOLD" "$C_OFF"
     printf '  %s./sync.sh status%s            ветка, коммиты, теги, расхождение\n' "$C_BOLD" "$C_OFF"
-    printf '  %s./sync.sh pages%s             включить GitHub Pages\n' "$C_BOLD" "$C_OFF"
     printf '\nНастройка (переменные окружения):\n'
     printf '  GITHUB_USER=%s   REPO_NAME=%s   USE_HTTPS=1\n\n' "$GITHUB_USER" "$REPO_NAME"
     printf 'Обычный день:\n'
@@ -456,7 +424,6 @@ case "${1:-help}" in
     release) shift; cmd_release "$@" ;;
     pull)    shift; cmd_pull "$@" ;;
     status)  cmd_status ;;
-    pages)   cmd_pages ;;
     help|-h|--help) cmd_help ;;
     *)
         err "Неизвестная команда: $1"
