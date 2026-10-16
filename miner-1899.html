@@ -517,13 +517,14 @@
 
     <div id="controls">
         <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
+        <p><span class="key">Shift</span> - Бег</p>
         <p><span class="key">Пробел</span> (удерживать) - Копать блок перед собой</p>
         <p><span class="key">E</span> (<span class="key">У</span>) у лавки - Купить инструменты</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней.</p>
         <p>Алмазы поддаются только железной кирке, рубины — стальной.</p>
-        <p>Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама.</p>
+        <p>Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама. Денег нет — лавка даст лопату в долг, но вернуть придётся вдвое больше.</p>
         <p>Чем глубже копаешь, тем ценнее ресурсы!</p>
     </div>
 
@@ -645,6 +646,7 @@
         // Всё умножается на время кадра, поэтому игра ведёт себя одинаково
         // на мониторах 60, 100, 144 Гц и выше.
         const MOVE_SPEED = 3;
+        const SPRINT_MULT = 1.8;  // во сколько раз быстрее бег с зажатым Shift
         const GRAVITY = 30;
         const JUMP_SPEED = 10;    // прыжок ≈ 1.67 блока: ступенька в 1 блок берётся, в 2 — нет
         const MAX_FALL_SPEED = 15;
@@ -732,6 +734,10 @@
             { name: 'Лопата', speed: 1, price: 40 }
         ];
 
+        // Лопату можно взять в долг, если не хватает денег. Вернуть придётся вдвое больше:
+        // долг списывается из выручки в лавке, пока не будет погашен.
+        const DEBT_MULT = 2;
+
         const MIN_TIER = {
             [BLOCK_TYPES.DIAMOND]: 1,
             [BLOCK_TYPES.RUBY]: 2
@@ -772,6 +778,9 @@
 
         // Номер лопаты в SHOVELS (0 — лопаты нет)
         let shovelTier = 0;
+
+        // Долг лавке в рублях
+        let debt = 0;
 
         // Копание с удержанием: какой блок копаем и насколько (0..1)
         let digState = { x: null, y: null, progress: 0, warned: false };
@@ -1097,17 +1106,22 @@
             lines.forEach((line, i) => ctx.fillText(line, 12, 22 + i * 15));
         }
 
+        function isSprinting() {
+            return !!(keys['ShiftLeft'] || keys['ShiftRight']);
+        }
+
         // Обновление физики игрока
         function updatePlayer(dt) {
             if (gameState.paused) return;
             if (debug.on && debug.fly) { updateFly(dt); return; }
 
             // Управление (используем e.code для работы на любой раскладке)
+            const speed = isSprinting() ? MOVE_SPEED * SPRINT_MULT : MOVE_SPEED;
             if (keys['KeyA'] || keys['ArrowLeft']) {
-                player.vx = -MOVE_SPEED;
+                player.vx = -speed;
                 player.direction = -1;
             } else if (keys['KeyD'] || keys['ArrowRight']) {
-                player.vx = MOVE_SPEED;
+                player.vx = speed;
                 player.direction = 1;
             } else {
                 player.vx = 0;
@@ -1221,9 +1235,17 @@
             const earned = backpackValue();
             const count = backpackCount();
             if (count === 0) return 0;
-            stats.money += earned;
+            const repaid = Math.min(debt, earned);
+            debt -= repaid;
+            stats.money += earned - repaid;
             backpack = emptyBackpack();
-            showNotification(`💰 Продано: ${count} шт. за ${earned} руб.`);
+            if (repaid > 0) {
+                showNotification(debt > 0
+                    ? `💰 Продано за ${earned} руб., ${repaid} ушло в долг. Осталось вернуть ${debt} руб.`
+                    : `💰 Продано за ${earned} руб., ${repaid} ушло в долг. Долг погашен!`);
+            } else {
+                showNotification(`💰 Продано: ${count} шт. за ${earned} руб.`);
+            }
             updateUI();
             return earned;
         }
@@ -1256,7 +1278,20 @@
             stats.money -= sh.price;
             shovelTier = tier;
             resetDig();
-            showNotification(`🪏 Куплена ${sh.name.toLowerCase()}`);
+            showNotification(`🛠️ Куплена ${sh.name.toLowerCase()}`);
+            updateUI();
+            renderShopList();
+            return true;
+        }
+
+        // Взять лопату в долг: только если денег не хватает и долгов нет
+        function takeShovelOnCredit(tier) {
+            const sh = SHOVELS[tier];
+            if (!sh || tier <= shovelTier || debt > 0 || stats.money >= sh.price) return false;
+            shovelTier = tier;
+            debt = sh.price * DEBT_MULT;
+            resetDig();
+            showNotification(`🛠️ ${sh.name} в долг. Вернёшь ${debt} руб. с первой выручки`);
             updateUI();
             renderShopList();
             return true;
@@ -1278,7 +1313,9 @@
         }
 
         function renderShopList() {
-            document.getElementById('shopMoney').textContent = `У тебя: ${stats.money} руб.`;
+            document.getElementById('shopMoney').textContent = debt > 0
+                ? `У тебя: ${stats.money} руб. · долг лавке: ${debt} руб.`
+                : `У тебя: ${stats.money} руб.`;
             const list = document.getElementById('shopList');
             list.innerHTML = '';
 
@@ -1290,11 +1327,12 @@
                 item.className = 'shop-item' + (owned ? ' owned' : '');
                 let action;
                 if (owned) action = '<button class="btn btn-small" disabled>Есть</button>';
-                else if (stats.money < sh.price) action = `<button class="btn btn-small" disabled>${sh.price} руб.</button>`;
-                else action = `<button class="btn btn-small" onclick="buyShovel(${tier})">Купить за ${sh.price} руб.</button>`;
+                else if (stats.money >= sh.price) action = `<button class="btn btn-small" onclick="buyShovel(${tier})">Купить за ${sh.price} руб.</button>`;
+                else if (debt === 0) action = `<button class="btn btn-small" onclick="takeShovelOnCredit(${tier})">В долг, вернуть ${sh.price * DEBT_MULT} руб.</button>`;
+                else action = `<button class="btn btn-small" disabled>${sh.price} руб.</button>`;
                 item.innerHTML = `
                     <div>
-                        <div class="shop-item-name">🪏 ${sh.name}</div>
+                        <div class="shop-item-name">🛠️ ${sh.name}</div>
                         <div class="shop-item-info">земля, песок, глина, гравий — в ${PICK_ON_SOFT} раза быстрее ржавой кирки</div>
                     </div>
                     ${action}`;
@@ -1572,7 +1610,9 @@
             const fill = document.getElementById('backpackFill');
             fill.style.width = (count / BACKPACK_CAPACITY * 100) + '%';
             fill.classList.toggle('full', full);
-            document.getElementById('money').textContent = `${stats.money} руб.`;
+            const moneyEl = document.getElementById('money');
+            moneyEl.textContent = debt > 0 ? `${stats.money} руб. (долг ${debt})` : `${stats.money} руб.`;
+            moneyEl.classList.toggle('full', debt > 0);
             document.getElementById('pickaxe').textContent = PICKAXES[pickaxeTier].name;
             document.getElementById('shovel').textContent = SHOVELS[shovelTier].name;
             document.getElementById('score').textContent = stats.score;
@@ -1661,7 +1701,8 @@
                     ruby: backpack.ruby
                 },
                 pickaxe: pickaxeTier,
-                shovel: shovelTier
+                shovel: shovelTier,
+                debt: debt
             };
         }
 
@@ -1718,6 +1759,8 @@
             pickaxeTier = (Number.isInteger(tier) && tier >= 0 && tier < PICKAXES.length) ? tier : 0;
             const sTier = Number(saveData.shovel);
             shovelTier = (Number.isInteger(sTier) && sTier >= 0 && sTier < SHOVELS.length) ? sTier : 0;
+            const dbt = Number(saveData.debt);
+            debt = (Number.isFinite(dbt) && dbt > 0) ? Math.round(dbt) : 0;
             resetDig();
 
             gameState.startTime = Date.now() - (stats.playtime * 1000);
@@ -1841,6 +1884,7 @@
                 backpack = emptyBackpack();
                 pickaxeTier = 0;
                 shovelTier = 0;
+                debt = 0;
                 resetDig();
                 stats.playtime = 0;
                 gameState.startTime = Date.now();
