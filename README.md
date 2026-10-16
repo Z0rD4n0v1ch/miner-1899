@@ -35,7 +35,7 @@
 Никакой сборки не нужно — просто открыть файл:
 
 ```bash
-git clone https://github.com/ТВОЙ_НИК/miner-1899.git
+git clone https://github.com/Z0rD4n0v1ch/miner-1899.git
 cd miner-1899
 open index.html          # macOS
 # xdg-open index.html    # Linux
@@ -57,7 +57,38 @@ Workflow уже лежит в `.github/workflows/deploy.yml` — он публи
 
 **Settings → Pages → Build and deployment → Source: GitHub Actions**
 
-После пуша игра будет доступна по адресу `https://ТВОЙ_НИК.github.io/miner-1899/`.
+После пуша игра будет доступна по адресу `https://Z0rD4n0v1ch.github.io/miner-1899/`.
+
+## Синхронизация с GitHub — `sync.sh`
+
+В проекте лежит скрипт, который закрывает весь цикл работы с репозиторием. Запускать из папки проекта.
+
+```bash
+./sync.sh doctor            # проверить готовность: git, ключи, доступ
+./sync.sh init              # первая загрузка на GitHub
+./sync.sh push "feat: кирки"  # закоммитить правки и отправить
+./sync.sh release 1.2.0     # выпустить версию: bump + тег + push
+./sync.sh pull              # забрать изменения с GitHub
+./sync.sh status            # ветка, коммиты, теги, расхождение
+./sync.sh pages             # включить GitHub Pages через gh
+```
+
+Что делает `release`: поднимает `GAME_VERSION` и версию в заголовке игры, проверяет наличие раздела в `CHANGELOG.md`, создаёт коммит и аннотированный тег, отправляет ветку и тег на GitHub. `SAVE_VERSION` не трогает — это делается руками и только при ломающих изменениях.
+
+Настройка под свой аккаунт — через переменные окружения, менять код не нужно:
+
+```bash
+GITHUB_USER=ТвойНик REPO_NAME=другой-репозиторий ./sync.sh init
+USE_HTTPS=1 ./sync.sh init        # если предпочитаешь токен вместо SSH
+```
+
+Если скрипт не запускается с ошибкой «Permission denied» — потерялся бит исполнения (бывает при распаковке zip):
+
+```bash
+chmod +x sync.sh
+```
+
+Развёрнутое руководство по первой публикации, включая разбор ошибок авторизации, — в [GITHUB_SETUP.md](GITHUB_SETUP.md).
 
 ## Структура проекта
 
