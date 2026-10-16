@@ -1,10 +1,10 @@
 // Проверки физики игрока: одинаковое поведение при любой частоте кадров.
-// Запуск: node physics.test.js — гоняет настоящий index.html в песочнице vm.
+// Запуск: node physics.test.js — гоняет настоящий miner-1899.html в песочнице vm.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, 'miner-1899.html'), 'utf8');
 const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 function fresh() {

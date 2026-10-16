@@ -16,6 +16,7 @@
 #   GITHUB_USER   ник на GitHub (по умолчанию Z0rD4n0v1ch)
 #   REPO_NAME     имя репозитория (по умолчанию — имя папки проекта)
 #   USE_HTTPS=1   использовать HTTPS вместо SSH
+#   GAME_FILE     файл игры (по умолчанию miner-1899.html)
 #
 
 set -euo pipefail
@@ -23,6 +24,7 @@ set -euo pipefail
 GITHUB_USER="${GITHUB_USER:-Z0rD4n0v1ch}"
 REPO_NAME="${REPO_NAME:-$(basename "$(pwd)")}"
 BRANCH="${BRANCH:-main}"
+GAME_FILE="${GAME_FILE:-miner-1899.html}"
 
 if [ -t 1 ]; then
     C_OK=$'\033[32m'; C_ERR=$'\033[31m'; C_WARN=$'\033[33m'
@@ -336,23 +338,23 @@ cmd_release() {
 
     head_ "Выпуск версии $version"
 
-    # 1. версия игры в index.html
-    if [ -f index.html ]; then
-        local old_version
-        old_version="$(grep -oP "GAME_VERSION\s*=\s*'\K[^']+" index.html | head -1 || true)"
-        if [ -n "$old_version" ]; then
-            if [ "$old_version" = "$version" ]; then
-                info "GAME_VERSION уже $version"
-            else
-                sed -i.bak "s/const GAME_VERSION = '[^']*'/const GAME_VERSION = '${version}'/" index.html
-                rm -f index.html.bak
-                sed -i.bak "s/\(font-weight:normal\">v\)[0-9.]*/\1${version}/" index.html
-                rm -f index.html.bak
-                ok "GAME_VERSION: $old_version → $version"
-            fi
+    # 1. версия игры в $GAME_FILE
+    # Без файла игры выпуск останавливается: иначе тег встал бы на код со старой версией
+    [ -f "$GAME_FILE" ] || die "Не найден файл игры $GAME_FILE. Запускай из папки проекта или укажи GAME_FILE=..."
+    local old_version
+    old_version="$(grep -oP "GAME_VERSION\s*=\s*'\K[^']+" "$GAME_FILE" | head -1 || true)"
+    if [ -n "$old_version" ]; then
+        if [ "$old_version" = "$version" ]; then
+            info "GAME_VERSION уже $version"
         else
-            warn "GAME_VERSION в index.html не найден — пропускаю"
+            sed -i.bak "s/const GAME_VERSION = '[^']*'/const GAME_VERSION = '${version}'/" "$GAME_FILE"
+            rm -f "$GAME_FILE.bak"
+            sed -i.bak "s/\(font-weight:normal\">v\)[0-9.]*/\1${version}/" "$GAME_FILE"
+            rm -f "$GAME_FILE.bak"
+            ok "GAME_VERSION: $old_version → $version"
         fi
+    else
+        warn "GAME_VERSION в $GAME_FILE не найден — пропускаю"
     fi
 
     # 2. запись в CHANGELOG

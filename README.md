@@ -2,7 +2,7 @@
 
 2D-игра про шахтёра с процедурно генерируемой шахтой. Чистый HTML + Canvas + JavaScript — без сборки, без зависимостей, без npm.
 
-**Играть:** открой `index.html` в браузере.
+**Играть:** открой `miner-1899.html` в браузере.
 
 ## Возможности
 
@@ -74,21 +74,21 @@
 ```bash
 git clone git@github.com:Z0rD4n0v1ch/miner-1899.git
 cd miner-1899
-start index.html          # Windows
-# open index.html         # macOS
-# xdg-open index.html     # Linux
+start miner-1899.html          # Windows
+# open miner-1899.html         # macOS
+# xdg-open miner-1899.html     # Linux
 ```
 
 Если браузер ругается на `file://` (некоторые политики безопасности), подними локальный сервер:
 
 ```bash
 python3 -m http.server 8000
-# затем http://localhost:8000
+# затем http://localhost:8000/miner-1899.html
 ```
 
 ## Тесты
 
-Тесты гоняют настоящий `index.html` в песочнице Node.js — без браузера. Нужен [Node.js](https://nodejs.org/) (LTS).
+Тесты гоняют настоящий `miner-1899.html` в песочнице Node.js — без браузера. Нужен [Node.js](https://nodejs.org/) (LTS).
 
 ```bash
 node inventory.test.js    # рюкзак, лавка, интерфейс, сохранения
@@ -123,7 +123,7 @@ chmod +x sync.sh
 
 ```
 miner-1899/
-├── index.html           # вся игра: разметка, стили, логика
+├── miner-1899.html      # вся игра: разметка, стили, логика
 ├── inventory.test.js    # тесты рюкзака, лавки и сохранений
 ├── debug.test.js        # тесты режима отладки
 ├── physics.test.js      # тесты физики игрока
