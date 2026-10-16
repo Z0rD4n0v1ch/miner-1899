@@ -27,12 +27,13 @@ function makeEl() {
 }
 const els = {}, notes = [];
 let confirmAnswer = false;
+let rafCalls = 0, frameErrors = 0;
 const sandbox = {
     document: { getElementById: id => els[id] || (els[id] = makeEl()), createElement: () => makeEl(),
         body: { appendChild(n) { notes.push(n.textContent); } } },
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    window: { addEventListener() {} }, requestAnimationFrame() {}, setInterval() {}, setTimeout() {},
-    confirm: () => confirmAnswer, console, Date, Math, JSON, Object, Proxy, Number, Set
+    window: { addEventListener() {} }, requestAnimationFrame() { rafCalls++; }, setInterval() {}, setTimeout() {},
+    confirm: () => confirmAnswer, console: { ...console, error: () => { frameErrors++; } }, Date, Math, JSON, Object, Proxy, Number, Set
 };
 vm.createContext(sandbox);
 vm.runInContext(script, sandbox);
@@ -92,6 +93,33 @@ check('лава не держит: сквозь неё падают', run('isBlo
 check('лаву нельзя выкопать', run('canDig(BLOCK_TYPES.LAVA)') === false);
 tick(1);
 check('упал в лаву — смерть, рюкзак потерян', run('player.y') < run('SURFACE_Y') && run('backpackCount()') === 0 && notes.some(n => n.includes('Лава')));
+
+console.log('Лава и копание (зависание)');
+room(650);
+run('world[F][51] = BLOCK_TYPES.LAVA;');
+let threw = false;
+try { run('keys["Space"] = true; for (let i = 0; i < 120; i++) updateDigging(1/60); keys = {};'); } catch (e) { threw = true; }
+check('пробел в сторону лавы не роняет игру', !threw);
+check('лава при этом не копается и подсказки про кирку нет', run('getBlock(51, F)') === run('BLOCK_TYPES.LAVA') && !notes.some(n => n.includes('не поддаётся')));
+room(650);
+run('for (let x = 49; x <= 53; x++) world[F + 1][x] = BLOCK_TYPES.LAVA; player.y = F - 2;');
+frameErrors = 0; notes.length = 0;
+run('keys = {KeyD: true, Space: true, KeyS: true}; for (let i = 0; i < 120; i++) gameLoop(1000 + i * 16.7); keys = {};');
+check('падение в лаву с зажатым пробелом — без ошибок, смерть и возврат наверх', frameErrors === 0 && notes.some(n => n.includes('Лава')) && run('player.y') < run('F - 100'));
+frameErrors = 0;
+run(`(() => { generateWorld(7); let t = 5000;
+    for (let y = 0; y < WORLD_HEIGHT; y += 1) for (let x = 2; x < WORLD_WIDTH - 2; x += 9)
+        if (world[y][x] === BLOCK_TYPES.LAVA && world[y - 1][x] === BLOCK_TYPES.AIR) {
+            player.x = x; player.y = y - 3; player.vy = 0; keys = {KeyD: true, Space: true};
+            for (let i = 0; i < 90; i++) { t += 16.7; gameLoop(t); }
+        }
+    keys = {}; })()`);
+check('десятки настоящих лавовых озёр мира — ни одной ошибки в кадре', frameErrors === 0);
+run('const realHazards = updateHazards; updateHazards = () => { throw new Error("тест"); };');
+rafCalls = 0; frameErrors = 0; notes.length = 0;
+run('gameLoop(90000); gameLoop(90016); updateHazards = realHazards;');
+check('если в кадре всё же ошибка — игра продолжает работать', rafCalls === 2 && frameErrors === 2);
+check('и сообщает об этом один раз, а не каждый кадр', notes.filter(n => n.includes('Ошибка в игре')).length === 1);
 
 console.log('Жар');
 room(700);

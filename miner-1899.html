@@ -1769,7 +1769,9 @@
                 return;
             }
             if (!canDig(block)) {
-                if (!digState.warned) {
+                // подсказка про кирку — только для руды, которой нужна кирка получше;
+                // лаву копать нельзя вовсе, тут просто ничего не происходит
+                if (!digState.warned && MIN_TIER[block] !== undefined && ORES[block]) {
                     const need = PICKAXES[MIN_TIER[block]].name.toLowerCase();
                     showNotification(`⛏️ ${ORES[block].name} не поддаётся — нужна ${need} кирка`);
                     digState.warned = true;
@@ -2465,7 +2467,24 @@
 
         // Игровой цикл
         let lastTime = 0;
+        // Ошибка в одном кадре не должна останавливать игру навсегда:
+        // следующий кадр запрашивается в любом случае, а об ошибке сообщается один раз
+        let loopErrorShown = false;
+
         function gameLoop(currentTime) {
+            try {
+                gameFrame(currentTime);
+            } catch (err) {
+                console.error('Ошибка в кадре игры:', err);
+                if (!loopErrorShown) {
+                    loopErrorShown = true;
+                    showNotification('⚠️ Ошибка в игре — она продолжит работу. Подробности в консоли (F12)');
+                }
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameFrame(currentTime) {
             const frameMs = currentTime - lastTime;
             const dt = Math.min(frameMs / 1000, 0.1);
             lastTime = currentTime;
@@ -2488,8 +2507,6 @@
                 drawDebugOverlay();
             }
             updateUI();
-
-            requestAnimationFrame(gameLoop);
         }
 
         // Обработка клавиатуры
