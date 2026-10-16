@@ -18,20 +18,50 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            padding: 12px 20px 20px;
         }
 
         h1 {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: #ffa500;
             text-shadow: 2px 2px 4px #000;
+            font-size: 28px;
+        }
+
+        /* Игра и панель управления. На узком экране — друг под другом,
+           на широком — панель справа от игры, чтобы не прокручивать вниз. */
+        #layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
         }
 
         #gameCanvas {
+            display: block;
             border: 3px solid #444;
             background: #000;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
+            /* холст ужимается под высоту окна, сохраняя пропорции 4:3 */
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: calc(100vh - 80px);
+            aspect-ratio: 4 / 3;
+        }
+
+        #sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 806px;
+        }
+
+        #sidebar > div {
+            margin-top: 0;
         }
 
         #ui {
@@ -40,7 +70,6 @@
             background: #2a2a2a;
             border: 2px solid #444;
             border-radius: 8px;
-            min-width: 800px;
             text-align: center;
         }
 
@@ -323,12 +352,83 @@
         input[type="file"] {
             display: none;
         }
+        /* Широкий экран: идёт последним, чтобы перекрывать правила выше */
+        @media (min-width: 1100px) {
+            #layout {
+                flex-direction: row;
+                justify-content: center;
+                align-items: flex-start;
+            }
+
+            /* на большом мониторе холст растягивается на всю высоту окна,
+               но оставляет место под панель справа */
+            #gameCanvas {
+                height: min(calc(100vh - 80px), calc((100vw - 400px) * 0.75), 1200px);
+                width: auto;
+                max-width: none;
+                max-height: none;
+            }
+
+            #sidebar {
+                width: 320px;
+                flex-shrink: 0;
+                max-height: calc(100vh - 80px);
+                overflow-y: auto;
+            }
+
+            #ui {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                padding: 10px;
+            }
+
+            #ui .stat {
+                margin: 0;
+            }
+
+            #ui .stat:last-child {
+                grid-column: 1 / -1;
+            }
+
+            #savePanel {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                padding: 10px;
+            }
+
+            #savePanel .btn {
+                padding: 10px 8px;
+            }
+
+            #savePanel .btn-danger {
+                grid-column: 1 / -1;
+            }
+
+            #legend {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 8px;
+                font-size: 13px;
+            }
+
+            #controls {
+                font-size: 13px;
+                text-align: left;
+            }
+
+            .backpack-bar {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.3.1</span></h1>
+    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.3.0</span></h1>
+    <div id="layout">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    
+
+    <aside id="sidebar">
     <div id="ui">
         <div class="stat">
             <div class="stat-label">Глубина</div>
@@ -361,6 +461,15 @@
         <button class="btn btn-danger" onclick="newGame()">🆕 Новая игра</button>
     </div>
 
+    <div id="controls">
+        <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
+        <p><span class="key">Пробел</span> - Копать блок перед собой</p>
+        <p><span class="key">ESC</span> - Меню сохранений</p>
+        <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
+        <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней.</p>
+        <p>Чем глубже копаешь, тем ценнее ресурсы!</p>
+    </div>
+
     <div id="legend">
         <div class="legend-item">
             <div class="legend-color" style="background: #8b4513;"></div>
@@ -388,13 +497,7 @@
         </div>
     </div>
 
-    <div id="controls">
-        <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
-        <p><span class="key">Пробел</span> - Копать блок перед собой</p>
-        <p><span class="key">ESC</span> - Меню сохранений</p>
-        <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
-        <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней.</p>
-        <p>Чем глубже копаешь, тем ценнее ресурсы!</p>
+    </aside>
     </div>
 
     <!-- Модальное окно сохранений -->
@@ -454,7 +557,7 @@
         const VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
         const VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
         const SAVE_VERSION = 3;          // 2: размеры мира; 3: рюкзак и деньги
-        const GAME_VERSION = '1.3.1';
+        const GAME_VERSION = '1.3.0';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
         // Физика игрока. Скорости — в блоках в секунду, ускорения — в блоках/с².
