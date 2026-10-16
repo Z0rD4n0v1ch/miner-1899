@@ -501,6 +501,10 @@
             <div class="stat-label">Кирка</div>
             <div class="stat-value" id="pickaxe">Ржавая</div>
         </div>
+        <div class="stat">
+            <div class="stat-label">Лопата</div>
+            <div class="stat-value" id="shovel">Нет</div>
+        </div>
     </div>
 
     <div id="savePanel">
@@ -514,11 +518,12 @@
     <div id="controls">
         <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
         <p><span class="key">Пробел</span> (удерживать) - Копать блок перед собой</p>
-        <p><span class="key">E</span> (<span class="key">У</span>) у лавки - Купить кирку</p>
+        <p><span class="key">E</span> (<span class="key">У</span>) у лавки - Купить инструменты</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней.</p>
         <p>Алмазы поддаются только железной кирке, рубины — стальной.</p>
+        <p>Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама.</p>
         <p>Чем глубже копаешь, тем ценнее ресурсы!</p>
     </div>
 
@@ -530,6 +535,18 @@
         <div class="legend-item">
             <div class="legend-color" style="background: #666;"></div>
             <span>Камень</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #c2a66b;"></div>
+            <span>Песок</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #7d8a96;"></div>
+            <span>Глина</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #857a6e;"></div>
+            <span>Гравий</span>
         </div>
         <div class="legend-item">
             <div class="legend-color" style="background: #ffd700;"></div>
@@ -620,7 +637,7 @@
 
         const VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
         const VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
-        const SAVE_VERSION = 4;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка
+        const SAVE_VERSION = 5;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата
         const GAME_VERSION = '1.4.0';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
@@ -647,7 +664,10 @@
             DIAMOND: 4,
             RUBY: 5,
             LAVA: 6,
-            BEDROCK: 7
+            BEDROCK: 7,
+            SAND: 8,
+            CLAY: 9,
+            GRAVEL: 10
         };
 
         // Цвета блоков
@@ -659,7 +679,26 @@
             [BLOCK_TYPES.DIAMOND]: '#00FFFF',
             [BLOCK_TYPES.RUBY]: '#FF1493',
             [BLOCK_TYPES.LAVA]: '#DC143C',
-            [BLOCK_TYPES.BEDROCK]: '#222222'
+            [BLOCK_TYPES.BEDROCK]: '#222222',
+            [BLOCK_TYPES.SAND]: '#C2A66B',
+            [BLOCK_TYPES.CLAY]: '#7D8A96',
+            [BLOCK_TYPES.GRAVEL]: '#857A6E'
+        };
+
+        // Мягкая порода: её быстро копает лопата, а кирка — с трудом.
+        // Число — сколько секунд блок копается лопатой.
+        const SOFT = {
+            [BLOCK_TYPES.DIRT]: 0.2,
+            [BLOCK_TYPES.SAND]: 0.25,
+            [BLOCK_TYPES.CLAY]: 0.4,
+            [BLOCK_TYPES.GRAVEL]: 0.5
+        };
+        // Во сколько раз мягкую породу дольше копать киркой, чем лопатой
+        const PICK_ON_SOFT = 4;
+        // Названия блоков для подсказок
+        const BLOCK_NAMES = {
+            [BLOCK_TYPES.DIRT]: 'Земля', [BLOCK_TYPES.SAND]: 'Песок',
+            [BLOCK_TYPES.CLAY]: 'Глина', [BLOCK_TYPES.GRAVEL]: 'Гравий'
         };
 
         // Руда: что кладётся в рюкзак и почём продаётся
@@ -671,8 +710,8 @@
         const BACKPACK_CAPACITY = 20;
 
         // Твёрдость: сколько секунд копается блок ржавой киркой
+        // (мягкая порода считается отдельно, см. SOFT)
         const HARDNESS = {
-            [BLOCK_TYPES.DIRT]: 0.25,
             [BLOCK_TYPES.STONE]: 0.6,
             [BLOCK_TYPES.GOLD]: 0.9,
             [BLOCK_TYPES.DIAMOND]: 1.4,
@@ -687,6 +726,12 @@
             { name: 'Стальная',          speed: 2.8, price: 400 },
             { name: 'С алмазным жалом',  speed: 4.5, price: 1200 }
         ];
+        // Лопаты: копают только мягкую породу. Номер 0 — лопаты нет.
+        const SHOVELS = [
+            { name: 'Нет',    speed: 0, price: 0 },
+            { name: 'Лопата', speed: 1, price: 40 }
+        ];
+
         const MIN_TIER = {
             [BLOCK_TYPES.DIAMOND]: 1,
             [BLOCK_TYPES.RUBY]: 2
@@ -724,6 +769,9 @@
 
         // Номер кирки в PICKAXES
         let pickaxeTier = 0;
+
+        // Номер лопаты в SHOVELS (0 — лопаты нет)
+        let shovelTier = 0;
 
         // Копание с удержанием: какой блок копаем и насколько (0..1)
         let digState = { x: null, y: null, progress: 0, warned: false };
@@ -812,7 +860,9 @@
             lavaScale: 0.06,  lavaThreshold: 0.60,  lavaStartDepth: 0.55,
             goldScale: 0.30,  goldThreshold: 0.91,  goldPeak: 0.40, goldWidth: 0.38,
             diamondScale: 0.36, diamondThreshold: 0.93,  diamondFrom: 0.45,
-            rubyScale: 0.40,  rubyThreshold: 0.95,   rubyFrom: 0.62
+            rubyScale: 0.40,  rubyThreshold: 0.95,   rubyFrom: 0.62,
+            // мягкая порода карманами в камне: песок у поверхности, глина в середине, гравий внизу
+            softScale: 0.07,  softThreshold: 0.63,  softMixScale: 0.05
         };
 
         // Генерация мира
@@ -829,6 +879,8 @@
             const goldNoise = buildFbm(seed + 301, GEN.goldScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
             const diamondNoise = buildFbm(seed + 401, GEN.diamondScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
             const rubyNoise = buildFbm(seed + 501, GEN.rubyScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
+            const softNoise = buildFbm(seed + 601, GEN.softScale, 2, WORLD_WIDTH, WORLD_HEIGHT);
+            const softMix = buildFbm(seed + 701, GEN.softMixScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
 
             for (let y = 0; y < WORLD_HEIGHT; y++) {
                 const row = new Array(WORLD_WIDTH);
@@ -873,6 +925,16 @@
                     if (d >= GEN.rubyFrom &&
                         rubyNoise(x, y) > GEN.rubyThreshold) {
                         row[x] = BLOCK_TYPES.RUBY; continue;
+                    }
+
+                    // мягкая порода: какая именно — решает глубина, а шум
+                    // размывает границы слоёв, чтобы они не шли ровными полосами
+                    if (softNoise(x, y) > GEN.softThreshold) {
+                        const layer = d + (softMix(x, y) - 0.5) * 0.4;
+                        row[x] = layer < 0.33 ? BLOCK_TYPES.SAND
+                               : layer < 0.66 ? BLOCK_TYPES.CLAY
+                               : BLOCK_TYPES.GRAVEL;
+                        continue;
                     }
 
                     row[x] = BLOCK_TYPES.STONE;
@@ -1183,6 +1245,23 @@
             return true;
         }
 
+        // Купить лопату номер tier. Возвращает true при успехе.
+        function buyShovel(tier) {
+            const sh = SHOVELS[tier];
+            if (!sh || tier <= shovelTier) return false;
+            if (stats.money < sh.price) {
+                showNotification(`💰 Не хватает ${sh.price - stats.money} руб.`);
+                return false;
+            }
+            stats.money -= sh.price;
+            shovelTier = tier;
+            resetDig();
+            showNotification(`🪏 Куплена ${sh.name.toLowerCase()}`);
+            updateUI();
+            renderShopList();
+            return true;
+        }
+
         function openShop() {
             if (!isAtShop()) {
                 showNotification('🏚️ Подойди к лавке на поверхности');
@@ -1202,7 +1281,27 @@
             document.getElementById('shopMoney').textContent = `У тебя: ${stats.money} руб.`;
             const list = document.getElementById('shopList');
             list.innerHTML = '';
-            const opens = ['земля, камень, золото', '+ алмазы', '+ рубины', 'всё, быстрее всех'];
+
+            // лопаты (кроме «нет лопаты»)
+            SHOVELS.forEach((sh, tier) => {
+                if (tier === 0) return;
+                const item = document.createElement('div');
+                const owned = tier <= shovelTier;
+                item.className = 'shop-item' + (owned ? ' owned' : '');
+                let action;
+                if (owned) action = '<button class="btn btn-small" disabled>Есть</button>';
+                else if (stats.money < sh.price) action = `<button class="btn btn-small" disabled>${sh.price} руб.</button>`;
+                else action = `<button class="btn btn-small" onclick="buyShovel(${tier})">Купить за ${sh.price} руб.</button>`;
+                item.innerHTML = `
+                    <div>
+                        <div class="shop-item-name">🪏 ${sh.name}</div>
+                        <div class="shop-item-info">земля, песок, глина, гравий — в ${PICK_ON_SOFT} раза быстрее ржавой кирки</div>
+                    </div>
+                    ${action}`;
+                list.appendChild(item);
+            });
+
+            const opens = ['камень, золото', '+ алмазы', '+ рубины', 'всё, быстрее всех'];
             PICKAXES.forEach((p, tier) => {
                 const item = document.createElement('div');
                 item.className = 'shop-item' + (tier === pickaxeTier ? ' owned' : tier < pickaxeTier ? ' below' : '');
@@ -1213,7 +1312,7 @@
                 else action = `<button class="btn btn-small" onclick="buyPickaxe(${tier})">Купить за ${p.price} руб.</button>`;
                 item.innerHTML = `
                     <div>
-                        <div class="shop-item-name">${p.name}</div>
+                        <div class="shop-item-name">⛏️ ${p.name}</div>
                         <div class="shop-item-info">скорость ×${p.speed} · ${opens[tier]}</div>
                     </div>
                     ${action}`;
@@ -1247,8 +1346,22 @@
             return pickaxeTier >= (MIN_TIER[block] || 0);
         }
 
-        // Сколько секунд копать блок нынешней киркой
+        // Каким инструментом копается блок: для мягкой породы берётся
+        // тот, что быстрее, твёрдую копает только кирка
+        function toolFor(block) {
+            if (SOFT[block] === undefined || shovelTier === 0) return 'pickaxe';
+            const byShovel = SOFT[block] / SHOVELS[shovelTier].speed;
+            const byPick = SOFT[block] * PICK_ON_SOFT / PICKAXES[pickaxeTier].speed;
+            return byShovel <= byPick ? 'shovel' : 'pickaxe';
+        }
+
+        // Сколько секунд копать блок лучшим из имеющихся инструментов
         function digTime(block) {
+            if (SOFT[block] !== undefined) {
+                return toolFor(block) === 'shovel'
+                    ? SOFT[block] / SHOVELS[shovelTier].speed
+                    : SOFT[block] * PICK_ON_SOFT / PICKAXES[pickaxeTier].speed;
+            }
             return (HARDNESS[block] || 0.5) / PICKAXES[pickaxeTier].speed;
         }
 
@@ -1303,7 +1416,7 @@
                 } else if (result === 'full') {
                     // блок всё равно выкапывается, но руда пропадает
                     showNotification(`🎒 Нет места: ${ORES[block].name} потеряно`);
-                } else if (block === BLOCK_TYPES.DIRT) {
+                } else if (SOFT[block] !== undefined) {
                     stats.score += 1;
                 } else if (block === BLOCK_TYPES.STONE) {
                     stats.score += 2;
@@ -1344,6 +1457,11 @@
                         ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
                         ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                     }
+                    if (block === BLOCK_TYPES.SAND || block === BLOCK_TYPES.GRAVEL) {
+                        drawSpeckles(x * TILE_SIZE, y * TILE_SIZE, worldX, worldY,
+                            block === BLOCK_TYPES.SAND ? 'rgba(90, 70, 30, 0.35)' : 'rgba(40, 35, 30, 0.5)',
+                            block === BLOCK_TYPES.SAND ? 1 : 3);
+                    }
                 }
             }
 
@@ -1359,17 +1477,37 @@
             ctx.fillStyle = '#FFD700';
             ctx.fillRect(playerScreenX + 4, playerScreenY + 2, TILE_SIZE - 8, 6);
 
+            // инструмент в руках: пока копает — тот, которым копает
+            const t = digTarget();
+            const tool = keys['Space'] ? toolFor(getBlock(t.x, t.y)) : 'pickaxe';
+            const hx = player.direction === 1 ? playerScreenX + TILE_SIZE - 2 : playerScreenX + 2;
+            const tx = player.direction === 1 ? playerScreenX + TILE_SIZE + 4 : playerScreenX - 4;
+            const hy = playerScreenY + TILE_SIZE / 2;
             ctx.strokeStyle = '#8B4513';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            if (player.direction === 1) {
-                ctx.moveTo(playerScreenX + TILE_SIZE - 2, playerScreenY + TILE_SIZE / 2);
-                ctx.lineTo(playerScreenX + TILE_SIZE + 4, playerScreenY + TILE_SIZE / 2 - 4);
-            } else {
-                ctx.moveTo(playerScreenX + 2, playerScreenY + TILE_SIZE / 2);
-                ctx.lineTo(playerScreenX - 4, playerScreenY + TILE_SIZE / 2 - 4);
-            }
+            ctx.moveTo(hx, hy);
+            ctx.lineTo(tx, hy - 4);
             ctx.stroke();
+            if (tool === 'shovel') {
+                // штык лопаты
+                ctx.fillStyle = '#B0B0B0';
+                ctx.fillRect(tx - 3, hy - 9, 6, 6);
+            }
+            ctx.lineWidth = 1;
+        }
+
+        // Крапинки на песке и гравии: положение зависит от координат блока,
+        // поэтому узор не мерцает от кадра к кадру
+        function drawSpeckles(px, py, wx, wy, color, size) {
+            ctx.fillStyle = color;
+            let h = (wx * 374761393 + wy * 668265263) >>> 0;
+            for (let i = 0; i < 4; i++) {
+                h = (h ^ (h >>> 13)) * 1274126177 >>> 0;
+                const ox = 2 + (h % (TILE_SIZE - 4 - size));
+                const oy = 2 + ((h >>> 8) % (TILE_SIZE - 4 - size));
+                ctx.fillRect(px + ox, py + oy, size, size);
+            }
         }
 
         // Лавка: домик на поверхности, рисуется поверх неба и не мешает ходить
@@ -1406,8 +1544,8 @@
             ctx.fillText('ЛАВКА', sx + w / 2, groundY - wallH - TILE_SIZE - 4);
             if (isAtShop()) {
                 ctx.fillStyle = '#FFFFFF';
-                ctx.strokeText('E — купить кирку', sx + w / 2, groundY - wallH - TILE_SIZE - 18);
-                ctx.fillText('E — купить кирку', sx + w / 2, groundY - wallH - TILE_SIZE - 18);
+                ctx.strokeText('E — инструменты', sx + w / 2, groundY - wallH - TILE_SIZE - 18);
+                ctx.fillText('E — инструменты', sx + w / 2, groundY - wallH - TILE_SIZE - 18);
             }
             ctx.textAlign = 'left';
         }
@@ -1436,6 +1574,7 @@
             fill.classList.toggle('full', full);
             document.getElementById('money').textContent = `${stats.money} руб.`;
             document.getElementById('pickaxe').textContent = PICKAXES[pickaxeTier].name;
+            document.getElementById('shovel').textContent = SHOVELS[shovelTier].name;
             document.getElementById('score').textContent = stats.score;
             
             const totalSeconds = Math.floor(stats.playtime);
@@ -1521,7 +1660,8 @@
                     diamond: backpack.diamond,
                     ruby: backpack.ruby
                 },
-                pickaxe: pickaxeTier
+                pickaxe: pickaxeTier,
+                shovel: shovelTier
             };
         }
 
@@ -1540,6 +1680,10 @@
             // 3 → 4: появилась кирка, у старых сохранений — ржавая
             if (saveData.version === 3) {
                 saveData = Object.assign({}, saveData, { version: 4, pickaxe: 0 });
+            }
+            // 4 → 5: появилась лопата, у старых сохранений её нет
+            if (saveData.version === 4) {
+                saveData = Object.assign({}, saveData, { version: 5, shovel: 0 });
             }
             return saveData;
         }
@@ -1572,6 +1716,8 @@
             }
             const tier = Number(saveData.pickaxe);
             pickaxeTier = (Number.isInteger(tier) && tier >= 0 && tier < PICKAXES.length) ? tier : 0;
+            const sTier = Number(saveData.shovel);
+            shovelTier = (Number.isInteger(sTier) && sTier >= 0 && sTier < SHOVELS.length) ? sTier : 0;
             resetDig();
 
             gameState.startTime = Date.now() - (stats.playtime * 1000);
@@ -1694,6 +1840,7 @@
                 stats.score = 0;
                 backpack = emptyBackpack();
                 pickaxeTier = 0;
+                shovelTier = 0;
                 resetDig();
                 stats.playtime = 0;
                 gameState.startTime = Date.now();
