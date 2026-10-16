@@ -392,6 +392,7 @@
         <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
         <p><span class="key">Пробел</span> - Копать блок перед собой</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
+        <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней.</p>
         <p>Чем глубже копаешь, тем ценнее ресурсы!</p>
     </div>
@@ -707,9 +708,128 @@
             return block !== BLOCK_TYPES.AIR;
         }
 
+        // ============ РЕЖИМ ОТЛАДКИ ============
+        // Включается клавишей ` (Ё). В сохранения не попадает.
+        // PgUp/PgDn — на 50 м вверх/вниз, 0–9 — на долю глубины шахты,
+        // G — полёт сквозь породу без гравитации.
+
+        const DEBUG_STEP_M = 50;
+        const DEBUG_FLY_SPEED = 20;  // блоков в секунду
+        const MAX_DEPTH = WORLD_HEIGHT - BEDROCK_ROWS - 1 - DEPTH_ORIGIN;
+
+        const debug = {
+            on: false,
+            fly: false,
+            frames: 0,        // кадров в текущей секунде
+            secondStart: 0,
+            fps: 0,
+            worstMs: 0,       // самый долгий кадр в текущей секунде
+            worstShown: 0,    // ...и в прошлой, для показа
+            renderMs: 0
+        };
+
+        function nowMs() {
+            return (typeof performance !== 'undefined' ? performance : Date).now();
+        }
+
+        function currentDepth() {
+            return Math.floor(Math.max(0, player.y - DEPTH_ORIGIN));
+        }
+
+        // Перенести игрока на глубину depthM метров.
+        // Клетка, куда он попадает, вырубается, чтобы не застрять в породе.
+        function debugTeleport(depthM) {
+            const d = Math.max(0, Math.min(MAX_DEPTH, Math.round(depthM)));
+            player.vy = 0;
+            if (d === 0) {
+                // на поверхность: встать на землю, а не вырубать в ней яму
+                player.y = SURFACE_Y - 1;
+                showNotification('🧭 Отладка: поверхность');
+                return 0;
+            }
+            player.y = DEPTH_ORIGIN + d;
+            const y = Math.floor(player.y);
+            const x0 = Math.floor(player.x);
+            const x1 = Math.ceil(player.x);
+            for (const x of [x0, x1]) {
+                if (getBlock(x, y) !== BLOCK_TYPES.BEDROCK) setBlock(x, y, BLOCK_TYPES.AIR);
+            }
+            showNotification(`🧭 Отладка: глубина ${d} м`);
+            return d;
+        }
+
+        // Возвращает true, если клавиша обработана режимом отладки
+        function handleDebugKey(code) {
+            if (code === 'Backquote') {
+                debug.on = !debug.on;
+                if (!debug.on) debug.fly = false;
+                showNotification(debug.on ? '🛠️ Режим отладки включён' : '🛠️ Режим отладки выключен');
+                return true;
+            }
+            if (!debug.on) return false;
+
+            if (code === 'PageDown') { debugTeleport(currentDepth() + DEBUG_STEP_M); return true; }
+            if (code === 'PageUp')   { debugTeleport(currentDepth() - DEBUG_STEP_M); return true; }
+            const m = /^(?:Digit|Numpad)(\d)$/.exec(code);
+            if (m) { debugTeleport(MAX_DEPTH * Number(m[1]) / 9); return true; }
+            if (code === 'KeyG') {
+                debug.fly = !debug.fly;
+                player.vx = 0; player.vy = 0;
+                showNotification(debug.fly ? '🪽 Полёт включён' : '🪽 Полёт выключен');
+                return true;
+            }
+            return false;
+        }
+
+        // Полёт: движение во все стороны, без гравитации и столкновений
+        function updateFly(dt) {
+            let dx = 0, dy = 0;
+            if (keys['KeyA'] || keys['ArrowLeft'])  { dx = -1; player.direction = -1; }
+            if (keys['KeyD'] || keys['ArrowRight']) { dx = 1;  player.direction = 1; }
+            if (keys['KeyW'] || keys['ArrowUp'])    dy = -1;
+            if (keys['KeyS'] || keys['ArrowDown'])  dy = 1;
+            player.vx = 0; player.vy = 0; player.onGround = false;
+            player.x = Math.max(0, Math.min(WORLD_WIDTH - 1, player.x + dx * DEBUG_FLY_SPEED * dt));
+            player.y = Math.max(0, Math.min(WORLD_HEIGHT - BEDROCK_ROWS - 1, player.y + dy * DEBUG_FLY_SPEED * dt));
+        }
+
+        // Учёт времени кадра: FPS за последнюю секунду и самый долгий кадр
+        function debugFrame(frameMs, renderMs, t) {
+            debug.frames++;
+            if (frameMs > debug.worstMs) debug.worstMs = frameMs;
+            debug.renderMs = debug.renderMs * 0.9 + renderMs * 0.1;
+            if (t - debug.secondStart >= 1000) {
+                debug.fps = Math.round(debug.frames * 1000 / (t - debug.secondStart));
+                debug.worstShown = debug.worstMs;
+                debug.frames = 0;
+                debug.worstMs = 0;
+                debug.secondStart = t;
+            }
+        }
+
+        function drawDebugOverlay() {
+            if (!debug.on) return;
+            const lines = [
+                `FPS: ${debug.fps}   худший кадр: ${debug.worstShown.toFixed(1)} мс`,
+                `отрисовка: ${debug.renderMs.toFixed(2)} мс`,
+                `глубина: ${currentDepth()} м из ${MAX_DEPTH}`,
+                `игрок: x ${player.x.toFixed(1)}  y ${player.y.toFixed(1)}`,
+                `камера: x ${camera.x}  y ${camera.y}`,
+                `полёт: ${debug.fly ? 'вкл' : 'выкл'}`,
+                'PgUp/PgDn ±50 м · 0–9 глубина · G полёт · ` выкл'
+            ];
+            ctx.font = '12px "Courier New", monospace';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(6, 6, 360, lines.length * 15 + 10);
+            ctx.fillStyle = '#7CFC00';
+            lines.forEach((line, i) => ctx.fillText(line, 12, 22 + i * 15));
+        }
+
         // Обновление физики игрока
         function updatePlayer(dt) {
             if (gameState.paused) return;
+            if (debug.on && debug.fly) { updateFly(dt); return; }
 
             const speed = 3;
             const gravity = 0.5;
@@ -1351,7 +1471,8 @@
         // Игровой цикл
         let lastTime = 0;
         function gameLoop(currentTime) {
-            const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
+            const frameMs = currentTime - lastTime;
+            const dt = Math.min(frameMs / 1000, 0.1);
             lastTime = currentTime;
 
             if (!gameState.paused) {
@@ -1361,7 +1482,12 @@
                 updateCamera();
             }
             
+            const renderStart = nowMs();
             render();
+            if (debug.on) {
+                debugFrame(frameMs, nowMs() - renderStart, currentTime);
+                drawDebugOverlay();
+            }
             updateUI();
 
             requestAnimationFrame(gameLoop);
@@ -1370,6 +1496,12 @@
         // Обработка клавиатуры
         window.addEventListener('keydown', (e) => {
             keys[e.code] = true;
+
+            // клавиши отладки — только в игре, не при вводе названия сохранения
+            if (!gameState.paused && handleDebugKey(e.code)) {
+                e.preventDefault();
+                return;
+            }
             
             if (e.code === 'Space') {
                 e.preventDefault();
