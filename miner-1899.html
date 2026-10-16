@@ -97,6 +97,12 @@
             color: #dc143c;
         }
 
+        .stat-sub {
+            color: #aaa;
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
         .backpack-bar {
             width: 90px;
             height: 6px;
@@ -115,6 +121,10 @@
 
         .backpack-fill.full {
             background: #dc143c;
+        }
+
+        .health-fill {
+            background: #4caf50;
         }
 
         #savePanel {
@@ -479,6 +489,12 @@
         <div class="stat">
             <div class="stat-label">Глубина</div>
             <div class="stat-value" id="depth">0м</div>
+            <div class="stat-sub" id="biome">Песчаный пласт</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Здоровье</div>
+            <div class="stat-value" id="health">100</div>
+            <div class="backpack-bar"><div class="backpack-fill health-fill" id="healthFill"></div></div>
         </div>
         <div class="stat">
             <div class="stat-label">Рюкзак</div>
@@ -523,8 +539,9 @@
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней.</p>
-        <p>Алмазы поддаются только железной кирке, рубины — стальной.</p>
+        <p>Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.</p>
         <p>Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама. Денег нет — лавка даст лопату в долг, но вернуть придётся вдвое больше.</p>
+        <p>Глубже — опаснее: в Глиняных штольнях рушится потолок, в Гранитных недрах прячется газ, на Огненном дне жарко. Если здоровье кончится — очнёшься наверху без рюкзака.</p>
         <p>Чем глубже копаешь, тем ценнее ресурсы!</p>
     </div>
 
@@ -534,7 +551,7 @@
             <span>Земля</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: #666;"></div>
+            <div class="legend-color" style="background: linear-gradient(90deg, #8a7f6a 25%, #6f7c88 25% 50%, #8c7473 50% 75%, #4a4440 75%);"></div>
             <span>Камень</span>
         </div>
         <div class="legend-item">
@@ -542,7 +559,7 @@
             <span>Песок</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: #7d8a96;"></div>
+            <div class="legend-color" style="background: #a0694b;"></div>
             <span>Глина</span>
         </div>
         <div class="legend-item">
@@ -560,6 +577,22 @@
         <div class="legend-item">
             <div class="legend-color" style="background: #ff1493;"></div>
             <span>Рубины</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #2f2f2f;"></div>
+            <span>Уголь</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #c8ccd2;"></div>
+            <span>Серебро</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #2ecc71;"></div>
+            <span>Изумруды</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #edebe0;"></div>
+            <span>Платина</span>
         </div>
         <div class="legend-item">
             <div class="legend-color" style="background: #dc143c;"></div>
@@ -655,7 +688,21 @@
         const PHYSICS_STEP = 1 / 120;  // самый длинный шаг физики, секунды
 
         // Цвет пустоты под землёй: пещеры не должны выглядеть как небо
+        // (у каждого биома свой, это цвет по умолчанию)
         const CAVE_COLOR = '#2B2420';
+
+        // Биомы — пласты шахты по глубине. from — с какой глубины (м) начинается,
+        // hardness — во сколько раз камень биома твёрже песчаника у поверхности,
+        // ore — особая руда, которая встречается только в этом биоме,
+        // hazard — опасность биома (как она работает — в разделе ОПАСНОСТИ).
+        const BIOMES = [
+            { name: 'Песчаный пласт',   from: 0,   rock: '#8A7F6A', cave: '#2B2420', hardness: 1,   ore: 'COAL',     hazard: null },
+            { name: 'Глиняные штольни', from: 200, rock: '#6F7C88', cave: '#1E2630', hardness: 1.3, ore: 'SILVER',   hazard: 'обвалы' },
+            { name: 'Гранитные недра',  from: 400, rock: '#8C7473', cave: '#2A2424', hardness: 1.7, ore: 'EMERALD',  hazard: 'рудничный газ' },
+            { name: 'Огненное дно',     from: 600, rock: '#4A4440', cave: '#2E1614', hardness: 2.2, ore: 'PLATINUM', hazard: 'жар' }
+        ];
+        // Насколько метров граница биома гуляет вверх-вниз, чтобы не была ровной линией
+        const BIOME_WAVE = 10;
 
         // Типы блоков
         const BLOCK_TYPES = {
@@ -669,7 +716,12 @@
             BEDROCK: 7,
             SAND: 8,
             CLAY: 9,
-            GRAVEL: 10
+            GRAVEL: 10,
+            COAL: 11,
+            SILVER: 12,
+            EMERALD: 13,
+            PLATINUM: 14,
+            GAS: 15          // газовый карман внутри гранита: выглядит как камень
         };
 
         // Цвета блоков
@@ -683,8 +735,13 @@
             [BLOCK_TYPES.LAVA]: '#DC143C',
             [BLOCK_TYPES.BEDROCK]: '#222222',
             [BLOCK_TYPES.SAND]: '#C2A66B',
-            [BLOCK_TYPES.CLAY]: '#7D8A96',
-            [BLOCK_TYPES.GRAVEL]: '#857A6E'
+            [BLOCK_TYPES.CLAY]: '#A0694B',
+            [BLOCK_TYPES.GRAVEL]: '#857A6E',
+            [BLOCK_TYPES.COAL]: '#2F2F2F',
+            [BLOCK_TYPES.SILVER]: '#C8CCD2',
+            [BLOCK_TYPES.EMERALD]: '#2ECC71',
+            [BLOCK_TYPES.PLATINUM]: '#EDEBE0',
+            [BLOCK_TYPES.GAS]: '#8C7473'
         };
 
         // Мягкая порода: её быстро копает лопата, а кирка — с трудом.
@@ -707,7 +764,12 @@
         const ORES = {
             [BLOCK_TYPES.GOLD]:    { key: 'gold',    name: 'Золото', price: 10,  score: 10 },
             [BLOCK_TYPES.DIAMOND]: { key: 'diamond', name: 'Алмаз',  price: 50,  score: 50 },
-            [BLOCK_TYPES.RUBY]:    { key: 'ruby',    name: 'Рубин',  price: 100, score: 100 }
+            [BLOCK_TYPES.RUBY]:    { key: 'ruby',    name: 'Рубин',  price: 100, score: 100 },
+            // особая руда биомов
+            [BLOCK_TYPES.COAL]:     { key: 'coal',     name: 'Уголь',   price: 5,   score: 5 },
+            [BLOCK_TYPES.SILVER]:   { key: 'silver',   name: 'Серебро', price: 25,  score: 25 },
+            [BLOCK_TYPES.EMERALD]:  { key: 'emerald',  name: 'Изумруд', price: 75,  score: 75 },
+            [BLOCK_TYPES.PLATINUM]: { key: 'platinum', name: 'Платина', price: 150, score: 150 }
         };
         const BACKPACK_CAPACITY = 20;
 
@@ -718,6 +780,10 @@
             [BLOCK_TYPES.GOLD]: 0.9,
             [BLOCK_TYPES.DIAMOND]: 1.4,
             [BLOCK_TYPES.RUBY]: 1.8,
+            [BLOCK_TYPES.COAL]: 0.5,
+            [BLOCK_TYPES.SILVER]: 0.9,
+            [BLOCK_TYPES.EMERALD]: 1.3,
+            [BLOCK_TYPES.PLATINUM]: 1.6,
             [BLOCK_TYPES.LAVA]: 0.3
         };
 
@@ -740,7 +806,9 @@
 
         const MIN_TIER = {
             [BLOCK_TYPES.DIAMOND]: 1,
-            [BLOCK_TYPES.RUBY]: 2
+            [BLOCK_TYPES.RUBY]: 2,
+            [BLOCK_TYPES.EMERALD]: 1,
+            [BLOCK_TYPES.PLATINUM]: 2
         };
 
         // Лавка скупщика: стоит на поверхности справа от точки старта
@@ -786,7 +854,7 @@
         let digState = { x: null, y: null, progress: 0, warned: false };
 
         function emptyBackpack() {
-            return { gold: 0, diamond: 0, ruby: 0 };
+            return { gold: 0, diamond: 0, ruby: 0, coal: 0, silver: 0, emerald: 0, platinum: 0 };
         }
 
         let gameState = {
@@ -871,7 +939,11 @@
             diamondScale: 0.36, diamondThreshold: 0.93,  diamondFrom: 0.45,
             rubyScale: 0.40,  rubyThreshold: 0.95,   rubyFrom: 0.62,
             // мягкая порода карманами в камне: песок у поверхности, глина в середине, гравий внизу
-            softScale: 0.07,  softThreshold: 0.63,  softMixScale: 0.05
+            softScale: 0.07,  softThreshold: 0.63,  softMixScale: 0.05,
+            // особая руда биома: жилы только в своём биоме
+            specialScale: 0.22, specialThreshold: { COAL: 0.82, SILVER: 0.89, EMERALD: 0.915, PLATINUM: 0.92 },
+            // газовые карманы в камне Гранитных недр
+            gasScale: 0.3, gasThreshold: 0.88
         };
 
         // Генерация мира
@@ -890,6 +962,8 @@
             const rubyNoise = buildFbm(seed + 501, GEN.rubyScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
             const softNoise = buildFbm(seed + 601, GEN.softScale, 2, WORLD_WIDTH, WORLD_HEIGHT);
             const softMix = buildFbm(seed + 701, GEN.softMixScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
+            const specialNoise = buildFbm(seed + 801, GEN.specialScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
+            const gasNoise = buildFbm(seed + 901, GEN.gasScale, 1, WORLD_WIDTH, WORLD_HEIGHT);
 
             for (let y = 0; y < WORLD_HEIGHT; y++) {
                 const row = new Array(WORLD_WIDTH);
@@ -918,6 +992,12 @@
                         continue;
                     }
 
+                    // особая руда своего биома — граница та же, что у цвета камня
+                    const special = BIOMES[biomeAtBlock(x, y)].ore;
+                    if (specialNoise(x, y) > GEN.specialThreshold[special]) {
+                        row[x] = BLOCK_TYPES[special]; continue;
+                    }
+
                     // руда: жилы зависят от глубины
                     // золото — колокол вокруг goldPeak: редко у поверхности и на дне
                     const goldBand = Math.abs(d - GEN.goldPeak) / GEN.goldWidth;
@@ -938,12 +1018,20 @@
 
                     // мягкая порода: какая именно — решает глубина, а шум
                     // размывает границы слоёв, чтобы они не шли ровными полосами
+                    // слои совпадают с биомами: песок — Песчаный пласт, глина — Глиняные
+                    // штольни, гравий — ниже; шум размывает границу на ±40 м
                     if (softNoise(x, y) > GEN.softThreshold) {
-                        const layer = d + (softMix(x, y) - 0.5) * 0.4;
-                        row[x] = layer < 0.33 ? BLOCK_TYPES.SAND
-                               : layer < 0.66 ? BLOCK_TYPES.CLAY
+                        const layerM = (y - DEPTH_ORIGIN) + (softMix(x, y) - 0.5) * 80;
+                        row[x] = layerM < BIOMES[1].from ? BLOCK_TYPES.SAND
+                               : layerM < BIOMES[2].from ? BLOCK_TYPES.CLAY
                                : BLOCK_TYPES.GRAVEL;
                         continue;
+                    }
+
+                    // газовый карман прячется в граните
+                    if (BIOMES[biomeAtBlock(x, y)].hazard === 'рудничный газ' &&
+                        gasNoise(x, y) > GEN.gasThreshold) {
+                        row[x] = BLOCK_TYPES.GAS; continue;
                     }
 
                     row[x] = BLOCK_TYPES.STONE;
@@ -983,9 +1071,10 @@
         }
 
         // Проверка столкновения
+        // Твёрдо ли в этой точке. Лава — жидкость: в неё можно упасть.
         function isBlocked(x, y) {
             const block = getBlock(x, y);
-            return block !== BLOCK_TYPES.AIR;
+            return block !== BLOCK_TYPES.AIR && block !== BLOCK_TYPES.LAVA;
         }
 
         // ============ РЕЖИМ ОТЛАДКИ ============
@@ -1092,10 +1181,10 @@
             const lines = [
                 `FPS: ${debug.fps}   худший кадр: ${debug.worstShown.toFixed(1)} мс`,
                 `отрисовка: ${debug.renderMs.toFixed(2)} мс`,
-                `глубина: ${currentDepth()} м из ${MAX_DEPTH}`,
+                `глубина: ${currentDepth()} м из ${MAX_DEPTH} · ${BIOMES[biomeIndexAt(currentDepth())].name} (камень ×${BIOMES[biomeIndexAt(currentDepth())].hardness})`,
                 `игрок: x ${player.x.toFixed(1)}  y ${player.y.toFixed(1)}`,
                 `камера: x ${camera.x}  y ${camera.y}`,
-                `полёт: ${debug.fly ? 'вкл' : 'выкл'}`,
+                `полёт: ${debug.fly ? 'вкл (бессмертие)' : 'выкл'}   здоровье: ${Math.ceil(health)}`,
                 'PgUp/PgDn ±50 м · 0–9 глубина · G полёт · ` выкл'
             ];
             ctx.font = '12px "Courier New", monospace';
@@ -1141,14 +1230,7 @@
             if (player.x > WORLD_WIDTH - PLAYER_W) player.x = WORLD_WIDTH - PLAYER_W - EPS;
             if (player.y < 0) player.y = 0;
 
-            const playerBlock = getBlock(player.x, player.y);
-            if (playerBlock === BLOCK_TYPES.LAVA) {
-                player.x = WORLD_WIDTH / 2;
-                player.y = SURFACE_Y - 2;
-                player.vy = 0;
-                stats.score = Math.max(0, stats.score - 50);
-                showNotification('💀 Лава! -50 очков');
-            }
+            // лава и прочие опасности — в updateHazards
         }
 
         // Один шаг движения со столкновениями
@@ -1199,10 +1281,269 @@
 
         }
 
+        // ============ ЗДОРОВЬЕ И ОПАСНОСТИ ============
+        // Здоровье тратится на опасности биомов. При нуле — смерть: игрок
+        // возвращается на поверхность, рюкзак теряется, −50 очков.
+
+        const MAX_HEALTH = 100;
+        const REGEN_DELAY = 3;      // с без урона, после которых здоровье восстанавливается
+        const REGEN_RATE = 4;       // ед./с
+
+        // Обвалы (Глиняные штольни): после копания потолок над выкопанным блоком
+        // может треснуть и через секунду рухнуть
+        const CAVEIN_CHANCE = 0.3;
+        const CAVEIN_DELAY = 1.0;   // с от треска до падения
+        const CAVEIN_DAMAGE = 30;
+
+        // Рудничный газ (Гранитные недра): вскрытый карман выпускает облако
+        const GAS_DPS = 10;         // урон в секунду внутри облака
+        const GAS_DURATION = 6;     // с
+        const GAS_MAX_CELLS = 40;   // самый большой карман
+
+        // Жар (Огненное дно): здоровье убывает, у лавы — быстрее
+        const HEAT_DPS = 0.5;
+        const LAVA_HEAT_DPS = 5;
+        const LAVA_HEAT_RADIUS = 2;
+
+        let health = MAX_HEALTH;
+        let hazardClock = 0;          // игровое время, с
+        let lastDamageAt = -Infinity;
+        let damageFlash = 0;          // красная вспышка по краям экрана, 0..1
+        let crumbling = [];           // треснувшие блоки: {x, y, timer}
+        let fallingBlocks = [];       // падающие блоки: {x, y, vy, type}
+        let gasClouds = [];           // облака газа: {x, y, radius, age}
+        let hazardRandom = Math.random;   // в тестах подменяется
+
+        function inHeat() {
+            return BIOMES[biomeIndexAt(Math.max(0, player.y - DEPTH_ORIGIN))].hazard === 'жар';
+        }
+
+        function damage(amount, reason) {
+            if (debug.on && debug.fly) return;     // в полёте отладки — бессмертие
+            health -= amount;
+            lastDamageAt = hazardClock;
+            damageFlash = Math.min(1, damageFlash + amount / 20 + 0.1);
+            if (health <= 0) die(reason);
+            updateUI();
+        }
+
+        function die(reason) {
+            const lost = backpackCount();
+            backpack = emptyBackpack();
+            stats.score = Math.max(0, stats.score - 50);
+            player.x = WORLD_WIDTH / 2;
+            player.y = SURFACE_Y - 2;
+            player.vx = 0;
+            player.vy = 0;
+            health = MAX_HEALTH;
+            resetDig();
+            showNotification(lost > 0
+                ? `💀 ${reason}. Рюкзак потерян (${lost} шт.), −50 очков`
+                : `💀 ${reason}. −50 очков`);
+            updateUI();
+        }
+
+        // Пересекается ли тело игрока с клеткой (bx, by)
+        function playerTouchesCell(bx, by) {
+            return player.x < bx + 1 && player.x + PLAYER_W > bx &&
+                   player.y < by + 1 && player.y + 1 > by;
+        }
+
+        function touchesLava() {
+            const x0 = Math.floor(player.x), x1 = Math.floor(player.x + PLAYER_W - EPS);
+            const y0 = Math.floor(player.y), y1 = Math.floor(player.y + 1 - EPS);
+            for (let y = y0; y <= y1; y++)
+                for (let x = x0; x <= x1; x++)
+                    if (getBlock(x, y) === BLOCK_TYPES.LAVA) return true;
+            return false;
+        }
+
+        function lavaNearby() {
+            const cx = Math.floor(player.x + PLAYER_W / 2), cy = Math.floor(player.y + 0.5);
+            for (let dy = -LAVA_HEAT_RADIUS; dy <= LAVA_HEAT_RADIUS; dy++)
+                for (let dx = -LAVA_HEAT_RADIUS; dx <= LAVA_HEAT_RADIUS; dx++)
+                    if (getBlock(cx + dx, cy + dy) === BLOCK_TYPES.LAVA) return true;
+            return false;
+        }
+
+        // Вызывается после того, как блок (x, y) выкопан
+        function afterDig(x, y, block) {
+            // газ: вскрыт сам карман или соседний с ним блок
+            const near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
+            for (const [dx, dy] of near) {
+                if (block === BLOCK_TYPES.GAS && dx === 0 && dy === 0) { releaseGas(x, y, true); break; }
+                if (getBlock(x + dx, y + dy) === BLOCK_TYPES.GAS) { releaseGas(x + dx, y + dy, false); break; }
+            }
+            // обвал: потолок над выкопанным блоком в Глиняных штольнях
+            maybeCrumble(x, y - 1);
+        }
+
+        function maybeCrumble(x, y) {
+            const b = getBlock(x, y);
+            if (b !== BLOCK_TYPES.STONE && b !== BLOCK_TYPES.CLAY) return;
+            if (BIOMES[biomeAtBlock(x, y)].hazard !== 'обвалы') return;
+            if (crumbling.some(c => c.x === x && c.y === y)) return;
+            if (hazardRandom() >= CAVEIN_CHANCE) return;
+            crumbling.push({ x, y, timer: CAVEIN_DELAY });
+            showNotification('⚠️ Потолок трещит!');
+        }
+
+        // Выпустить газ из кармана, к которому относится клетка (x, y)
+        function releaseGas(x, y, alreadyOpened) {
+            const cells = [];
+            const stack = [[x, y]];
+            const seen = new Set();
+            while (stack.length && cells.length < GAS_MAX_CELLS) {
+                const [cx, cy] = stack.pop();
+                const key = cx + ',' + cy;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                const isStart = alreadyOpened && cx === x && cy === y;
+                if (!isStart && getBlock(cx, cy) !== BLOCK_TYPES.GAS) continue;
+                cells.push([cx, cy]);
+                if (!isStart) setBlock(cx, cy, BLOCK_TYPES.AIR);
+                stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+            }
+            const mx = cells.reduce((s, c) => s + c[0], 0) / cells.length + 0.5;
+            const my = cells.reduce((s, c) => s + c[1], 0) / cells.length + 0.5;
+            gasClouds.push({ x: mx, y: my, radius: 2 + Math.sqrt(cells.length), age: 0 });
+            showNotification('☣️ Рудничный газ! Отойди подальше');
+            return cells.length;
+        }
+
+        function updateHazards(dt) {
+            hazardClock += dt;
+            damageFlash = Math.max(0, damageFlash - dt * 2);
+
+            // лава: мгновенная смерть
+            if (touchesLava() && !(debug.on && debug.fly)) { die('Лава'); return; }
+
+            // жар
+            const hot = inHeat();
+            if (hot) damage((lavaNearby() ? LAVA_HEAT_DPS : HEAT_DPS) * dt, 'Жар');
+
+            // облака газа
+            for (const c of gasClouds) {
+                c.age += dt;
+                const px = player.x + PLAYER_W / 2, py = player.y + 0.5;
+                if (Math.hypot(px - c.x, py - c.y) < c.radius) damage(GAS_DPS * dt, 'Рудничный газ');
+            }
+            gasClouds = gasClouds.filter(c => c.age < GAS_DURATION);
+
+            // треснувший потолок обрушивается
+            for (const c of crumbling) {
+                c.timer -= dt;
+                if (c.timer <= 0) {
+                    const type = getBlock(c.x, c.y);
+                    if (type === BLOCK_TYPES.STONE || type === BLOCK_TYPES.CLAY) {
+                        setBlock(c.x, c.y, BLOCK_TYPES.AIR);
+                        fallingBlocks.push({ x: c.x, y: c.y, vy: 0, type });
+                        maybeCrumble(c.x, c.y - 1);      // обвал может пойти дальше вверх
+                    }
+                }
+            }
+            crumbling = crumbling.filter(c => c.timer > 0);
+
+            // падающие блоки
+            const still = [];
+            for (const f of fallingBlocks) {
+                const vy0 = f.vy;
+                f.vy = Math.min(f.vy + GRAVITY * dt, MAX_FALL_SPEED);
+                f.y += (vy0 + f.vy) / 2 * dt;
+                if (player.x < f.x + 1 && player.x + PLAYER_W > f.x && player.y < f.y + 1 && player.y + 1 > f.y) {
+                    damage(CAVEIN_DAMAGE, 'Обвал');      // блок рассыпается о голову
+                    continue;
+                }
+                const below = getBlock(f.x, Math.floor(f.y) + 1);
+                if (below === BLOCK_TYPES.LAVA) continue;  // утонул в лаве
+                if (below !== BLOCK_TYPES.AIR) {
+                    const ly = Math.floor(f.y);
+                    if (getBlock(f.x, ly) === BLOCK_TYPES.AIR) setBlock(f.x, ly, f.type);
+                    continue;
+                }
+                still.push(f);
+            }
+            fallingBlocks = still;
+
+            // восстановление — не в жару и не сразу после урона
+            if (!hot && hazardClock - lastDamageAt > REGEN_DELAY && health < MAX_HEALTH) {
+                health = Math.min(MAX_HEALTH, health + REGEN_RATE * dt);
+            }
+        }
+
+        function resetHazards() {
+            health = MAX_HEALTH;
+            lastDamageAt = -Infinity;
+            damageFlash = 0;
+            crumbling = [];
+            fallingBlocks = [];
+            gasClouds = [];
+        }
+
+        function renderHazards() {
+            // треснувший потолок дрожит и темнеет
+            for (const c of crumbling) {
+                const shake = (Math.random() - 0.5) * 3;
+                const sx = (c.x - camera.x) * TILE_SIZE + shake, sy = (c.y - camera.y) * TILE_SIZE;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+                ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                // трещина зигзагом и сыплющаяся крошка
+                ctx.strokeStyle = '#111';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(sx + 3, sy + 4);
+                ctx.lineTo(sx + 9, sy + 10);
+                ctx.lineTo(sx + 7, sy + 13);
+                ctx.lineTo(sx + 16, sy + 17);
+                ctx.stroke();
+                ctx.lineWidth = 1;
+                ctx.fillStyle = '#FFD27F';
+                const crumb = (CAVEIN_DELAY - c.timer) * 14 % 8;
+                ctx.fillRect(sx + 6, sy + TILE_SIZE + crumb, 2, 2);
+                ctx.fillRect(sx + 13, sy + TILE_SIZE + (crumb + 4) % 8, 2, 2);
+            }
+            // падающие блоки
+            for (const f of fallingBlocks) {
+                const sx = (f.x - camera.x) * TILE_SIZE, sy = (f.y - camera.y) * TILE_SIZE;
+                ctx.fillStyle = f.type === BLOCK_TYPES.STONE ? BIOMES[biomeAtBlock(f.x, Math.floor(f.y))].rock : BLOCK_COLORS[f.type];
+                ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.strokeRect(sx, sy, TILE_SIZE, TILE_SIZE);
+            }
+            // облака газа
+            for (const c of gasClouds) {
+                const fade = Math.min(1, (GAS_DURATION - c.age) / 1.5);
+                const sx = (c.x - camera.x) * TILE_SIZE, sy = (c.y - camera.y) * TILE_SIZE;
+                const r = c.radius * TILE_SIZE;
+                const g = ctx.createRadialGradient ? ctx.createRadialGradient(sx, sy, 0, sx, sy, r) : null;
+                if (g && g.addColorStop) {
+                    g.addColorStop(0, `rgba(170, 200, 60, ${0.45 * fade})`);
+                    g.addColorStop(1, 'rgba(170, 200, 60, 0)');
+                    ctx.fillStyle = g;
+                } else {
+                    ctx.fillStyle = `rgba(170, 200, 60, ${0.3 * fade})`;
+                }
+                ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+            }
+            // жар: красноватая дымка; урон: вспышка по краям
+            if (inHeat()) {
+                ctx.fillStyle = 'rgba(255, 60, 0, 0.07)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            if (damageFlash > 0) {
+                ctx.strokeStyle = `rgba(220, 20, 60, ${damageFlash * 0.8})`;
+                ctx.lineWidth = 16;
+                ctx.strokeRect(0, 0, canvas.width, canvas.height);
+                ctx.lineWidth = 1;
+            }
+        }
+
         // ============ РЮКЗАК И ЛАВКА ============
 
         function backpackCount() {
-            return backpack.gold + backpack.diamond + backpack.ruby;
+            let n = 0;
+            for (const key in backpack) n += backpack[key];
+            return n;
         }
 
         function backpackValue() {
@@ -1339,7 +1680,7 @@
                 list.appendChild(item);
             });
 
-            const opens = ['камень, золото', '+ алмазы', '+ рубины', 'всё, быстрее всех'];
+            const opens = ['камень, золото, уголь, серебро', '+ алмазы, изумруды', '+ рубины, платина', 'всё, быстрее всех'];
             PICKAXES.forEach((p, tier) => {
                 const item = document.createElement('div');
                 item.className = 'shop-item' + (tier === pickaxeTier ? ' owned' : tier < pickaxeTier ? ' below' : '');
@@ -1380,7 +1721,7 @@
 
         // Можно ли копать блок нынешней киркой
         function canDig(block) {
-            if (block === BLOCK_TYPES.AIR || block === BLOCK_TYPES.BEDROCK) return false;
+            if (block === BLOCK_TYPES.AIR || block === BLOCK_TYPES.BEDROCK || block === BLOCK_TYPES.LAVA) return false;
             return pickaxeTier >= (MIN_TIER[block] || 0);
         }
 
@@ -1393,14 +1734,22 @@
             return byShovel <= byPick ? 'shovel' : 'pickaxe';
         }
 
-        // Сколько секунд копать блок лучшим из имеющихся инструментов
-        function digTime(block) {
+        // Сколько секунд копать блок лучшим из имеющихся инструментов.
+        // Если известно, где блок (x, y), камень твёрже в глубоких биомах —
+        // ровно там, где он нарисован цветом этого биома.
+        function digTime(block, x, y) {
             if (SOFT[block] !== undefined) {
                 return toolFor(block) === 'shovel'
                     ? SOFT[block] / SHOVELS[shovelTier].speed
                     : SOFT[block] * PICK_ON_SOFT / PICKAXES[pickaxeTier].speed;
             }
-            return (HARDNESS[block] || 0.5) / PICKAXES[pickaxeTier].speed;
+            // газовый карман копается как обычный камень — иначе его выдало бы время
+            if (block === BLOCK_TYPES.GAS) block = BLOCK_TYPES.STONE;
+            let t = (HARDNESS[block] || 0.5) / PICKAXES[pickaxeTier].speed;
+            if (block === BLOCK_TYPES.STONE && x !== undefined && y !== undefined) {
+                t *= BIOMES[biomeAtBlock(x, y)].hardness;
+            }
+            return t;
         }
 
         function resetDig() {
@@ -1427,7 +1776,7 @@
                 }
                 return;
             }
-            digState.progress += dt / digTime(block);
+            digState.progress += dt / digTime(block, t.x, t.y);
             if (digState.progress >= 1) {
                 breakBlock(t.x, t.y);
                 resetDig();
@@ -1453,14 +1802,15 @@
                     }
                 } else if (result === 'full') {
                     // блок всё равно выкапывается, но руда пропадает
-                    showNotification(`🎒 Нет места: ${ORES[block].name} потеряно`);
+                    showNotification(`🎒 Нет места в рюкзаке: ${ORES[block].name.toLowerCase()} не поместился`);
                 } else if (SOFT[block] !== undefined) {
                     stats.score += 1;
-                } else if (block === BLOCK_TYPES.STONE) {
+                } else if (block === BLOCK_TYPES.STONE || block === BLOCK_TYPES.GAS) {
                     stats.score += 2;
                 }
 
                 setBlock(targetX, targetY, BLOCK_TYPES.AIR);
+                afterDig(targetX, targetY, block);
                 updateUI();
             }
         }
@@ -1486,14 +1836,30 @@
                     const worldY = y + camera.y;
                     const block = getBlock(worldX, worldY);
 
-                    ctx.fillStyle = (block === BLOCK_TYPES.AIR && worldY >= SURFACE_Y)
-                        ? CAVE_COLOR
-                        : BLOCK_COLORS[block];
+                    if (block === BLOCK_TYPES.AIR && worldY >= SURFACE_Y) {
+                        ctx.fillStyle = BIOMES[biomeAtBlock(worldX, worldY)].cave;
+                    } else if (block === BLOCK_TYPES.STONE) {
+                        ctx.fillStyle = BIOMES[biomeAtBlock(worldX, worldY)].rock;
+                    } else {
+                        ctx.fillStyle = BLOCK_COLORS[block];
+                    }
                     ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
                     if (block !== BLOCK_TYPES.AIR) {
                         ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
                         ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                    if (block === BLOCK_TYPES.GAS) {
+                        // газовый карман нарисован как гранит, только с едва заметными желтоватыми точками
+                        ctx.fillStyle = BIOMES[biomeAtBlock(worldX, worldY)].rock;
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                        ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        drawSpeckles(x * TILE_SIZE, y * TILE_SIZE, worldX, worldY, 'rgba(210, 220, 90, 0.45)', 1);
+                    }
+                    if (block === BLOCK_TYPES.COAL) {
+                        // светлые искры, чтобы уголь не сливался с тёмными пещерами
+                        drawSpeckles(x * TILE_SIZE, y * TILE_SIZE, worldX, worldY, 'rgba(210, 215, 225, 0.7)', 2);
                     }
                     if (block === BLOCK_TYPES.SAND || block === BLOCK_TYPES.GRAVEL) {
                         drawSpeckles(x * TILE_SIZE, y * TILE_SIZE, worldX, worldY,
@@ -1505,6 +1871,7 @@
 
             renderShop();
             renderDigProgress();
+            renderHazards();
 
             const playerScreenX = (player.x - camera.x) * TILE_SIZE;
             const playerScreenY = (player.y - camera.y) * TILE_SIZE;
@@ -1533,6 +1900,61 @@
                 ctx.fillRect(tx - 3, hy - 9, 6, 6);
             }
             ctx.lineWidth = 1;
+        }
+
+        // Номер биома на глубине depthM метров
+        function biomeIndexAt(depthM) {
+            let i = 0;
+            while (i + 1 < BIOMES.length && depthM >= BIOMES[i + 1].from) i++;
+            return i;
+        }
+
+        // Биом блока с учётом волнистой границы: она смещается по x плавно
+        // и всегда одинаково, поэтому на экране не мерцает
+        function biomeAtBlock(x, y) {
+            const wave = BIOME_WAVE * (0.6 * Math.sin(x * 0.35) + 0.4 * Math.sin(x * 0.13 + 1.7));
+            return biomeIndexAt(y - DEPTH_ORIGIN + wave);
+        }
+
+        // Табличка с названием биома при входе в него
+        const BIOME_BANNER_MS = 3000;
+        let currentBiome = 0;
+        let biomeBanner = { index: 0, shownAt: -Infinity };
+
+        function updateBiome(nowT) {
+            const i = biomeIndexAt(Math.max(0, player.y - DEPTH_ORIGIN));
+            if (i !== currentBiome) {
+                currentBiome = i;
+                biomeBanner = { index: i, shownAt: nowT };
+            }
+        }
+
+        function renderBiomeBanner(nowT) {
+            const age = nowT - biomeBanner.shownAt;
+            if (age < 0 || age > BIOME_BANNER_MS) return;
+            // плавно появляется и гаснет
+            const alpha = Math.min(1, age / 300, (BIOME_BANNER_MS - age) / 600);
+            const b = BIOMES[biomeBanner.index];
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fillRect(0, 70, canvas.width, b.hazard ? 88 : 70);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#FFA500';
+            ctx.font = 'bold 26px "Courier New", monospace';
+            ctx.fillText(b.name, canvas.width / 2, 108);
+            ctx.fillStyle = '#CCCCCC';
+            ctx.font = '13px "Courier New", monospace';
+            const oreName = ORES[BLOCK_TYPES[b.ore]].name.toLowerCase();
+            ctx.fillText(b.hardness > 1
+                ? `глубина от ${b.from} м · камень твёрже ×${b.hardness} · здесь: ${oreName}`
+                : `глубина от ${b.from} м · здесь: ${oreName}`, canvas.width / 2, 128);
+            if (b.hazard) {
+                ctx.fillStyle = '#FF6B6B';
+                ctx.font = 'bold 13px "Courier New", monospace';
+                ctx.fillText(`⚠ опасно: ${b.hazard}`, canvas.width / 2, 148);
+            }
+            ctx.restore();
         }
 
         // Крапинки на песке и гравии: положение зависит от координат блока,
@@ -1602,6 +2024,7 @@
         // Обновление UI
         function updateUI() {
             document.getElementById('depth').textContent = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN)) + 'м';
+            document.getElementById('biome').textContent = BIOMES[biomeIndexAt(Math.max(0, player.y - DEPTH_ORIGIN))].name;
             const count = backpackCount();
             const full = count >= BACKPACK_CAPACITY;
             const bp = document.getElementById('backpack');
@@ -1610,6 +2033,14 @@
             const fill = document.getElementById('backpackFill');
             fill.style.width = (count / BACKPACK_CAPACITY * 100) + '%';
             fill.classList.toggle('full', full);
+            const hp = Math.max(0, Math.ceil(health));
+            const hpEl = document.getElementById('health');
+            hpEl.textContent = hp;
+            hpEl.classList.toggle('full', hp <= 30);
+            const hpFill = document.getElementById('healthFill');
+            hpFill.style.width = (hp / MAX_HEALTH * 100) + '%';
+            hpFill.classList.toggle('full', hp <= 30);
+
             const moneyEl = document.getElementById('money');
             moneyEl.textContent = debt > 0 ? `${stats.money} руб. (долг ${debt})` : `${stats.money} руб.`;
             moneyEl.classList.toggle('full', debt > 0);
@@ -1695,14 +2126,11 @@
                     money: stats.money,
                     score: stats.score
                 },
-                backpack: {
-                    gold: backpack.gold,
-                    diamond: backpack.diamond,
-                    ruby: backpack.ruby
-                },
+                backpack: Object.assign({}, backpack),
                 pickaxe: pickaxeTier,
                 shovel: shovelTier,
-                debt: debt
+                debt: debt,
+                health: Math.round(health)
             };
         }
 
@@ -1761,6 +2189,9 @@
             shovelTier = (Number.isInteger(sTier) && sTier >= 0 && sTier < SHOVELS.length) ? sTier : 0;
             const dbt = Number(saveData.debt);
             debt = (Number.isFinite(dbt) && dbt > 0) ? Math.round(dbt) : 0;
+            resetHazards();
+            const hpSaved = Number(saveData.health);
+            health = (Number.isFinite(hpSaved) && hpSaved > 0) ? Math.min(MAX_HEALTH, hpSaved) : MAX_HEALTH;
             resetDig();
 
             gameState.startTime = Date.now() - (stats.playtime * 1000);
@@ -1885,6 +2316,7 @@
                 pickaxeTier = 0;
                 shovelTier = 0;
                 debt = 0;
+                resetHazards();
                 resetDig();
                 stats.playtime = 0;
                 gameState.startTime = Date.now();
@@ -2042,12 +2474,15 @@
                 stats.playtime = (Date.now() - gameState.startTime) / 1000;
                 updatePlayer(dt);
                 updateDigging(dt);
+                updateHazards(dt);
                 checkShop();
+                updateBiome(currentTime);
                 updateCamera();
             }
             
             const renderStart = nowMs();
             render();
+            renderBiomeBanner(currentTime);
             if (debug.on) {
                 debugFrame(frameMs, nowMs() - renderStart, currentTime);
                 drawDebugOverlay();
