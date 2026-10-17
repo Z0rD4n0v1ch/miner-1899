@@ -28,7 +28,8 @@ const sandbox = {
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     window: { addEventListener(type, fn) { handlers[type] = fn; } },
     requestAnimationFrame() {}, setInterval() {}, setTimeout() {},
-    confirm: () => false, console, Date, Math, JSON, Object, Proxy
+    confirm: () => false, console, Date, Math, JSON, Object, Proxy,
+    location: { search: '?debug=1' }      // режим отладки доступен только по этому адресу
 };
 vm.createContext(sandbox);
 vm.runInContext(script, sandbox);
@@ -118,6 +119,29 @@ check('игровой цикл с отладкой не падает', (() => { 
 
 console.log('Сохранения');
 check('состояние отладки не попадает в сохранение', !('debug' in JSON.parse(run('JSON.stringify(createSaveData("t"))'))));
+
+console.log('Доступ по адресу');
+function sandboxWith(search) {
+    const h = {}, e = {};
+    const sb = Object.assign({}, sandbox, {
+        location: search === null ? undefined : { search },
+        window: { addEventListener(t, f) { h[t] = f; } },
+        document: Object.assign({}, sandbox.document, { getElementById: id => e[id] || (e[id] = makeEl()), body: { appendChild() {}, classList: makeEl().classList } })
+    });
+    if (search === null) delete sb.location;
+    vm.createContext(sb); vm.runInContext(script, sb);
+    h.keydown({ code: 'Backquote', preventDefault() {} });
+    return { on: vm.runInContext('debug.on', sb), help: e.debugHelp ? e.debugHelp.style.display : 'none' };
+}
+const plain = sandboxWith('');
+check('обычный адрес: Ё не включает отладку', plain.on === false);
+check('и подсказки про отладку не видно', plain.help === 'none' || plain.help === undefined);
+check('открыт как файл без адреса — тоже выключено', sandboxWith(null).on === false);
+check('?touch=1 — выключено', sandboxWith('?touch=1').on === false);
+check('?debug=0 и ?debug=10 — выключено', sandboxWith('?debug=0').on === false && sandboxWith('?debug=10').on === false);
+const dbg = sandboxWith('?debug=1');
+check('?debug=1 — включается, подсказка видна', dbg.on === true && dbg.help === '');
+check('?touch=1&debug=1 — тоже', sandboxWith('?touch=1&debug=1').on === true);
 
 console.log(`\n${passed}/${passed + failed} проверок пройдено`);
 process.exit(failed ? 1 : 0);

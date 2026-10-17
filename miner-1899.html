@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Miner 1899 — 2D шахтёр</title>
     <style>
         * {
@@ -513,6 +513,136 @@
                 width: 100%;
             }
         }
+
+        /* ===== Сенсорное управление (телефоны, планшеты) =====
+           Включается само на устройствах без мыши; на компьютере его не видно. */
+        #touchControls,
+        #menuClose {
+            display: none;
+        }
+
+        body.touch {
+            padding: 0;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body.touch h1 {
+            display: none;
+        }
+
+        body.touch #layout {
+            gap: 0;
+        }
+
+        body.touch #gameCanvas {
+            border: none;
+            aspect-ratio: auto;
+            max-width: 100vw;
+            max-height: 100vh;
+        }
+
+        @media (orientation: landscape) {
+            body.touch #gameCanvas { height: 100vh; width: auto; }
+        }
+
+        @media (orientation: portrait) {
+            body.touch #gameCanvas { width: 100vw; height: auto; }
+        }
+
+        /* панель со статистикой и сохранениями — по кнопке «☰», поверх игры */
+        body.touch #sidebar {
+            display: none;
+        }
+
+        body.touch.menu-open #sidebar {
+            display: flex;
+            position: fixed;
+            inset: 0;
+            z-index: 900;
+            width: 100%;
+            max-width: none;
+            max-height: none;
+            overflow-y: auto;
+            padding: 12px;
+            background: rgba(20, 20, 20, 0.97);
+        }
+
+        body.touch.menu-open #menuClose {
+            display: block;
+            align-self: center;
+        }
+
+        body.touch #touchControls {
+            display: block;
+        }
+
+        /* размер кнопки подстраивается под ширину экрана, чтобы две панели не наезжали */
+        body.touch {
+            --tb: clamp(42px, calc((100vw - 56px) / 6.4), 64px);
+        }
+
+        .touch-pad {
+            position: fixed;
+            bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+            z-index: 800;
+            display: grid;
+            gap: 8px;
+        }
+
+        #touchLeft {
+            left: calc(10px + env(safe-area-inset-left, 0px));
+            grid-template-columns: repeat(3, var(--tb));
+            grid-template-rows: repeat(3, var(--tb));
+        }
+
+        #touchRight {
+            right: calc(10px + env(safe-area-inset-right, 0px));
+            grid-template-columns: repeat(3, var(--tb));
+            grid-template-rows: repeat(3, var(--tb));
+        }
+
+        .tbtn {
+            border: 2px solid rgba(255, 165, 0, 0.6);
+            border-radius: 12px;
+            background: rgba(30, 30, 30, 0.55);
+            color: #ffd27f;
+            font: bold clamp(10px, calc(var(--tb) * 0.22), 14px) 'Courier New', monospace;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.1;
+            padding: 0;
+        }
+
+        .tbtn.big {
+            font-size: 26px;
+        }
+
+        .tbtn.down,
+        .tbtn.on {
+            background: rgba(255, 165, 0, 0.55);
+            color: #000;
+        }
+
+        #tUp    { grid-column: 2; grid-row: 1; }
+        #tLeft  { grid-column: 1; grid-row: 2; }
+        #tRight { grid-column: 3; grid-row: 2; }
+        #tDown  { grid-column: 2; grid-row: 3; }
+        #tDig   { grid-column: 2 / 4; grid-row: 2 / 4; font-size: 30px; border-radius: 50%; }
+
+        /* вертикальный экран: игра сверху, кнопки снизу */
+        @media (orientation: portrait) {
+            body.touch #gameCanvas {
+                margin-top: env(safe-area-inset-top, 0px);
+            }
+        }
     </style>
 </head>
 <body>
@@ -521,6 +651,7 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <aside id="sidebar">
+    <button class="btn btn-secondary" id="menuClose" onclick="toggleMenu(false)">✕ Вернуться в игру</button>
     <div id="ui">
         <div class="stat">
             <div class="stat-label">Глубина</div>
@@ -595,7 +726,7 @@
         <p><span class="key">C</span> (<span class="key">С</span>) - Клеть: платный подъём наверх</p>
         <p><span class="key">H</span> (<span class="key">Р</span>) - Лечиться: бинт или аптечка</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
-        <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
+        <p id="debugHelp" style="display: none;"><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.</p>
         <p>Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.</p>
         <p>Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама. Денег нет — лавка даст лопату в долг, но вернуть придётся вдвое больше.</p>
@@ -696,6 +827,26 @@
         </div>
     </div>
 
+    <!-- Сенсорные кнопки: видны только на телефонах и планшетах -->
+    <div id="touchControls">
+        <div class="touch-pad" id="touchLeft">
+            <button class="tbtn big" id="tUp" data-key="KeyW" data-hold>▲</button>
+            <button class="tbtn big" id="tLeft" data-key="KeyA" data-hold>◀</button>
+            <button class="tbtn big" id="tRight" data-key="KeyD" data-hold>▶</button>
+            <button class="tbtn big" id="tDown" data-key="KeyS" data-hold>▼</button>
+            <button class="tbtn" data-toggle="ShiftLeft" style="grid-column: 1; grid-row: 3;">Бег</button>
+            <button class="tbtn" data-menu style="grid-column: 1; grid-row: 1;">☰</button>
+        </div>
+        <div class="touch-pad" id="touchRight">
+            <button class="tbtn" data-key="KeyE" style="grid-column: 1; grid-row: 1;">Лавка</button>
+            <button class="tbtn" data-key="KeyQ" style="grid-column: 2; grid-row: 1;">Лестн.</button>
+            <button class="tbtn" data-key="KeyR" style="grid-column: 3; grid-row: 1;">Верёв.</button>
+            <button class="tbtn" data-key="KeyH" style="grid-column: 1; grid-row: 2;">Лечить</button>
+            <button class="tbtn" data-key="KeyC" style="grid-column: 1; grid-row: 3;">Клеть</button>
+            <button class="tbtn" id="tDig" data-key="Space" data-hold>⛏</button>
+        </div>
+    </div>
+
     <!-- Модальное окно клети -->
     <div id="cageModal" class="modal">
         <div class="modal-content">
@@ -736,8 +887,31 @@
         const BEDROCK_ROWS = 3;          // нижние ряды — неразрушимое дно
         const DEPTH_ORIGIN = SURFACE_Y;  // уровень, на котором глубина = 0
 
-        const VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
-        const VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
+        // Сколько блоков видно на экране. На телефоне в вертикальном положении холст
+        // перестраивается: уже и выше, чтобы видеть шахту вглубь (см. fitCanvasForDevice).
+        let VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
+        let VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
+
+        function fitCanvasForDevice() {
+            const portrait = typeof innerHeight === 'number' && innerHeight > innerWidth;
+            let w = 800, h = 600;
+            if (touchMode && portrait) {
+                const tilesX = 24;
+                const tilePx = innerWidth / tilesX;
+                const btn = Math.max(42, Math.min(64, (innerWidth - 56) / 6.4));
+                const room = innerHeight - (btn * 3 + 16 + 30);   // место под кнопки внизу
+                const tilesY = Math.max(24, Math.min(44, Math.floor(room / tilePx)));
+                w = tilesX * TILE_SIZE;
+                h = tilesY * TILE_SIZE;
+            }
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
+            VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
+            if (typeof updateCamera === 'function' && world.length) updateCamera();
+        }
         const SAVE_VERSION = 6;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки
         const GAME_VERSION = '1.5.0';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
@@ -1181,6 +1355,10 @@
         // PgUp/PgDn — на 50 м вверх/вниз, 0–9 — на долю глубины шахты,
         // G — полёт сквозь породу без гравитации.
 
+        // Режим отладки доступен только по особому адресу: …/miner-1899.html?debug=1
+        // (можно вместе с другими: ?touch=1&debug=1). Игрокам на сайте он не виден.
+        const DEBUG_ALLOWED = typeof location !== 'undefined' && /[?&]debug=1(&|$)/.test(location.search);
+
         const DEBUG_STEP_M = 50;
         const DEBUG_FLY_SPEED = 20;  // блоков в секунду
         const MAX_DEPTH = WORLD_HEIGHT - BEDROCK_ROWS - 1 - DEPTH_ORIGIN;
@@ -1228,6 +1406,7 @@
 
         // Возвращает true, если клавиша обработана режимом отладки
         function handleDebugKey(code) {
+            if (!DEBUG_ALLOWED) return false;
             if (code === 'Backquote') {
                 debug.on = !debug.on;
                 if (!debug.on) debug.fly = false;
@@ -2916,6 +3095,7 @@
             renderDigProgress();
             renderCreatures();
             renderHazards();
+            if (touchMode) renderTouchHud();
 
             const playerScreenX = (player.x - camera.x) * TILE_SIZE;
             const playerScreenY = (player.y - camera.y) * TILE_SIZE;
@@ -3001,6 +3181,24 @@
                 ctx.font = 'bold 13px "Courier New", monospace';
                 ctx.fillText(`⚠ опасно: ${dangers.join(' · ')}`, canvas.width / 2, 148);
             }
+            ctx.restore();
+        }
+
+        // Краткая сводка поверх игры на телефоне (полная панель — по кнопке «☰»)
+        function renderTouchHud() {
+            const depth = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN));
+            const text = `❤ ${Math.ceil(health)}  ${depth} м  🎒 ${backpackCount()}/${backpackCapacity()}  ${stats.money} руб.`;
+            // холст на телефоне ужат — шрифт увеличиваем, чтобы на экране было ~13 px
+            const scale = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+            const size = Math.round(13 * scale);
+            ctx.save();
+            ctx.font = `bold ${size}px "Courier New", monospace`;
+            const w = ctx.measureText ? ctx.measureText(text).width : 300;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fillRect(canvas.width / 2 - w / 2 - 8, 4, w + 16, size * 1.6);
+            ctx.fillStyle = health <= 30 ? '#FF6B6B' : '#FFD27F';
+            ctx.textAlign = 'center';
+            ctx.fillText(text, canvas.width / 2, 4 + size * 1.15);
             ctx.restore();
         }
 
@@ -3604,8 +3802,8 @@
             updateUI();
         }
 
-        // Обработка клавиатуры
-        window.addEventListener('keydown', (e) => {
+        // Обработка клавиатуры (сенсорные кнопки зовут те же функции)
+        function onKeyDown(e) {
             keys[e.code] = true;
 
             // клавиши отладки — только в игре, не при вводе названия сохранения
@@ -3643,11 +3841,100 @@
             if (e.code === 'Enter' && document.getElementById('saveNameModal').classList.contains('active')) {
                 confirmSaveName();
             }
+        }
+
+        function onKeyUp(e) {
+            keys[e.code] = false;
+        }
+
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
+
+        // ============ СЕНСОРНОЕ УПРАВЛЕНИЕ ============
+        // Каждая кнопка ведёт себя как клавиша: «держать» (движение, копание) или
+        // «нажать» (лавка, лестница…). Каждый палец отслеживается отдельно, поэтому
+        // можно одновременно держать ▼ и ⛏ — копать вниз.
+        let touchMode = false;
+
+        const pageQuery = typeof location !== 'undefined' ? location.search : '';
+
+        function isTouchDevice() {
+            if (/[?&]touch=1/.test(pageQuery)) return true;
+            if (/[?&]touch=0/.test(pageQuery)) return false;
+            return typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+        }
+
+        function enableTouch() {
+            if (touchMode) return;
+            touchMode = true;
+            document.body.classList.add('touch');
+            fitCanvasForDevice();
+        }
+
+        function toggleMenu(open) {
+            document.body.classList.toggle('menu-open', open);
+            releaseTouchKeys();
+            gameState.paused = open;
+        }
+
+        const heldByPointer = new Map();   // pointerId → код клавиши
+
+        function releaseTouchKeys() {
+            for (const code of heldByPointer.values()) onKeyUp({ code });
+            heldByPointer.clear();
+            if (document.querySelectorAll) document.querySelectorAll('.tbtn.down').forEach(b => b.classList.remove('down'));
+        }
+
+        function bindTouchButton(btn) {
+            const code = btn.dataset.key;
+            const hold = btn.hasAttribute('data-hold');
+            const toggle = btn.dataset.toggle;
+            btn.addEventListener('pointerdown', e => {
+                e.preventDefault();
+                if (btn.hasAttribute('data-menu')) { toggleMenu(true); return; }
+                if (toggle) {
+                    const on = !keys[toggle];
+                    keys[toggle] = on;
+                    btn.classList.toggle('on', on);
+                    return;
+                }
+                if (hold) {
+                    // захват пальца: отпускание засчитается, даже если палец съехал с кнопки
+                    try { if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId); } catch (err) { /* не критично */ }
+                    heldByPointer.set(e.pointerId, code);
+                    btn.classList.add('down');
+                    onKeyDown({ code, preventDefault() {} });
+                } else {
+                    onKeyDown({ code, preventDefault() {} });
+                    onKeyUp({ code });
+                }
+            });
+            const up = e => {
+                if (!heldByPointer.has(e.pointerId)) return;
+                onKeyUp({ code: heldByPointer.get(e.pointerId) });
+                heldByPointer.delete(e.pointerId);
+                btn.classList.remove('down');
+            };
+            btn.addEventListener('pointerup', up);
+            btn.addEventListener('pointercancel', up);
+            btn.addEventListener('lostpointercapture', up);
+            btn.addEventListener('contextmenu', e => e.preventDefault());
+        }
+
+        if (document.querySelectorAll) document.querySelectorAll('.tbtn').forEach(bindTouchButton);
+        if (isTouchDevice()) enableTouch();
+        // гибридные устройства: первое касание экрана включает кнопки
+        window.addEventListener('touchstart', () => { if (!/[?&]touch=0/.test(pageQuery)) enableTouch(); }, { once: true, passive: true });
+        // если окно свернули или открылась модалка — отпустить «зажатые» кнопки
+        window.addEventListener('blur', releaseTouchKeys);
+        // повернули телефон — перестроить холст
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(fitCanvasForDevice, 150);
         });
 
-        window.addEventListener('keyup', (e) => {
-            keys[e.code] = false;
-        });
+        if (DEBUG_ALLOWED) document.getElementById('debugHelp').style.display = '';
 
         // Автосохранение каждые 30 секунд
         setInterval(autoSave, AUTOSAVE_INTERVAL);
