@@ -135,17 +135,18 @@ check('E вдали от лавки — подсказка, игра не на �
 run('player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; stats.money = 120;');
 press('KeyE'); release('KeyE');
 check('E у лавки открывает её и ставит паузу', run('gameState.paused') === true && els.shopModal.classList.contains('active'));
-check('в лавке лопата и 4 кирки', els.shopList.children.length === 5);
-check('доступная кирка с кнопкой покупки', els.shopList.children[2].innerHTML.includes('buyPickaxe(1)'));
-check('недоступная по деньгам — без кнопки', !els.shopList.children[3].innerHTML.includes('buyPickaxe(2)'));
+const item = name => els.shopList.children.find(c => c.innerHTML.includes(name)) || { innerHTML: '' };
+check('в лавке 4 кирки', ['Ржавая', 'Железная', 'Стальная', 'С алмазным жалом'].every(n => item(n).innerHTML));
+check('доступная кирка с кнопкой покупки', item('Железная').innerHTML.includes('buyPickaxe(1)'));
+check('недоступная по деньгам — без кнопки', item('Стальная').innerHTML && !item('Стальная').innerHTML.includes('buyPickaxe(2)'));
 check('показаны деньги', els.shopMoney.textContent.includes('120'));
 run('buyPickaxe(1)');
-check('после покупки список обновился', els.shopList.children.length === 5 && els.shopList.children[2].innerHTML.includes('В руках'));
+check('после покупки список обновился', item('Железная').innerHTML.includes('В руках'));
 press('Escape'); release('Escape');
 check('ESC закрывает лавку', run('gameState.paused') === false && !els.shopModal.classList.contains('active'));
 
 console.log('Сохранения');
-check('SAVE_VERSION = 5', run('SAVE_VERSION') === 5);
+check('SAVE_VERSION = 6', run('SAVE_VERSION') === 6);
 setup('STONE', 2);
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
 check('кирка попадает в сохранение', save.pickaxe === 2);

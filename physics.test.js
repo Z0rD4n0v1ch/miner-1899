@@ -137,7 +137,7 @@ console.log('Отрисовка');
     check('небо над поверхностью голубое', fills.includes(run('BLOCK_COLORS[BLOCK_TYPES.AIR]')));
     fills.length = 0;
     run('player.y = 400; updateCamera(); for (let y = 395; y < 405; y++) world[y][60] = BLOCK_TYPES.AIR; render();');
-    check('пещеры тёмные, а не цвета неба', fills.includes(run('CAVE_COLOR')) && !fills.includes(run('BLOCK_COLORS[BLOCK_TYPES.AIR]')));
+    check('пещеры тёмные, а не цвета неба', run('BIOMES.map(b => b.cave)').some(c => fills.includes(c)) && !fills.includes(run('BLOCK_COLORS[BLOCK_TYPES.AIR]')));
 }
 
 console.log(`\n${passed}/${passed + failed} проверок пройдено`);

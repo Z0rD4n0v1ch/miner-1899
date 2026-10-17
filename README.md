@@ -2,7 +2,7 @@
 
 2D-игра про шахтёра с процедурно генерируемой шахтой. Чистый HTML + Canvas + JavaScript — без сборки, без зависимостей, без npm.
 
-**Играть:** открой `miner-1899.html` в браузере.
+**Играть онлайн:** https://z0rd4n0v1ch.github.io/1899/play/ — или скачай `miner-1899.html` и открой в браузере.
 
 ![Общий вид игры](docs/screenshots/overview.png)
 
@@ -238,10 +238,12 @@
 
 ## Локальный запуск
 
-Никакой сборки не нужно — просто открыть файл. Репозиторий закрытый, поэтому клонируется по SSH:
+Никакой сборки не нужно — просто открыть файл. Поиграть без скачивания можно на сайте: **https://z0rd4n0v1ch.github.io/1899/play/**
+
+Или склонировать репозиторий:
 
 ```bash
-git clone git@github.com:Z0rD4n0v1ch/miner-1899.git
+git clone https://github.com/Z0rD4n0v1ch/miner-1899.git
 cd miner-1899
 start miner-1899.html          # Windows
 # open miner-1899.html         # macOS
