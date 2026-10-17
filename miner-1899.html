@@ -371,6 +371,8 @@
             position: fixed;
             top: 20px;
             right: 20px;
+            max-width: 420px;
+            transition: top 0.2s;
             background: #2a2a2a;
             border: 2px solid #ffa500;
             border-radius: 8px;
@@ -585,6 +587,14 @@
             -webkit-touch-callout: none;
         }
 
+        /* на телефоне уведомления у́же и ниже сводки, чтобы не закрывать её */
+        body.touch .notification {
+            right: 8px;
+            max-width: 70vw;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
         body.touch h1 {
             display: none;
         }
@@ -701,7 +711,7 @@
     </style>
 </head>
 <body>
-    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.6.0</span></h1>
+    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.6.1</span></h1>
     <div id="layout">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
@@ -985,7 +995,7 @@
             if (typeof updateCamera === 'function' && world.length) updateCamera();
         }
         const SAVE_VERSION = 6;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки
-        const GAME_VERSION = '1.6.0';
+        const GAME_VERSION = '1.6.1';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
         // Физика игрока. Скорости — в блоках в секунду, ускорения — в блоках/с².
@@ -3322,8 +3332,9 @@
             ctx.fillText('ЛАВКА', sx + w / 2, groundY - wallH - TILE_SIZE - 4);
             if (isAtShop()) {
                 ctx.fillStyle = '#FFFFFF';
-                ctx.strokeText('E — инструменты', sx + w / 2, groundY - wallH - TILE_SIZE - 18);
-                ctx.fillText('E — инструменты', sx + w / 2, groundY - wallH - TILE_SIZE - 18);
+                const hint = touchMode ? '«Лавка» — инструменты' : 'E — инструменты';
+                ctx.strokeText(hint, sx + w / 2, groundY - wallH - TILE_SIZE - 18);
+                ctx.fillText(hint, sx + w / 2, groundY - wallH - TILE_SIZE - 18);
             }
             ctx.textAlign = 'left';
         }
@@ -3504,10 +3515,41 @@
         }
 
         // Загрузка из объекта сохранения
+        // Проверить сохранение целиком, ничего не меняя в текущей игре.
+        // Возвращает распакованный мир или null, если файл повреждён.
+        function validateSave(saveData) {
+            const finite = v => typeof v === 'number' && Number.isFinite(v);
+            if (!saveData || typeof saveData !== 'object') return null;
+            if (!saveData.player || !finite(saveData.player.x) || !finite(saveData.player.y)) return null;
+            if (saveData.player.x < 0 || saveData.player.x > WORLD_WIDTH || saveData.player.y < 0 || saveData.player.y >= WORLD_HEIGHT) return null;
+            if (!saveData.stats || !finite(saveData.stats.money) || !finite(saveData.stats.score)) return null;
+            if (!finite(saveData.seed)) return null;
+            const data = saveData.world && saveData.world.data;
+            if (!Array.isArray(data) || data.length % 2 !== 0) return null;
+            const maxType = Math.max(...Object.values(BLOCK_TYPES));
+            const flat = [];
+            for (let i = 0; i < data.length; i += 2) {
+                const value = data[i], count = data[i + 1];
+                if (!Number.isInteger(value) || value < 0 || value > maxType) return null;
+                if (!Number.isInteger(count) || count < 1 || flat.length + count > WORLD_WIDTH * WORLD_HEIGHT) return null;
+                for (let j = 0; j < count; j++) flat.push(value);
+            }
+            if (flat.length !== WORLD_WIDTH * WORLD_HEIGHT) return null;
+            return flat;
+        }
+
         function loadSaveData(saveData) {
+            if (!saveData || typeof saveData !== 'object') {
+                showNotification('⚠️ Файл сохранения повреждён — текущая игра не тронута');
+                return false;
+            }
             saveData = migrateSave(saveData);
             if (saveData.version !== SAVE_VERSION) {
                 showNotification('⚠️ Несовместимая версия сохранения');
+                return false;
+            }
+            if (!validateSave(saveData)) {
+                showNotification('⚠️ Файл сохранения повреждён — текущая игра не тронута');
                 return false;
             }
 
@@ -3561,10 +3603,28 @@
         }
 
         // Сохранение в слот
+        // Запись в хранилище браузера; false — если оно запрещено или переполнено
+        function safeSetItem(key, value) {
+            try { localStorage.setItem(key, value); return true; }
+            catch (e) { return false; }
+        }
+
+        let storageWarned = false;
+        function warnStorage() {
+            if (storageWarned) return;
+            storageWarned = true;
+            showNotification('⚠️ Браузер не даёт сохранять игру (приватный режим или нет места). Сделай экспорт в файл');
+        }
+
         function saveToSlot(slotId, label) {
             const saveData = createSaveData(label);
-            localStorage.setItem(`miner_save_${slotId}`, JSON.stringify(saveData));
+            if (!safeSetItem(`miner_save_${slotId}`, JSON.stringify(saveData))) {
+                storageWarned = false;
+                warnStorage();
+                return false;
+            }
             showNotification(`💾 Сохранено: ${label}`);
+            return true;
         }
 
         // Загрузка из слота
@@ -3601,23 +3661,25 @@
 
         // Автосохранение
         function autoSave() {
+            if (!world.length) return;
             const saveData = createSaveData('Автосохранение');
-            localStorage.setItem('miner_autosave', JSON.stringify(saveData));
+            if (!safeSetItem('miner_autosave', JSON.stringify(saveData))) warnStorage();
         }
 
         // Загрузка автосохранения при старте
         function tryLoadAutosave() {
-            const data = localStorage.getItem('miner_autosave');
-            if (data) {
-                try {
-                    const saveData = JSON.parse(data);
-                    if (confirm('Найдено автосохранение. Продолжить?')) {
-                        loadSaveData(saveData);
-                        return true;
-                    }
-                } catch (e) {
-                    console.error('Ошибка загрузки автосохранения', e);
-                }
+            let data = null;
+            try { data = localStorage.getItem('miner_autosave'); } catch (e) { /* хранилище недоступно */ }
+            if (!data) return false;
+            let saveData;
+            try { saveData = JSON.parse(data); } catch (e) { return false; }
+            if (confirm('Найдено автосохранение. Продолжить?')) {
+                // несовместимое или повреждённое — начинаем новую игру, а не остаёмся без мира
+                return loadSaveData(saveData) === true;
+            }
+            // отказались — прошлая игра не пропадает: она в «Загрузить» как резервная копия
+            if (safeSetItem('miner_save_backup', data)) {
+                setTimeout(() => showNotification('📂 Прошлая игра сохранена как резервная копия — её можно открыть через «Загрузить»'), 500);
             }
             return false;
         }
@@ -3753,11 +3815,11 @@
                         
                         slot.innerHTML = `
                             <div class="save-slot-header">
-                                <div class="save-slot-title">Слот ${i}: ${save.label}</div>
+                                <div class="save-slot-title">Слот ${i}: ${escapeHtml(save.label)}</div>
                             </div>
                             <div class="save-slot-info">
                                 💾 ${date}<br>
-                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${save.stats.money ?? 0} руб. | ⛏️ ${PICKAXES[save.pickaxe]?.name ?? PICKAXES[0].name} | 🏆 Очки: ${save.stats.score}
+                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${Number(save.stats.money) || 0} руб. | ⛏️ ${PICKAXES[save.pickaxe]?.name ?? PICKAXES[0].name} | 🏆 Очки: ${Number(save.stats.score) || 0}
                             </div>
                             <div class="save-slot-actions">
                                 <button class="btn btn-small" onclick="openSaveNameModal(${i})">Перезаписать</button>
@@ -3785,6 +3847,23 @@
             const container = document.getElementById('loadSlotsList');
             container.innerHTML = '';
 
+            // резервная копия: автосохранение, от которого отказались при запуске
+            const backup = localStorage.getItem('miner_save_backup');
+            if (backup) {
+                const slot = document.createElement('div');
+                slot.className = 'save-slot';
+                try {
+                    const save = JSON.parse(backup);
+                    const date = new Date(save.savedAt).toLocaleString('ru-RU');
+                    slot.innerHTML = `<div class="save-slot-title">Резервная копия прошлой игры</div>
+                        <div class="save-slot-info">💾 ${date} | 💰 ${Number(save.stats && save.stats.money) || 0} руб.</div>`;
+                    slot.onclick = () => loadFromSlot('backup');
+                } catch (e) {
+                    slot.innerHTML = '<div class="save-slot-title">Резервная копия: повреждена</div>';
+                }
+                container.appendChild(slot);
+            }
+
             for (let i = 1; i <= 3; i++) {
                 const data = localStorage.getItem(`miner_save_${i}`);
                 const slot = document.createElement('div');
@@ -3798,11 +3877,11 @@
                         
                         slot.innerHTML = `
                             <div class="save-slot-header">
-                                <div class="save-slot-title">Слот ${i}: ${save.label}</div>
+                                <div class="save-slot-title">Слот ${i}: ${escapeHtml(save.label)}</div>
                             </div>
                             <div class="save-slot-info">
                                 💾 ${date}<br>
-                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${save.stats.money ?? 0} руб. | ⛏️ ${PICKAXES[save.pickaxe]?.name ?? PICKAXES[0].name} | 🏆 Очки: ${save.stats.score}
+                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${Number(save.stats.money) || 0} руб. | ⛏️ ${PICKAXES[save.pickaxe]?.name ?? PICKAXES[0].name} | 🏆 Очки: ${Number(save.stats.score) || 0}
                             </div>
                         `;
                         slot.onclick = () => loadFromSlot(i);
@@ -3818,15 +3897,39 @@
             }
         }
 
+        // Текст, введённый игроком, в разметку вставляется только экранированным
+        function escapeHtml(text) {
+            return String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
         // Уведомления
+        // Уведомления складываются стопкой сверху справа; больше четырёх сразу не бывает
+        const MAX_NOTIFICATIONS = 4;
+        const liveNotifications = [];
+
+        function restackNotifications() {
+            const onPhone = document.body && document.body.classList && document.body.classList.contains('touch');
+            let top = onPhone ? 44 : 20;
+            for (const n of liveNotifications) {
+                n.style.top = top + 'px';
+                top += (n.offsetHeight || 50) + 8;
+            }
+        }
+
         function showNotification(message) {
             const notif = document.createElement('div');
             notif.className = 'notification';
             notif.textContent = message;
             document.body.appendChild(notif);
+            liveNotifications.push(notif);
+            while (liveNotifications.length > MAX_NOTIFICATIONS) liveNotifications.shift().remove();
+            restackNotifications();
 
             setTimeout(() => {
                 notif.remove();
+                const i = liveNotifications.indexOf(notif);
+                if (i >= 0) liveNotifications.splice(i, 1);
+                restackNotifications();
             }, 3000);
         }
 
@@ -3855,7 +3958,7 @@
             lastTime = currentTime;
 
             if (!gameState.paused) {
-                stats.playtime = (Date.now() - gameState.startTime) / 1000;
+                stats.playtime += dt;      // время игры идёт только когда игра не на паузе
                 updatePlayer(dt);
                 updateDigging(dt);
                 updateHazards(dt);
@@ -3987,7 +4090,9 @@
             ctx.save();
             ctx.font = `${size}px "Courier New", monospace`;
             const w = ctx.measureText ? ctx.measureText(text).width : text.length * size * 0.6;
-            const x = canvas.width - w - 12, y = canvas.height - size * 1.9;
+            // на телефоне правый нижний угол закрыт кнопками — значок слева сверху, под сводкой
+            const x = touchMode ? 10 : canvas.width - w - 12;
+            const y = touchMode ? Math.round(13 * scale) * 1.6 + 10 : canvas.height - size * 1.9;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
             ctx.fillRect(x - 6, y, w + 12, size * 1.5);
             ctx.fillStyle = radio.status === 'live' ? '#FFD27F' : '#aaaaaa';
@@ -4000,8 +4105,13 @@
         document.getElementById('radioVolume').value = Math.round(radio.volume * 100);
 
         // Обработка клавиатуры (сенсорные кнопки зовут те же функции)
+        // Клавиши-действия срабатывают один раз на нажатие: автоповтор при удержании
+        // не должен, например, тратить бинты один за другим
+        const ONE_SHOT_KEYS = new Set(['KeyE', 'KeyQ', 'KeyR', 'KeyC', 'KeyH', 'KeyM', 'Backquote', 'KeyG', 'Escape']);
+
         function onKeyDown(e) {
             keys[e.code] = true;
+            if (e.repeat && ONE_SHOT_KEYS.has(e.code)) return;
 
             // клавиши отладки — только в игре, не при вводе названия сохранения
             if (!gameState.paused && handleDebugKey(e.code)) {
@@ -4123,8 +4233,22 @@
         if (isTouchDevice()) enableTouch();
         // гибридные устройства: первое касание экрана включает кнопки
         window.addEventListener('touchstart', () => { if (!/[?&]touch=0/.test(pageQuery)) enableTouch(); }, { once: true, passive: true });
-        // если окно свернули или открылась модалка — отпустить «зажатые» кнопки
-        window.addEventListener('blur', releaseTouchKeys);
+        // Ушёл в другое окно или свернул браузер: отпускаем все клавиши (иначе, если держал D,
+        // персонаж сам пойдёт дальше — отпускание вне окна игра не видит) и сохраняемся
+        function releaseAllKeys() {
+            releaseTouchKeys();
+            for (const code in keys) keys[code] = false;
+            if (document.querySelectorAll) document.querySelectorAll('.tbtn.on').forEach(b => b.classList.remove('on'));
+            if (radio && radio.on) radioSetStatus(radio.status);   // кнопку радио подсвечиваем как была
+        }
+
+        window.addEventListener('blur', releaseAllKeys);
+        window.addEventListener('pagehide', autoSave);
+        if (typeof document.addEventListener === 'function') {
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') { releaseAllKeys(); autoSave(); }
+            });
+        }
         // повернули телефон — перестроить холст
         let resizeTimer = null;
         window.addEventListener('resize', () => {
