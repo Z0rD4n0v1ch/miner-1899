@@ -223,7 +223,7 @@ check('Гранитные недра: «опасно: рудничный газ�
 run('player.y = DEPTH_ORIGIN + 650; updateBiome(5000);'); texts.length = 0; run('renderBiomeBanner(6000)');
 check('Огненное дно: «опасно: жар»', texts.some(t => t.includes('опасно: жар')));
 run('player.y = DEPTH_ORIGIN + 10; updateBiome(7000);'); texts.length = 0; run('renderBiomeBanner(8000)');
-check('Песчаный пласт безопасен', !texts.some(t => t.includes('опасно')));
+check('в Песчаном пласте своих опасностей нет — только крысы-воришки', texts.some(t => t.includes('опасно: крысы-воришки')) && !texts.some(t => t.includes('обвалы') || t.includes('газ') || t.includes('жар')));
 
 console.log('Сохранения');
 room(100);
