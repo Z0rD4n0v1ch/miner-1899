@@ -396,6 +396,41 @@
             margin-top: 4px;
         }
 
+        /* список товаров прокручивается, чтобы «Закрыть» всегда было видно */
+        #shopList {
+            max-height: calc(80vh - 240px);
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        /* на широком экране лавка шире и в две колонки */
+        @media (min-width: 1000px) {
+            #shopModal .modal-content {
+                max-width: 920px;
+            }
+            #shopList {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                column-gap: 10px;
+                align-content: start;
+            }
+            #shopList .shop-section {
+                grid-column: 1 / -1;
+            }
+            #shopList .shop-item {
+                margin-bottom: 0;
+                margin-top: 10px;
+            }
+        }
+
+        .shop-section {
+            color: #aaa;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 12px 0 6px;
+        }
+
         .shop-money {
             text-align: center;
             color: #ccc;
@@ -443,7 +478,8 @@
                 margin: 0;
             }
 
-            #ui .stat:last-child:nth-child(odd) {
+            /* рюкзак — на всю ширину: под ним список содержимого */
+            #ui .stat.wide {
                 grid-column: 1 / -1;
             }
 
@@ -496,10 +532,12 @@
             <div class="stat-value" id="health">100</div>
             <div class="backpack-bar"><div class="backpack-fill health-fill" id="healthFill"></div></div>
         </div>
-        <div class="stat">
+        <div class="stat wide">
             <div class="stat-label">Рюкзак</div>
             <div class="stat-value" id="backpack">0/20</div>
             <div class="backpack-bar"><div class="backpack-fill" id="backpackFill"></div></div>
+            <div class="stat-sub" id="backpackList">пусто</div>
+            <div class="stat-sub" id="backpackWeight"></div>
         </div>
         <div class="stat">
             <div class="stat-label">Деньги</div>
@@ -553,7 +591,7 @@
         <p><span class="key">C</span> (<span class="key">С</span>) - Клеть: платный подъём наверх</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
-        <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней.</p>
+        <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.</p>
         <p>Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.</p>
         <p>Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама. Денег нет — лавка даст лопату в долг, но вернуть придётся вдвое больше.</p>
         <p><span class="key">Пробел</span> по существу перед собой — удар киркой. В пещерах водятся крысы-воришки, летучие мыши, пауки и огненные саламандры; лампа отпугивает мышей и пауков, канарейка чует газ.</p>
@@ -792,16 +830,30 @@
 
         // Руда: что кладётся в рюкзак и почём продаётся
         const ORES = {
-            [BLOCK_TYPES.GOLD]:    { key: 'gold',    name: 'Золото', price: 10,  score: 10 },
-            [BLOCK_TYPES.DIAMOND]: { key: 'diamond', name: 'Алмаз',  price: 50,  score: 50 },
-            [BLOCK_TYPES.RUBY]:    { key: 'ruby',    name: 'Рубин',  price: 100, score: 100 },
+            // weight — вес одной штуки: золото и платина тяжёлые, камни лёгкие
+            [BLOCK_TYPES.GOLD]:    { key: 'gold',    name: 'Золото', price: 10,  score: 10,  weight: 2 },
+            [BLOCK_TYPES.DIAMOND]: { key: 'diamond', name: 'Алмаз',  price: 50,  score: 50,  weight: 0.5 },
+            [BLOCK_TYPES.RUBY]:    { key: 'ruby',    name: 'Рубин',  price: 100, score: 100, weight: 0.5 },
             // особая руда биомов
-            [BLOCK_TYPES.COAL]:     { key: 'coal',     name: 'Уголь',   price: 5,   score: 5 },
-            [BLOCK_TYPES.SILVER]:   { key: 'silver',   name: 'Серебро', price: 25,  score: 25 },
-            [BLOCK_TYPES.EMERALD]:  { key: 'emerald',  name: 'Изумруд', price: 75,  score: 75 },
-            [BLOCK_TYPES.PLATINUM]: { key: 'platinum', name: 'Платина', price: 150, score: 150 }
+            [BLOCK_TYPES.COAL]:     { key: 'coal',     name: 'Уголь',   price: 5,   score: 5,   weight: 1 },
+            [BLOCK_TYPES.SILVER]:   { key: 'silver',   name: 'Серебро', price: 25,  score: 25,  weight: 1.5 },
+            [BLOCK_TYPES.EMERALD]:  { key: 'emerald',  name: 'Изумруд', price: 75,  score: 75,  weight: 0.5 },
+            [BLOCK_TYPES.PLATINUM]: { key: 'platinum', name: 'Платина', price: 150, score: 150, weight: 3 }
         };
-        const BACKPACK_CAPACITY = 20;
+        const BACKPACK_CAPACITY = 20;    // ёмкость стартового мешка
+
+        // Рюкзаки: покупаются в лавке, каждый следующий вместительнее
+        const BACKPACKS = [
+            { name: 'Холщовый мешок',   capacity: 20, price: 0 },
+            { name: 'Кожаный ранец',    capacity: 35, price: 150 },
+            { name: 'Шахтёрский короб', capacity: 50, price: 500 }
+        ];
+
+        // Вес замедляет: при полной нагрузке ходьба и лазанье −35%, прыжок −15%
+        // (прыжок режется меньше, чтобы даже с грузом брать уступ в 1 блок)
+        const WEIGHT_FOR_MAX_SLOW = 60;
+        const MAX_WALK_SLOW = 0.35;
+        const MAX_JUMP_SLOW = 0.15;
 
         // Твёрдость: сколько секунд копается блок ржавой киркой
         // (мягкая порода считается отдельно, см. SOFT)
@@ -873,6 +925,9 @@
 
         // Номер кирки в PICKAXES
         let pickaxeTier = 0;
+
+        // Номер рюкзака в BACKPACKS
+        let backpackTier = 0;
 
         // Номер лопаты в SHOVELS (0 — лопаты нет)
         let shovelTier = 0;
@@ -1400,7 +1455,7 @@
             if (debug.on && debug.fly) { updateFly(dt); return; }
 
             // Управление (используем e.code для работы на любой раскладке)
-            const speed = isSprinting() ? MOVE_SPEED * SPRINT_MULT : MOVE_SPEED;
+            const speed = (isSprinting() ? MOVE_SPEED * SPRINT_MULT : MOVE_SPEED) * walkFactor();
             if (keys['KeyA'] || keys['ArrowLeft']) {
                 player.vx = -speed;
                 player.direction = -1;
@@ -1414,7 +1469,7 @@
             // на лестнице и на её верхней ступеньке W — это «лезть», а не прыжок
             if ((keys['KeyW'] || keys['ArrowUp']) && player.onGround &&
                 !climbAt(player.x, player.y) && !climbTopBelow(player.x, player.y + 1)) {
-                player.vy = -JUMP_SPEED;
+                player.vy = -JUMP_SPEED * jumpFactor();
                 player.onGround = false;
             }
 
@@ -1492,7 +1547,7 @@
             player.onGround = false;
             const up = keys['KeyW'] || keys['ArrowUp'];
             const down = keys['KeyS'] || keys['ArrowDown'];
-            const base = climb === 'rope' ? ROPE_CLIMB : LADDER_CLIMB;
+            const base = (climb === 'rope' ? ROPE_CLIMB : LADDER_CLIMB) * walkFactor();
             const shift = isSprinting();
 
             // по горизонтали — как обычно; если упёрся, пробуем подровняться по
@@ -2110,7 +2165,7 @@
         function killCreature(c) {
             c.hp = 0;
             if (c.loot) {
-                if (addToBackpack(BLOCK_TYPES[c.loot.toUpperCase()]) === 'added') {
+                if (addToBackpack(BLOCK_TYPES[c.loot.toUpperCase()]) !== 'full') {
                     showNotification('🐀 Крыса поймана — добыча вернулась в рюкзак');
                 } else {
                     showNotification('🐀 Крыса поймана, но в рюкзаке нет места');
@@ -2315,12 +2370,67 @@
 
         // Положить добытый блок в рюкзак.
         // 'added' — положили, 'full' — места нет, 'not-ore' — это не руда
+        function backpackCapacity() {
+            return BACKPACKS[backpackTier].capacity;
+        }
+
+        function oreByKey(key) {
+            return Object.values(ORES).find(o => o.key === key);
+        }
+
+        // Общий вес и во сколько раз он замедляет (0 — не замедляет, 1 — максимально)
+        function backpackWeight() {
+            let w = 0;
+            for (const key in backpack) w += backpack[key] * oreByKey(key).weight;
+            return w;
+        }
+
+        function burden() {
+            return Math.min(1, backpackWeight() / WEIGHT_FOR_MAX_SLOW);
+        }
+
+        function walkFactor() { return 1 - MAX_WALK_SLOW * burden(); }
+        function jumpFactor() { return 1 - MAX_JUMP_SLOW * burden(); }
+
+        // Самая дешёвая руда в рюкзаке (ключ) — её выбрасывают ради дорогой
+        function cheapestInBackpack() {
+            let best = null;
+            for (const key in backpack) {
+                if (backpack[key] > 0 && (!best || oreByKey(key).price < oreByKey(best).price)) best = key;
+            }
+            return best;
+        }
+
+        // Положить руду в рюкзак. 'added' — положили; 'swapped' — места не было,
+        // выбросили штуку самой дешёвой руды (её ключ в lastDropped); 'full' — новая
+        // руда не дороже самой дешёвой, не берём; 'not-ore' — это не руда.
+        let lastDropped = null;
         function addToBackpack(blockType) {
             const ore = ORES[blockType];
             if (!ore) return 'not-ore';
-            if (backpackCount() >= BACKPACK_CAPACITY) return 'full';
+            lastDropped = null;
+            if (backpackCount() >= backpackCapacity()) {
+                const cheap = cheapestInBackpack();
+                if (!cheap || oreByKey(cheap).price >= ore.price) return 'full';
+                backpack[cheap]--;
+                lastDropped = cheap;
+                backpack[ore.key]++;
+                return 'swapped';
+            }
             backpack[ore.key]++;
             return 'added';
+        }
+
+        // Купить рюкзак номер tier
+        function buyBackpack(tier) {
+            const b = BACKPACKS[tier];
+            if (!b || tier <= backpackTier) return false;
+            if (stats.money < b.price) { showNotification(`💰 Не хватает ${b.price - stats.money} руб.`); return false; }
+            stats.money -= b.price;
+            backpackTier = tier;
+            showNotification(`🎒 Куплен ${b.name.toLowerCase()}: ${b.capacity} мест`);
+            updateUI(); renderShopList();
+            return true;
         }
 
         // Игрок стоит у лавки: над поверхностью и пересекается с ней по x
@@ -2418,6 +2528,13 @@
                 : `У тебя: ${stats.money} руб.`;
             const list = document.getElementById('shopList');
             list.innerHTML = '';
+            const section = title => {
+                const h = document.createElement('div');
+                h.className = 'shop-section';
+                h.textContent = title;
+                list.appendChild(h);
+            };
+            section('Лопата');
 
             // лопаты (кроме «нет лопаты»)
             SHOVELS.forEach((sh, tier) => {
@@ -2439,6 +2556,7 @@
                 list.appendChild(item);
             });
 
+            section('Снаряжение');
             // снаряжение для подъёма: покупается сколько угодно раз
             const gear = [
                 { name: `🧗 Лестницы ×${LADDER_PACK.count}`, info: `ставятся клавишей Q · у тебя: ${ladders}`, price: LADDER_PACK.price, fn: 'buyLadders()' },
@@ -2463,6 +2581,26 @@
                 list.appendChild(item);
             }
 
+            section('Рюкзаки');
+            BACKPACKS.forEach((b, tier) => {
+                if (tier === 0) return;
+                const item = document.createElement('div');
+                item.className = 'shop-item' + (tier === backpackTier ? ' owned' : tier < backpackTier ? ' below' : '');
+                let action;
+                if (tier === backpackTier) action = '<button class="btn btn-small" disabled>На плечах</button>';
+                else if (tier < backpackTier) action = '<button class="btn btn-small" disabled>Меньше твоего</button>';
+                else if (stats.money < b.price) action = `<button class="btn btn-small" disabled>${b.price} руб.</button>`;
+                else action = `<button class="btn btn-small" onclick="buyBackpack(${tier})">Купить за ${b.price} руб.</button>`;
+                item.innerHTML = `
+                    <div>
+                        <div class="shop-item-name">🎒 ${b.name}</div>
+                        <div class="shop-item-info">${b.capacity} мест (сейчас: ${backpackCapacity()})</div>
+                    </div>
+                    ${action}`;
+                list.appendChild(item);
+            });
+
+            section('Кирки');
             const opens = ['камень, золото, уголь, серебро', '+ алмазы, изумруды', '+ рубины, платина', 'всё, быстрее всех'];
             PICKAXES.forEach((p, tier) => {
                 const item = document.createElement('div');
@@ -2604,9 +2742,12 @@
                 const result = addToBackpack(block);
                 if (result === 'added') {
                     stats.score += ORES[block].score;
-                    if (backpackCount() === BACKPACK_CAPACITY) {
+                    if (backpackCount() === backpackCapacity()) {
                         showNotification('🎒 Рюкзак полон — неси руду в лавку');
                     }
+                } else if (result === 'swapped') {
+                    stats.score += ORES[block].score;
+                    showNotification(`🎒 Выбросил ${oreByKey(lastDropped).name.toLowerCase()} ради: ${ORES[block].name.toLowerCase()}`);
                 } else if (result === 'full') {
                     // блок всё равно выкапывается, но руда пропадает
                     showNotification(`🎒 Нет места в рюкзаке: ${ORES[block].name.toLowerCase()} не поместился`);
@@ -2866,13 +3007,24 @@
             document.getElementById('depth').textContent = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN)) + 'м';
             document.getElementById('biome').textContent = BIOMES[biomeIndexAt(Math.max(0, player.y - DEPTH_ORIGIN))].name;
             const count = backpackCount();
-            const full = count >= BACKPACK_CAPACITY;
+            const cap = backpackCapacity();
+            const full = count >= cap;
             const bp = document.getElementById('backpack');
-            bp.textContent = `${count}/${BACKPACK_CAPACITY}`;
+            bp.textContent = `${count}/${cap}`;
             bp.classList.toggle('full', full);
             const fill = document.getElementById('backpackFill');
-            fill.style.width = (count / BACKPACK_CAPACITY * 100) + '%';
+            fill.style.width = (count / cap * 100) + '%';
             fill.classList.toggle('full', full);
+            // что в рюкзаке и сколько стоит; от дорогой руды к дешёвой
+            const parts = Object.keys(backpack).filter(k => backpack[k] > 0)
+                .sort((a, b) => oreByKey(b).price - oreByKey(a).price)
+                .map(k => `${oreByKey(k).name.toLowerCase()} ${backpack[k]}`);
+            document.getElementById('backpackList').textContent = parts.length
+                ? `${parts.join(' · ')} ≈ ${backpackValue()} руб.` : 'пусто';
+            const slow = Math.round((1 - walkFactor()) * 100);
+            document.getElementById('backpackWeight').textContent = slow > 0
+                ? `вес ${backpackWeight()} · медленнее на ${slow}%` : '';
+
             const hp = Math.max(0, Math.ceil(health));
             const hpEl = document.getElementById('health');
             hpEl.textContent = hp;
@@ -2978,7 +3130,8 @@
                 ladders: ladders,
                 ropes: ropes,
                 lamp: hasLamp,
-                canary: hasCanary
+                canary: hasCanary,
+                backpackTier: backpackTier
             };
         }
 
@@ -3051,6 +3204,8 @@
             };
             ladders = gearCount(saveData.ladders, START_LADDERS);
             ropes = gearCount(saveData.ropes, 0);
+            const bpTier = Number(saveData.backpackTier);
+            backpackTier = (Number.isInteger(bpTier) && bpTier >= 0 && bpTier < BACKPACKS.length) ? bpTier : 0;
             hasLamp = saveData.lamp === true;
             hasCanary = saveData.canary === true;
             resetDig();
@@ -3181,6 +3336,7 @@
                 ropes = 0;
                 hasLamp = false;
                 hasCanary = false;
+                backpackTier = 0;
                 resetHazards();
                 resetDig();
                 stats.playtime = 0;

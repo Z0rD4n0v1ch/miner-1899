@@ -64,7 +64,7 @@ check('стоимость считается по ценам', run('backpackValu
 reset();
 run('for (let i = 0; i < BACKPACK_CAPACITY; i++) addToBackpack(BLOCK_TYPES.GOLD)');
 check('рюкзак заполняется до ёмкости', run('backpackCount()') === run('BACKPACK_CAPACITY'));
-check('сверх ёмкости — full', run('addToBackpack(BLOCK_TYPES.RUBY)') === 'full' && run('backpack.ruby') === 0);
+check('сверх ёмкости руда не дороже самой дешёвой — full', run('addToBackpack(BLOCK_TYPES.GOLD)') === 'full' && run('backpack.gold') === run('BACKPACK_CAPACITY'));
 
 console.log('Копание');
 reset();
@@ -76,7 +76,7 @@ check('блок исчезает', run('getBlock(51, 100)') === run('BLOCK_TYPES
 run('setBlock(51, 100, BLOCK_TYPES.STONE); dig();');
 check('камень даёт очки, но не место в рюкзаке', run('stats.score') === 12 && run('backpackCount()') === 1);
 reset();
-run(`for (let i = 0; i < BACKPACK_CAPACITY; i++) addToBackpack(BLOCK_TYPES.GOLD);
+run(`for (let i = 0; i < BACKPACK_CAPACITY; i++) addToBackpack(BLOCK_TYPES.RUBY);   // рубины дороже алмаза
      pickaxeTier = 1;   // алмаз копается только железной киркой
      player.y = 100; player.x = 50; setBlock(51, 100, BLOCK_TYPES.DIAMOND); dig();`);
 check('при полном рюкзаке блок всё равно выкапывается', run('getBlock(51, 100)') === run('BLOCK_TYPES.AIR'));
@@ -121,7 +121,7 @@ run('for (let i = 0; i < 19; i++) addToBackpack(BLOCK_TYPES.GOLD); updateUI();')
 check('полный рюкзак подсвечен', els.backpack.classList.contains('full') && els.backpackFill.classList.contains('full'));
 
 console.log('Сохранения');
-check('SAVE_VERSION = 5', run('SAVE_VERSION') === 5);
+check('SAVE_VERSION = 6', run('SAVE_VERSION') === 6);
 reset();
 run(`generateWorld(12345);
      addToBackpack(BLOCK_TYPES.GOLD); addToBackpack(BLOCK_TYPES.DIAMOND);

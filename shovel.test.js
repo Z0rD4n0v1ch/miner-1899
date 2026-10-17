@@ -36,6 +36,7 @@ vm.createContext(sandbox);
 vm.runInContext(script, sandbox);
 const run = code => vm.runInContext(code, sandbox);
 
+const shovelItem = () => els.shopList.children.find(c => c.className === 'shop-item' || c.className === 'shop-item owned' ? c.innerHTML.includes('Лопата') : false) || { innerHTML: '' };
 let passed = 0, failed = 0;
 function check(name, cond) {
     if (cond) { passed++; console.log('  ✓ ' + name); } else { failed++; console.log('  ✗ ' + name); }
@@ -131,13 +132,13 @@ run('updateUI()');
 check('лопата в панели статистики', els.shovel.textContent === 'Лопата');
 setup('STONE');
 run('stats.money = 50; player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; openShop();');
-check('в лавке лопата идёт первой с кнопкой покупки', els.shopList.children[0].innerHTML.includes('buyShovel(1)'));
+check('в лавке лопата идёт первой с кнопкой покупки', shovelItem().innerHTML.includes('buyShovel(1)'));
 run('buyShovel(1)');
-check('после покупки — «Есть»', els.shopList.children[0].innerHTML.includes('Есть'));
+check('после покупки — «Есть»', shovelItem().innerHTML.includes('Есть'));
 run('closeShop()');
 
 console.log('Сохранения');
-check('SAVE_VERSION = 5', run('SAVE_VERSION') === 5);
+check('SAVE_VERSION = 6', run('SAVE_VERSION') === 6);
 setup('STONE', 1, 1);
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
 check('лопата попадает в сохранение', save.shovel === 1);

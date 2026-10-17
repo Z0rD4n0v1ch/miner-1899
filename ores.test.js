@@ -116,7 +116,7 @@ run('player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; sellBackpack();');
 check('лавка покупает по этим ценам', run('stats.money') === 260 && run('backpackCount()') === 0);
 setup('COAL');
 run('for (let i = 0; i < BACKPACK_CAPACITY; i++) addToBackpack(BLOCK_TYPES.COAL);');
-check('20 угля заполняют рюкзак', run('addToBackpack(BLOCK_TYPES.SILVER)') === 'full');
+check('20 угля заполняют рюкзак: ещё уголь не берётся', run('addToBackpack(BLOCK_TYPES.COAL)') === 'full');
 run('dig()');
 check('при полном рюкзаке понятное сообщение', notes.some(n => n.includes('Нет места') && n.includes('уголь')));
 check('полный рюкзак угля — 100 руб., хватит на долг за лопату', run('backpackValue()') === 100);

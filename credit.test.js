@@ -33,6 +33,7 @@ vm.createContext(sandbox);
 vm.runInContext(script, sandbox);
 const run = code => vm.runInContext(code, sandbox);
 
+const shovelItem = () => els.shopList.children.find(c => c.className === 'shop-item' || c.className === 'shop-item owned' ? c.innerHTML.includes('Лопата') : false) || { innerHTML: '' };
 let passed = 0, failed = 0;
 function check(name, cond) {
     if (cond) { passed++; console.log('  ✓ ' + name); } else { failed++; console.log('  ✗ ' + name); }
@@ -81,12 +82,12 @@ function fresh(money = 0) {
 fresh(0);
 check('в начале игры долга нет', run('debt') === 0);
 run('openShop()');
-check('без денег в лавке кнопка «в долг»', els.shopList.children[0].innerHTML.includes('takeShovelOnCredit(1)') &&
-    els.shopList.children[0].innerHTML.includes('80'));
+check('без денег в лавке кнопка «в долг»', shovelItem().innerHTML.includes('takeShovelOnCredit(1)') &&
+    shovelItem().innerHTML.includes('80'));
 check('берём в долг', run('takeShovelOnCredit(1)') === true && run('shovelTier') === 1);
 check('долг — двойная цена', run('debt') === 80);
 check('деньги не списались', run('stats.money') === 0);
-check('после этого лопата отмечена «Есть»', els.shopList.children[0].innerHTML.includes('Есть'));
+check('после этого лопата отмечена «Есть»', shovelItem().innerHTML.includes('Есть'));
 check('в лавке видно долг', els.shopMoney.textContent.includes('долг лавке: 80'));
 run('updateUI()');
 check('в панели «0 руб. (долг 80)» и красным', els.money.textContent === '0 руб. (долг 80)' && els.money.classList.contains('full'));
@@ -110,7 +111,7 @@ console.log('Ограничения');
 fresh(40);
 check('если денег хватает — в долг не дают', run('takeShovelOnCredit(1)') === false && run('debt') === 0);
 run('openShop()');
-check('и в лавке обычная покупка', els.shopList.children[0].innerHTML.includes('buyShovel(1)'));
+check('и в лавке обычная покупка', shovelItem().innerHTML.includes('buyShovel(1)'));
 run('closeShop()');
 fresh(0);
 run('shovelTier = 1;');
