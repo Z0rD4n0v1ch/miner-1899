@@ -568,6 +568,10 @@
             <div class="stat-value" id="ropes">0</div>
         </div>
         <div class="stat">
+            <div class="stat-label">Лечение (H)</div>
+            <div class="stat-value" id="meds" style="font-size: 14px;">—</div>
+        </div>
+        <div class="stat wide">
             <div class="stat-label">Снаряжение</div>
             <div class="stat-value" id="gear" style="font-size: 14px;">—</div>
         </div>
@@ -589,6 +593,7 @@
         <p><span class="key">Q</span> (<span class="key">Й</span>) - Поставить лестницу, <span class="key">W</span>/<span class="key">S</span> - лезть</p>
         <p><span class="key">R</span> (<span class="key">К</span>) - Спустить верёвку в колодец перед собой</p>
         <p><span class="key">C</span> (<span class="key">С</span>) - Клеть: платный подъём наверх</p>
+        <p><span class="key">H</span> (<span class="key">Р</span>) - Лечиться: бинт или аптечка</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.</p>
@@ -879,7 +884,9 @@
         // Лопаты: копают только мягкую породу. Номер 0 — лопаты нет.
         const SHOVELS = [
             { name: 'Нет',    speed: 0, price: 0 },
-            { name: 'Лопата', speed: 1, price: 40 }
+            { name: 'Лопата', speed: 1, price: 40 },
+            // стальная копает мягкую породу быстрее даже лучшей кирки
+            { name: 'Стальная лопата', speed: 2.5, price: 250 }
         ];
 
         // Лопату можно взять в долг, если не хватает денег. Вернуть придётся вдвое больше:
@@ -1783,6 +1790,45 @@
             }
         }
 
+        // ---- Лечение ----
+        const BANDAGE = { heal: 25, price: 15 };
+        const MEDKIT = { heal: 60, price: 40 };
+        const HEAL_COOLDOWN = 1;      // с между применениями
+        const MAX_MEDS = 99;
+        let bandages = 0;
+        let medkits = 0;
+        let lastHealAt = -Infinity;
+
+        // Клавиша H: берётся то, что лучше подходит — при большой потере здоровья
+        // аптечка, при небольшой бинт (чтобы не тратить аптечку зря)
+        function heal() {
+            if (health >= MAX_HEALTH) { showNotification('🩹 Ты и так здоров'); return false; }
+            if (hazardClock - lastHealAt < HEAL_COOLDOWN) return false;
+            const missing = MAX_HEALTH - health;
+            let item = null;
+            if (medkits > 0 && (missing >= 50 || bandages === 0)) item = 'medkit';
+            else if (bandages > 0) item = 'bandage';
+            if (!item) { showNotification('🩹 Нечем лечиться — бинты и аптечки продаются в лавке'); return false; }
+            const amount = item === 'medkit' ? MEDKIT.heal : BANDAGE.heal;
+            if (item === 'medkit') medkits--; else bandages--;
+            const before = health;
+            health = Math.min(MAX_HEALTH, health + amount);
+            lastHealAt = hazardClock;
+            showNotification(`${item === 'medkit' ? '✚ Аптечка' : '🩹 Бинт'}: +${Math.round(health - before)} здоровья`);
+            updateUI();
+            return item;
+        }
+
+        function buyMed(kind) {
+            const m = kind === 'medkit' ? MEDKIT : BANDAGE;
+            if (stats.money < m.price) { showNotification(`💰 Не хватает ${m.price - stats.money} руб.`); return false; }
+            stats.money -= m.price;
+            if (kind === 'medkit') medkits = Math.min(MAX_MEDS, medkits + 1);
+            else bandages = Math.min(MAX_MEDS, bandages + 1);
+            updateUI(); renderShopList();
+            return true;
+        }
+
         function resetHazards() {
             health = MAX_HEALTH;
             lastDamageAt = -Infinity;
@@ -2497,7 +2543,8 @@
         // Взять лопату в долг: только если денег не хватает и долгов нет
         function takeShovelOnCredit(tier) {
             const sh = SHOVELS[tier];
-            if (!sh || tier <= shovelTier || debt > 0 || stats.money >= sh.price) return false;
+            // в долг дают только простую лопату — для старта игры
+            if (!sh || tier !== 1 || tier <= shovelTier || debt > 0 || stats.money >= sh.price) return false;
             shovelTier = tier;
             debt = sh.price * DEBT_MULT;
             resetDig();
@@ -2534,7 +2581,7 @@
                 h.textContent = title;
                 list.appendChild(h);
             };
-            section('Лопата');
+            section('Лопаты');
 
             // лопаты (кроме «нет лопаты»)
             SHOVELS.forEach((sh, tier) => {
@@ -2545,12 +2592,12 @@
                 let action;
                 if (owned) action = '<button class="btn btn-small" disabled>Есть</button>';
                 else if (stats.money >= sh.price) action = `<button class="btn btn-small" onclick="buyShovel(${tier})">Купить за ${sh.price} руб.</button>`;
-                else if (debt === 0) action = `<button class="btn btn-small" onclick="takeShovelOnCredit(${tier})">В долг, вернуть ${sh.price * DEBT_MULT} руб.</button>`;
+                else if (debt === 0 && tier === 1) action = `<button class="btn btn-small" onclick="takeShovelOnCredit(${tier})">В долг, вернуть ${sh.price * DEBT_MULT} руб.</button>`;
                 else action = `<button class="btn btn-small" disabled>${sh.price} руб.</button>`;
                 item.innerHTML = `
                     <div>
                         <div class="shop-item-name">🛠️ ${sh.name}</div>
-                        <div class="shop-item-info">земля, песок, глина, гравий — в ${PICK_ON_SOFT} раза быстрее ржавой кирки</div>
+                        <div class="shop-item-info">земля, песок, глина, гравий — в ${PICK_ON_SOFT * sh.speed} раз${PICK_ON_SOFT * sh.speed < 5 ? 'а' : ''} быстрее ржавой кирки</div>
                     </div>
                     ${action}`;
                 list.appendChild(item);
@@ -2576,6 +2623,25 @@
                     <div>
                         <div class="shop-item-name">${g.name}</div>
                         <div class="shop-item-info">${g.info}</div>
+                    </div>
+                    ${action}`;
+                list.appendChild(item);
+            }
+
+            section('Лечение');
+            for (const m of [
+                { kind: 'bandage', name: '🩹 Бинт', info: `+${BANDAGE.heal} здоровья · у тебя: ${bandages}`, price: BANDAGE.price },
+                { kind: 'medkit', name: '✚ Аптечка', info: `+${MEDKIT.heal} здоровья · у тебя: ${medkits}`, price: MEDKIT.price }
+            ]) {
+                const item = document.createElement('div');
+                item.className = 'shop-item';
+                const action = stats.money >= m.price
+                    ? `<button class="btn btn-small" onclick="buyMed('${m.kind}')">Купить за ${m.price} руб.</button>`
+                    : `<button class="btn btn-small" disabled>${m.price} руб.</button>`;
+                item.innerHTML = `
+                    <div>
+                        <div class="shop-item-name">${m.name}</div>
+                        <div class="shop-item-info">${m.info}</div>
                     </div>
                     ${action}`;
                 list.appendChild(item);
@@ -3042,6 +3108,8 @@
             document.getElementById('ropes').textContent = ropes;
             const gearList = [hasLamp ? 'лампа' : null, hasCanary ? 'канарейка' : null].filter(Boolean);
             document.getElementById('gear').textContent = gearList.length ? gearList.join(', ') : '—';
+            const meds = [bandages ? `бинты ${bandages}` : null, medkits ? `аптечки ${medkits}` : null].filter(Boolean);
+            document.getElementById('meds').textContent = meds.length ? meds.join(' · ') : '—';
             document.getElementById('score').textContent = stats.score;
             
             const totalSeconds = Math.floor(stats.playtime);
@@ -3131,7 +3199,9 @@
                 ropes: ropes,
                 lamp: hasLamp,
                 canary: hasCanary,
-                backpackTier: backpackTier
+                backpackTier: backpackTier,
+                bandages: bandages,
+                medkits: medkits
             };
         }
 
@@ -3206,6 +3276,9 @@
             ropes = gearCount(saveData.ropes, 0);
             const bpTier = Number(saveData.backpackTier);
             backpackTier = (Number.isInteger(bpTier) && bpTier >= 0 && bpTier < BACKPACKS.length) ? bpTier : 0;
+            const medCount = v => { const n = Number(v); return Number.isInteger(n) && n >= 0 ? Math.min(MAX_MEDS, n) : 0; };
+            bandages = medCount(saveData.bandages);
+            medkits = medCount(saveData.medkits);
             hasLamp = saveData.lamp === true;
             hasCanary = saveData.canary === true;
             resetDig();
@@ -3337,6 +3410,8 @@
                 hasLamp = false;
                 hasCanary = false;
                 backpackTier = 0;
+                bandages = 0;
+                medkits = 0;
                 resetHazards();
                 resetDig();
                 stats.playtime = 0;
@@ -3549,6 +3624,7 @@
             if (e.code === 'KeyQ' && !gameState.paused) placeLadder();
             if (e.code === 'KeyR' && !gameState.paused) deployRope();
             if (e.code === 'KeyC' && !gameState.paused) openCage();
+            if (e.code === 'KeyH' && !gameState.paused) heal();
 
             if (e.code === 'Escape') {
                 e.preventDefault();

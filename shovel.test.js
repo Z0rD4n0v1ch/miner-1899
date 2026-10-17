@@ -127,7 +127,7 @@ check('сообщает, сколько не хватает', notes.some(n => n.
 run('stats.money = 100;');
 check('лопата за 40', run('buyShovel(1)') === true && run('shovelTier') === 1 && run('stats.money') === 60);
 check('вторую не купить', run('buyShovel(1)') === false && run('stats.money') === 60);
-check('несуществующую не купить', run('buyShovel(0)') === false && run('buyShovel(2)') === false);
+check('несуществующую не купить', run('buyShovel(0)') === false && run('buyShovel(3)') === false);
 run('updateUI()');
 check('лопата в панели статистики', els.shovel.textContent === 'Лопата');
 setup('STONE');
