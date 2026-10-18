@@ -95,17 +95,17 @@ check('второй раз в долг не дают', run('takeShovelOnCredit(1
 run('closeShop()');
 
 console.log('Погашение');
-run('for (let i = 0; i < 5; i++) addToBackpack(BLOCK_TYPES.GOLD); sellBackpack();');   // 50 руб.
-check('первая выручка 50 целиком ушла в долг', run('stats.money') === 0 && run('debt') === 30);
-check('уведомление: сколько осталось', notes.some(n => n.includes('Осталось вернуть 30')));
-run('for (let i = 0; i < 10; i++) addToBackpack(BLOCK_TYPES.GOLD); sellBackpack();');  // 100 руб.
-check('вторая выручка: 30 в долг, 70 себе', run('stats.money') === 70 && run('debt') === 0);
+run('for (let i = 0; i < 5; i++) addToBackpack(BLOCK_TYPES.GOLD); sellBackpack();');   // 40 руб.
+check('первая выручка 40 целиком ушла в долг', run('stats.money') === 0 && run('debt') === 40);
+check('уведомление: сколько осталось', notes.some(n => n.includes('Осталось вернуть 40')));
+run('for (let i = 0; i < 10; i++) addToBackpack(BLOCK_TYPES.GOLD); sellBackpack();');  // 80 руб.
+check('вторая выручка: 40 в долг, 40 себе', run('stats.money') === 40 && run('debt') === 0);
 check('уведомление о погашении', notes.some(n => n.includes('Долг погашен')));
 run('updateUI()');
-check('долг пропал из панели', els.money.textContent === '70 руб.' && !els.money.classList.contains('full'));
+check('долг пропал из панели', els.money.textContent === '40 руб.' && !els.money.classList.contains('full'));
 run('for (let i = 0; i < 2; i++) addToBackpack(BLOCK_TYPES.GOLD); sellBackpack();');
-check('дальше выручка целиком своя', run('stats.money') === 90);
-check('всего за лопату отдано 80 — вдвое больше цены', 50 + 100 + 20 - 90 === 80);
+check('дальше выручка целиком своя', run('stats.money') === 56);
+check('всего за лопату отдано 80 — вдвое больше цены', 40 + 80 + 16 - 56 === 80);
 
 console.log('Ограничения');
 fresh(40);
@@ -129,9 +129,9 @@ console.log('Сохранения');
 fresh(0);
 run('takeShovelOnCredit(1); for (let i = 0; i < 3; i++) addToBackpack(BLOCK_TYPES.GOLD); sellBackpack();');
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
-check('долг попадает в сохранение', save.debt === 50);
+check('долг попадает в сохранение', save.debt === 56);
 run('debt = 0;');
-check('и восстанавливается', run(`loadSaveData(${JSON.stringify(save)})`) === true && run('debt') === 50);
+check('и восстанавливается', run(`loadSaveData(${JSON.stringify(save)})`) === true && run('debt') === 56);
 const noDebt = Object.assign({}, save); delete noDebt.debt;
 check('сохранение без поля долга — долга нет', run(`loadSaveData(${JSON.stringify(noDebt)})`) && run('debt') === 0);
 check('мусор в долге — долга нет', run(`loadSaveData(${JSON.stringify(Object.assign({}, save, { debt: 'много' }))})`) && run('debt') === 0);

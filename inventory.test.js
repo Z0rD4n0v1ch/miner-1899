@@ -60,7 +60,7 @@ check('золото кладётся', run('addToBackpack(BLOCK_TYPES.GOLD)') ==
 check('алмаз и рубин кладутся', run('addToBackpack(BLOCK_TYPES.DIAMOND)') === 'added' && run('addToBackpack(BLOCK_TYPES.RUBY)') === 'added');
 check('земля и камень не кладутся',
     run('addToBackpack(BLOCK_TYPES.DIRT)') === 'not-ore' && run('addToBackpack(BLOCK_TYPES.STONE)') === 'not-ore' && run('backpackCount()') === 3);
-check('стоимость считается по ценам', run('backpackValue()') === 10 + 50 + 100);
+check('стоимость считается по ценам', run('backpackValue()') === 8 + 30 + 55);
 reset();
 run('for (let i = 0; i < BACKPACK_CAPACITY; i++) addToBackpack(BLOCK_TYPES.GOLD)');
 check('рюкзак заполняется до ёмкости', run('backpackCount()') === run('BACKPACK_CAPACITY'));
@@ -101,12 +101,12 @@ check('вплотную слева, без перекрытия — не у ла
 reset();
 run(`addToBackpack(BLOCK_TYPES.GOLD); addToBackpack(BLOCK_TYPES.RUBY);
      player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; checkShop();`);
-check('продажа при подходе: деньги начислены', run('stats.money') === 110);
+check('продажа при подходе: деньги начислены', run('stats.money') === 63);
 check('после продажи рюкзак пуст', run('backpackCount()') === 0);
-check('уведомление о продаже', notes.some(n => n.includes('110 руб')));
+check('уведомление о продаже', notes.some(n => n.includes('63 руб')));
 notes.length = 0;
 run('checkShop()');
-check('пустой рюкзак не продаётся повторно', notes.length === 0 && run('stats.money') === 110);
+check('пустой рюкзак не продаётся повторно', notes.length === 0 && run('stats.money') === 63);
 reset();
 run('addToBackpack(BLOCK_TYPES.GOLD); player.y = 100; checkShop();');
 check('вдали от лавки ничего не продаётся', run('stats.money') === 0 && run('backpack.gold') === 1);
@@ -121,7 +121,7 @@ run('for (let i = 0; i < 19; i++) addToBackpack(BLOCK_TYPES.GOLD); updateUI();')
 check('полный рюкзак подсвечен', els.backpack.classList.contains('full') && els.backpackFill.classList.contains('full'));
 
 console.log('Сохранения');
-check('SAVE_VERSION = 6', run('SAVE_VERSION') === 6);
+check('SAVE_VERSION = 7', run('SAVE_VERSION') === 7);
 reset();
 run(`generateWorld(12345);
      addToBackpack(BLOCK_TYPES.GOLD); addToBackpack(BLOCK_TYPES.DIAMOND);

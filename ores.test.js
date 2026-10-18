@@ -48,7 +48,7 @@ console.log('Таблица руды');
 check('у каждого биома своя особая руда', JSON.stringify(run('BIOMES.map(b => b.ore)')) === JSON.stringify(SPECIAL));
 const info = run(`[${SPECIAL.map(k => `ORES[BLOCK_TYPES.${k}]`).join(',')}]`);
 check('названия: уголь, серебро, изумруд, платина', info.map(o => o.name).join() === 'Уголь,Серебро,Изумруд,Платина');
-check('цены 5 / 25 / 75 / 150 руб.', info.map(o => o.price).join() === '5,25,75,150');
+check('цены 4 / 15 / 35 / 80 руб.', info.map(o => o.price).join() === '4,15,35,80');
 check('у новых блоков свои цвета', new Set(SPECIAL.map(k => run(`BLOCK_COLORS[BLOCK_TYPES.${k}]`))).size === 4 &&
     SPECIAL.every(k => !run(`BIOMES.some(b => b.rock === BLOCK_COLORS[BLOCK_TYPES.${k}] || b.cave === BLOCK_COLORS[BLOCK_TYPES.${k}])`)));
 
@@ -111,15 +111,15 @@ console.log('Рюкзак и продажа');
 setup('STONE');
 run('addToBackpack(BLOCK_TYPES.COAL); addToBackpack(BLOCK_TYPES.COAL); addToBackpack(BLOCK_TYPES.SILVER); addToBackpack(BLOCK_TYPES.EMERALD); addToBackpack(BLOCK_TYPES.PLATINUM);');
 check('новая руда занимает место в рюкзаке', run('backpackCount()') === 5);
-check('стоимость считается: 5+5+25+75+150 = 260', run('backpackValue()') === 260);
+check('стоимость считается: 4+4+15+35+80 = 138', run('backpackValue()') === 138);
 run('player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; sellBackpack();');
-check('лавка покупает по этим ценам', run('stats.money') === 260 && run('backpackCount()') === 0);
+check('лавка покупает по этим ценам', run('stats.money') === 138 && run('backpackCount()') === 0);
 setup('COAL');
 run('for (let i = 0; i < BACKPACK_CAPACITY; i++) addToBackpack(BLOCK_TYPES.COAL);');
 check('20 угля заполняют рюкзак: ещё уголь не берётся', run('addToBackpack(BLOCK_TYPES.COAL)') === 'full');
 run('dig()');
 check('при полном рюкзаке понятное сообщение', notes.some(n => n.includes('Нет места') && n.includes('уголь')));
-check('полный рюкзак угля — 100 руб., хватит на долг за лопату', run('backpackValue()') === 100);
+check('полный рюкзак угля — 80 руб., ровно долг за лопату', run('backpackValue()') === 80);
 
 console.log('Сохранения');
 setup('STONE');

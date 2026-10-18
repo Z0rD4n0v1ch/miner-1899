@@ -57,7 +57,7 @@ function shaft(depth = 100, top = 20) {
 }
 function ladderColumn(from, to) { run(`for (let y = ${from}; y <= ${to}; y++) world[y][50] = BLOCK_TYPES.LADDER;`); }
 function sim(seconds, keysObj, hz = 60) {
-    run(`keys = ${JSON.stringify(keysObj)}; for (let i = 0; i < ${Math.round(seconds * hz)}; i++) { updatePlayer(${1 / hz}); updateHazards(${1 / hz}); } keys = {};`);
+    run(`keys = ${JSON.stringify(keysObj)}; for (let i = 0; i < ${Math.round(seconds * hz)}; i++) { updatePlayer(${1 / hz}); updateHazards(${1 / hz}); updateCage(${1 / hz}); } keys = {};`);
 }
 const y = () => run('player.y'), x = () => run('player.x');
 
@@ -169,28 +169,42 @@ check('не у края — не тратится', run('deployRope()') === 0 &&
 console.log('Клеть');
 shaft(5);
 check('у поверхности клеть не нужна', run('openCage()') === false && run('gameState.paused') === false);
-check('цена: 5 + 1 руб. за 10 м (500 м → 55)', run('cageCost(500)') === 55 && run('cageCost(788)') === 84);
-shaft(500); run('stats.money = 100; addToBackpack(BLOCK_TYPES.EMERALD); addToBackpack(BLOCK_TYPES.GOLD);');
+check('цена: 10 + 1 руб. за 5 м (500 м → 110)', run('cageCost(500)') === 110 && run('cageCost(300)') === 70);
+check('ждать: секунда на 10 м (500 м → 50 с)', run('cageWait(500)') === 50);
+shaft(500); run('stats.money = 200; addToBackpack(BLOCK_TYPES.EMERALD); addToBackpack(BLOCK_TYPES.GOLD);');
 press('KeyC');
 check('C открывает окно клети, игра на паузе', run('gameState.paused') === true && els.cageModal.classList.contains('active'));
-check('в окне цена и кнопка', els.cageInfo.innerHTML.includes('55 руб.') && els.cageInfo.innerHTML.includes('rideCage()'));
+check('в окне цена, ожидание и кнопка «Вызвать»', els.cageInfo.innerHTML.includes('110 руб.') && els.cageInfo.innerHTML.includes('50 с') && els.cageInfo.innerHTML.includes('callCage()'));
 press('Escape');
 check('ESC закрывает', run('gameState.paused') === false && !els.cageModal.classList.contains('active'));
-run('openCage(); rideCage();');
-check('поднялся: у лавки на поверхности', run('player.y') < run('SURFACE_Y') && run('isAtShop()'));
-check('заплатил 55', run('stats.money') === 45);
+run('openCage(); callCage();');
+check('вызвал — окно закрыто, клеть в пути, деньги пока не списаны', run('gameState.paused') === false && run('cageCall !== null') && run('stats.money') === 200);
+check('второй вызов, пока едет, не принимается', run('openCage()') === false);
+sim(25, {});
+check('через 25 с ещё внизу', run('player.y') > run('SURFACE_Y'));
+sim(26, {});
+check('через 50 с — наверху у лавки', run('player.y') < run('SURFACE_Y') && run('isAtShop()'));
+check('заплатил 110 по прибытии', run('stats.money') === 90);
 check('рюкзак при себе', run('backpackCount()') === 2);
 run('checkShop()');
-check('и сразу продал его в лавке', run('backpackCount()') === 0 && run('stats.money') === 45 + 85);
+check('и сразу продал его в лавке', run('backpackCount()') === 0 && run('stats.money') === 90 + 35 + 8);
+shaft(300); run('stats.money = 200; openCage(); callCage();');
+sim(0.5, { KeyW: true }); sim(1, {});
+check('сдвинулся — вызов сорван, остался внизу', run('cageCall') === null && run('player.y') > run('SURFACE_Y') && notes.some(n => n.includes('сдвинулся')));
+check('деньги не списаны', run('stats.money') === 200);
+shaft(300); run('stats.money = 200; openCage(); callCage(); damage(5, "тест");'); sim(0.1, {});
+check('ранило — вызов сорван', run('cageCall') === null && notes.some(n => n.includes('ранило')));
 shaft(300);
 run('openCage()');
-check('без денег — подъём в долг', els.cageInfo.innerHTML.includes('В долг'));
-run('rideCage()');
-check('долг — двойная цена (35 → 70)', run('debt') === 70 && run('player.y') < run('SURFACE_Y'));
+check('без денег — вызов в долг', els.cageInfo.innerHTML.includes('в долг'));
+run('callCage()'); sim(31, {});
+check('долг — двойная цена (70 → 140)', run('debt') === 140 && run('player.y') < run('SURFACE_Y'));
 shaft(300); run('debt = 10;');
 run('openCage()');
-check('с непогашенным долгом и без денег — нельзя', run('rideCage()') === false && run('player.y') > run('SURFACE_Y'));
+check('с непогашенным долгом и без денег — нельзя', run('callCage()') === false && run('player.y') > run('SURFACE_Y'));
 run('closeCage()');
+shaft(700); run('stats.money = 500;');
+check('на Огненном дне клеть не ходит', run('openCage()') === false && run('gameState.paused') === false && notes.some(n => n.includes('Огненное дно')));
 
 console.log('Лавка');
 shaft(); run('stats.money = 50; player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; openShop();');
@@ -204,7 +218,7 @@ run('closeShop()');
 console.log('Сохранения и смерть');
 shaft(); run('ladders = 12; ropes = 3; world[B][50] = BLOCK_TYPES.LADDER; world[B - 1][50] = BLOCK_TYPES.ROPE;');
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
-check('SAVE_VERSION = 6', run('SAVE_VERSION') === 6 && save.version === 6);
+check('SAVE_VERSION = 7', run('SAVE_VERSION') === 7 && save.version === 7);
 run('ladders = 0; ropes = 0; world[B][50] = BLOCK_TYPES.AIR; world[B - 1][50] = BLOCK_TYPES.AIR;');
 run(`loadSaveData(${JSON.stringify(save)})`);
 check('снаряжение восстанавливается', run('ladders') === 12 && run('ropes') === 3);
