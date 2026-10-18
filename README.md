@@ -4,7 +4,7 @@
 
 Слева — сохранения и радио, в центре — игра, справа — статистика и подсказки.
 
-**Играть онлайн:** [https://z0rd4n0v1ch.github.io/1899.github.io/play/](https://z0rd4n0v1ch.github.io/1899/play/) — или скачай `miner-1899.html` и открой в браузере.
+**Играть онлайн:** [Сайт](https://z0rd4n0v1ch.github.io/1899/play/) — или скачай `miner-1899.html` и открой в браузере.
 
 ![Общий вид игры](docs/screenshots/overview.png)
 
