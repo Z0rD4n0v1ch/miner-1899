@@ -980,7 +980,7 @@
     <div id="controls">
         <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
         <p><span class="key">Shift</span> - Бег</p>
-        <p><span class="key">Пробел</span> (удерживать) - Копать блок перед собой</p>
+        <p><span class="key">Пробел</span> (удерживать) - Копать блок перед собой; с <span class="key">S</span> — вниз, с <span class="key">W</span> — вверх (над головой и вверх-вперёд: так вырубаются ступеньки, на них запрыгиваешь)</p>
         <p><span class="key">E</span> (<span class="key">У</span>) у лавки - Купить инструменты</p>
         <p><span class="key">Q</span> (<span class="key">Й</span>) - Поставить лестницу, <span class="key">W</span>/<span class="key">S</span> - лезть</p>
         <p><span class="key">R</span> (<span class="key">К</span>) - Спустить верёвку в колодец перед собой</p>
@@ -1882,6 +1882,13 @@
         // Ожидание клети: игрок должен стоять на месте; движение или урон — вызов сорван
         let cageCall = null;    // { left, x, y, damageAt }
 
+        // Клеть в долг можно и при уже взятом долге, пока общий долг не больше DEBT_LIMIT:
+        // иначе, взяв лопату в долг и оставшись без лестниц, можно застрять в шахте
+        const DEBT_LIMIT = 300;
+        function cageCreditOk(cost) {
+            return debt + cost * DEBT_MULT <= DEBT_LIMIT;
+        }
+
         function cageBlocked() {
             return BIOMES[biomeIndexAt(currentDepth())].hazard === 'жар';
         }
@@ -1890,7 +1897,7 @@
             const depth = currentDepth();
             if (depth < CAGE_MIN_DEPTH || cageBlocked()) return false;
             const cost = cageCost(depth);
-            if (stats.money < cost && debt > 0) return false;
+            if (stats.money < cost && !cageCreditOk(cost)) return false;
             cageCall = { left: cageWait(depth), x: player.x, y: player.y, damageAt: lastDamageAt };
             closeCage();
             showNotification(`⬆️ Клеть спускается: ${cageCall.left} с. Стой на месте!`);
@@ -1938,15 +1945,17 @@
             let action;
             if (stats.money >= cost) {
                 action = `<button class="btn" onclick="callCage()">Вызвать за ${cost} руб.</button>`;
-            } else if (debt === 0) {
+            } else if (cageCreditOk(cost)) {
                 action = `<button class="btn" onclick="callCage()">Вызвать в долг, вернуть ${cost * DEBT_MULT} руб.</button>`;
             } else {
                 action = `<button class="btn" disabled>Нужно ${cost} руб.</button>`;
             }
+            const stuckHint = stats.money < cost && !cageCreditOk(cost)
+                ? `<p>Долг не может быть больше ${DEBT_LIMIT} руб. Выбраться можно и без клети: <b>W + пробел</b> копает вверх — над головой и вверх-вперёд; на получившуюся ступеньку запрыгни и копай дальше.</p>` : '';
             box.innerHTML = `<p>Глубина ${depth} м. Подъём клетью — ${cost} руб.</p>
                 <p>Клеть спустится за <b>${wait} с</b>. Всё это время стой на месте: сдвинешься или тебя ранят — вызов сорвётся. Платишь, когда клеть пришла.</p>
                 <p>Рюкзак поднимется с тобой; наверху клеть останавливается у лавки.</p>
-                <p>У тебя: ${stats.money} руб.${debt > 0 ? ` · долг: ${debt} руб.` : ''}</p>
+                <p>У тебя: ${stats.money} руб.${debt > 0 ? ` · долг: ${debt} руб.` : ''}</p>${stuckHint}
                 <div class="modal-buttons">${action}
                 <button class="btn btn-secondary" onclick="closeCage()">Отмена</button></div>`;
             document.getElementById('cageModal').classList.add('active');
@@ -1965,9 +1974,9 @@
             if (stats.money >= cost) {
                 stats.money -= cost;
                 showNotification(`⬆️ Клеть подняла тебя с ${depth} м за ${cost} руб.`);
-            } else if (debt === 0) {
-                debt = cost * DEBT_MULT;
-                showNotification(`⬆️ Подъём в долг: вернёшь ${debt} руб. с выручки`);
+            } else if (cageCreditOk(cost)) {
+                debt += cost * DEBT_MULT;
+                showNotification(`⬆️ Подъём в долг: долг теперь ${debt} руб., вернёшь с выручки`);
             } else {
                 return false;
             }
@@ -2042,7 +2051,8 @@
             }
 
             // на лестнице и на её верхней ступеньке W — это «лезть», а не прыжок
-            if ((keys['KeyW'] || keys['ArrowUp']) && player.onGround &&
+            // с зажатым пробелом W — это «копать вверх», а не прыжок
+            if ((keys['KeyW'] || keys['ArrowUp']) && player.onGround && !keys['Space'] &&
                 !climbAt(player.x, player.y) && !climbTopBelow(player.x, player.y + 1)) {
                 player.vy = -JUMP_SPEED * jumpFactor();
                 player.onGround = false;
@@ -2150,7 +2160,8 @@
             }
 
             let dy = 0;
-            if (up) dy = -base * (shift ? CLIMB_SPRINT : 1);
+            if (keys['Space']) dy = 0;                 // с пробелом W/S — прицел копания, а не лазанье
+            else if (up) dy = -base * (shift ? CLIMB_SPRINT : 1);
             else if (down) dy = base * (shift ? SLIDE_MULT : 1);
             if (dy === 0) return;
             let newY = player.y + dy * dt;
@@ -3362,6 +3373,19 @@
             if (keys['KeyS'] || keys['ArrowDown']) {
                 return { x: Math.floor(player.x + PLAYER_W / 2), y: Math.floor(player.y + 1) };
             }
+            // W + пробел — копать вверх: над головой, потом вверх-вперёд и ещё на блок выше.
+            // Получается ступенька с проходом высотой в два блока — на неё запрыгиваешь
+            // (W) и идёшь дальше. Так из любой глубины можно выбраться без лестниц.
+            if (keys['KeyW'] || keys['ArrowUp']) {
+                const row = Math.floor(player.y + 0.5) - 1;
+                const fx = player.direction > 0 ? Math.floor(player.x + PLAYER_W) + 1 : Math.floor(player.x) - 1;
+                const solid = (x, y) => { const b = getBlock(x, y); return b !== BLOCK_TYPES.AIR && b !== BLOCK_TYPES.LAVA && !isClimbable(b) && b !== BLOCK_TYPES.BEDROCK; };
+                const cx = Math.floor(player.x + PLAYER_W / 2);
+                if (solid(cx, row)) return { x: cx, y: row };
+                if (solid(fx, row)) return { x: fx, y: row };
+                if (solid(fx, row - 1)) return { x: fx, y: row - 1 };
+                return { x: fx, y: row };
+            }
             return {
                 x: player.direction > 0 ? Math.floor(player.x + PLAYER_W) + 1 : Math.floor(player.x) - 1,
                 y: Math.floor(player.y + 0.5)
@@ -3449,7 +3473,7 @@
         // Копая вниз (S), лестницу и верёвку под собой не снимаем — иначе, спускаясь
         // по своей же лестнице, легко разобрать её. Снимают их, встав рядом.
         function climbBlockedDown(block) {
-            return isClimbable(block) && !!(keys['KeyS'] || keys['ArrowDown']);
+            return isClimbable(block) && !!(keys['KeyS'] || keys['ArrowDown'] || keys['KeyW'] || keys['ArrowUp']);
         }
 
         // Разрушить блок и получить за него очки и руду
