@@ -37,7 +37,7 @@ function boot(opts = {}) {
         Audio: class { addEventListener() {} play() { return Promise.resolve(); } pause() {} removeAttribute() {} load() {} },
         requestAnimationFrame() {}, setInterval() {}, setTimeout: (f, ms) => timers.push(f), clearTimeout() {},
         confirm: () => (opts.confirm === undefined ? false : opts.confirm),
-        console: { log() {}, warn() {}, error() {} }, Date, Math, JSON, Object, Proxy, Number, Set, Map, Promise, String, Array
+        console: { log() {}, warn() {}, error() {} }, Date, Math, JSON, Object, Proxy, Number, Set, Map, Promise, String, Array, URL
     };
     vm.createContext(sb); vm.runInContext(script, sb);
     return { run: c => vm.runInContext(c, sb), notes, els, handlers, docHandlers, timers, store, texts, fills, sb };
@@ -158,13 +158,13 @@ check('автосохранение не падает и не засыпает �
 
 console.log('11–13. Телефон');
 g = boot({ search: '?touch=1' });
-g.run('radio.on = true; radioSetStatus("live"); updateCamera(); render();');
+g.run('radioAddStation("Тест", "https://example.com/stream"); radio.on = true; radioSetStatus("live"); updateCamera(); render();');
 const badge = g.texts.find(t => String(t[0]).startsWith('♪'));
 check('значок радио на телефоне — слева сверху, не под кнопками', badge && badge[1] === 10 && badge[2] < 100);
 g.run('player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; updateCamera(); render();');
 check('у лавки подсказка про кнопку «Лавка»', g.texts.some(t => t[0] === '«Лавка» — инструменты'));
 const desk = boot();
-desk.run('radio.on = true; radioSetStatus("live"); player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; updateCamera(); render();');
+desk.run('radioAddStation("Тест", "https://example.com/stream"); radio.on = true; radioSetStatus("live"); player.x = SHOP_X + 1; player.y = SURFACE_Y - 1; updateCamera(); render();');
 check('на компьютере — по-прежнему «E — инструменты» и значок справа внизу',
     desk.texts.some(t => t[0] === 'E — инструменты') && desk.texts.find(t => String(t[0]).startsWith('♪'))[1] > 400);
 check('на телефоне уведомления ниже сводки', (() => { g.run('document.body.classList.add("touch"); showNotification("x")'); return parseInt(g.notes[g.notes.length - 1].style.top) === 44; })());

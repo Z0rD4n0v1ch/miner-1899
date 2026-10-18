@@ -128,7 +128,118 @@
         }
 
         /* Радио */
+        #leftPanel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 806px;
+        }
+
+        #leftPanel > div {
+            margin-top: 0;
+        }
+
+        /* панель радио скрыта, пока её не открыли клавишей M */
         #radioPanel {
+            display: none;
+        }
+
+        #radioPanel.open {
+            display: block;
+        }
+
+        .radio-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .radio-x {
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .radio-manage {
+            margin-top: 10px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .radio-manage summary {
+            cursor: pointer;
+            color: #ffa500;
+            margin-bottom: 6px;
+        }
+
+        #radioList {
+            list-style: none;
+            margin-bottom: 8px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        #radioList li {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+
+        #radioList li.radio-empty {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .radio-pick {
+            flex: 1;
+            text-align: left;
+            background: #1a1a1a;
+            color: #ddd;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font: 13px 'Courier New', monospace;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #radioList li.current .radio-pick {
+            border-color: #ffa500;
+            color: #ffa500;
+        }
+
+        .radio-del {
+            background: #1a1a1a;
+            color: #ff6b6b;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 0 8px;
+            cursor: pointer;
+        }
+
+        .radio-manage input[type="text"],
+        .radio-manage input[type="url"] {
+            width: 100%;
+            margin-bottom: 6px;
+            padding: 6px 8px;
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            font: 13px 'Courier New', monospace;
+        }
+
+        .radio-note.error {
+            color: #ff6b6b;
+        }
+
+        #radioPanel.open {
             padding: 12px 15px;
             background: #2a2a2a;
             border: 2px solid #444;
@@ -173,6 +284,7 @@
 
         .radio-volume input {
             flex: 1;
+            min-width: 0;
             accent-color: #ffa500;
         }
 
@@ -501,6 +613,11 @@
             transform: none;
         }
         /* Широкий экран: идёт последним, чтобы перекрывать правила выше */
+        /* узкий экран: сначала игра, потом сохранения и радио, потом статистика */
+        #gameCanvas { order: 0; }
+        #leftPanel { order: 1; }
+        #sidebar { order: 2; }
+
         @media (min-width: 1100px) {
             #layout {
                 flex-direction: row;
@@ -508,10 +625,27 @@
                 align-items: flex-start;
             }
 
+            /* широкий экран: слева сохранения и радио, в центре игра, справа статистика */
+            #leftPanel { order: 0; width: 200px; flex-shrink: 0; max-height: calc(100vh - 80px); overflow-y: auto; }
+            #gameCanvas { order: 1; }
+            #sidebar { order: 2; }
+
+            #leftPanel #savePanel {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 10px;
+            }
+
+            #leftPanel #savePanel .btn {
+                margin: 0;
+                width: 100%;
+            }
+
             /* на большом мониторе холст растягивается на всю высоту окна,
                но оставляет место под панель справа */
             #gameCanvas {
-                height: min(calc(100vh - 80px), calc((100vw - 400px) * 0.75), 1200px);
+                height: min(calc(100vh - 80px), calc((100vw - 620px) * 0.75), 1200px);
                 width: auto;
                 max-width: none;
                 max-height: none;
@@ -595,6 +729,16 @@
             font-size: 13px;
         }
 
+        /* в полях ввода (станция радио, имя сохранения) текст должен выделяться и
+           печататься — иначе на iPhone в них нельзя ничего ввести */
+        body.touch input,
+        body.touch textarea {
+            -webkit-user-select: text;
+            user-select: text;
+            touch-action: manipulation;
+            font-size: 16px;   /* меньше 16px — iPhone приближает страницу при вводе */
+        }
+
         body.touch h1 {
             display: none;
         }
@@ -634,6 +778,27 @@
             overflow-y: auto;
             padding: 12px;
             background: rgba(20, 20, 20, 0.97);
+        }
+
+        /* телефон: панель слева не видна; сохранения — в меню ☰ (переносятся туда при
+           включении сенсорного режима), радио — плавающая панель поверх игры */
+        body.touch .radio-open-btn {
+            display: none;
+        }
+
+        body.touch #leftPanel {
+            width: 0;
+            height: 0;
+        }
+
+        body.touch #radioPanel.open {
+            position: fixed;
+            top: calc(44px + env(safe-area-inset-top, 0px));
+            left: 8px;
+            width: min(340px, calc(100vw - 16px));
+            max-height: calc(100vh - 260px);
+            overflow-y: auto;
+            z-index: 850;
         }
 
         body.touch.menu-open #menuClose {
@@ -713,6 +878,45 @@
 <body>
     <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.6.1</span></h1>
     <div id="layout">
+    <!-- Слева: сохранения и радио (радио открывается клавишей M) -->
+    <aside id="leftPanel">
+    <div id="savePanel">
+        <button class="btn" onclick="saveGame()">💾 Сохранить</button>
+        <button class="btn" onclick="loadGame()">📂 Загрузить</button>
+        <button class="btn btn-secondary" onclick="exportSave()">⬇️ Экспорт</button>
+        <button class="btn btn-secondary" onclick="importSave()">⬆️ Импорт</button>
+        <button class="btn btn-danger" onclick="newGame()">🆕 Новая игра</button>
+        <button class="btn btn-secondary radio-open-btn" onclick="radioPanelToggle()">📻 Радио (M)</button>
+    </div>
+
+    <div id="radioPanel">
+        <div class="radio-head">
+            <span class="stat-label">Радио (M)</span>
+            <button class="radio-x" onclick="radioPanelToggle(false)" aria-label="Скрыть радио">✕</button>
+        </div>
+        <div id="radioStation">Станций нет</div>
+        <div id="radioStatus">добавь станцию в «Мои станции»</div>
+        <div class="radio-buttons">
+            <button class="btn btn-secondary" onclick="radioSwitch(-1)" aria-label="Предыдущая станция">◀</button>
+            <button class="btn" id="radioToggle" onclick="radioToggle()">▶ Вкл</button>
+            <button class="btn btn-secondary" onclick="radioSwitch(1)" aria-label="Следующая станция">▶</button>
+        </div>
+        <label class="radio-volume">Громк.
+            <input type="range" id="radioVolume" min="0" max="100" step="1" value="60" oninput="radioSetVolume(this.value)">
+        </label>
+        <details class="radio-manage">
+            <summary>Мои станции</summary>
+            <ul id="radioList"></ul>
+            <input type="text" id="radioName" placeholder="Название" maxlength="40" autocomplete="off">
+            <input type="url" id="radioUrl" placeholder="https://… адрес потока" maxlength="500" autocomplete="off">
+            <button class="btn btn-small" onclick="radioAddFromForm()">Добавить</button>
+            <div id="radioFormMsg" class="radio-note"></div>
+            <div class="radio-note">Адрес потока обычно есть на сайте станции, в разделе «слушать в плеере» (ссылка на .mp3, .aac или поток).</div>
+        </details>
+        <div class="radio-note">Подключается к станции только когда включено</div>
+    </div>
+    </aside>
+
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <aside id="sidebar">
@@ -757,7 +961,7 @@
         </div>
         <div class="stat">
             <div class="stat-label">Лестницы</div>
-            <div class="stat-value" id="ladders">5</div>
+            <div class="stat-value" id="ladders">10</div>
         </div>
         <div class="stat">
             <div class="stat-label">Верёвки</div>
@@ -773,29 +977,6 @@
         </div>
     </div>
 
-    <div id="savePanel">
-        <button class="btn" onclick="saveGame()">💾 Сохранить</button>
-        <button class="btn" onclick="loadGame()">📂 Загрузить</button>
-        <button class="btn btn-secondary" onclick="exportSave()">⬇️ Экспорт</button>
-        <button class="btn btn-secondary" onclick="importSave()">⬆️ Импорт</button>
-        <button class="btn btn-danger" onclick="newGame()">🆕 Новая игра</button>
-    </div>
-
-    <div id="radioPanel">
-        <div class="stat-label">Радио (M)</div>
-        <div id="radioStation">Ретро FM</div>
-        <div id="radioStatus">выключено</div>
-        <div class="radio-buttons">
-            <button class="btn btn-secondary" onclick="radioSwitch(-1)" aria-label="Предыдущая станция">◀</button>
-            <button class="btn" id="radioToggle" onclick="radioToggle()">▶ Вкл</button>
-            <button class="btn btn-secondary" onclick="radioSwitch(1)" aria-label="Следующая станция">▶</button>
-        </div>
-        <label class="radio-volume">Громк.
-            <input type="range" id="radioVolume" min="0" max="100" step="1" value="60" oninput="radioSetVolume(this.value)">
-        </label>
-        <div class="radio-note">Подключается к станции только когда включено</div>
-    </div>
-
     <div id="controls">
         <p><span class="key">WASD</span> или <span class="key">←↑→↓</span> - Движение</p>
         <p><span class="key">Shift</span> - Бег</p>
@@ -805,7 +986,7 @@
         <p><span class="key">R</span> (<span class="key">К</span>) - Спустить верёвку в колодец перед собой</p>
         <p><span class="key">C</span> (<span class="key">С</span>) - Клеть: платный подъём наверх</p>
         <p><span class="key">H</span> (<span class="key">Р</span>) - Лечиться: бинт или аптечка</p>
-        <p><span class="key">M</span> (<span class="key">Ь</span>) - Радио: включить или выключить</p>
+        <p><span class="key">M</span> (<span class="key">Ь</span>) - Радио: показать или скрыть панель (станции добавляешь сам)</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p id="debugHelp" style="display: none;"><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.</p>
@@ -3979,44 +4160,129 @@
         }
 
         // ============ РАДИО ============
-        // Онлайн-трансляции станций. Пока радио выключено, игра в сеть не обращается:
-        // проигрыватель создаётся и подключается к станции только по нажатию игрока.
-        // Станцию и громкость игра помнит (в браузере), но сама радио не включает.
-        const RADIO_STATIONS = [
-            { name: 'Радио Рекорд',        url: 'https://radiorecord.hostingradio.ru/rr_main96.aacp' },
-            { name: 'Рекорд Rock',         url: 'https://radiorecord.hostingradio.ru/rock96.aacp' },
-            { name: 'Рекорд Eurodance',    url: 'https://radiorecord.hostingradio.ru/eurodance96.aacp' },
-            { name: 'Рекорд Ambient',      url: 'https://radiorecord.hostingradio.ru/ambient96.aacp' },
-            { name: 'SomaFM Groove Salad', url: 'https://ice.somafm.com/groovesalad' },
-            { name: 'SomaFM Secret Agent', url: 'https://ice.somafm.com/secretagent' },
-            { name: 'SomaFM 80-е',         url: 'https://ice.somafm.com/u80s' },
-            { name: 'SomaFM Drone Zone',   url: 'https://ice.somafm.com/dronezone' }
-        ];
+        // Онлайн-трансляции станций, которые игрок добавляет сам: готовых станций нет,
+        // потому что в разных странах доступны разные. Пока радио выключено, игра в сеть
+        // не обращается: проигрыватель подключается к станции только по нажатию «Вкл».
+        // Список станций, выбранная станция и громкость хранятся в браузере.
         const RADIO_PREFS_KEY = 'miner_radio';
+        const RADIO_MAX_STATIONS = 30;
 
-        const radio = { audio: null, index: 0, volume: 0.6, on: false, status: 'off' };
+        const radio = { audio: null, stations: [], index: 0, volume: 0.6, on: false, status: 'off' };
+
+        function radioCurrent() {
+            return radio.stations[radio.index] || null;
+        }
 
         function radioLoadPrefs() {
             try {
                 const p = JSON.parse(localStorage.getItem(RADIO_PREFS_KEY) || '{}');
-                if (Number.isInteger(p.index) && p.index >= 0 && p.index < RADIO_STATIONS.length) radio.index = p.index;
+                if (Array.isArray(p.stations)) {
+                    radio.stations = p.stations
+                        .filter(s => s && typeof s.name === 'string' && typeof s.url === 'string' && radioCheckUrl(s.url) === null)
+                        .slice(0, RADIO_MAX_STATIONS)
+                        .map(s => ({ name: s.name.slice(0, 40), url: s.url }));
+                }
+                if (Number.isInteger(p.index) && p.index >= 0 && p.index < radio.stations.length) radio.index = p.index;
                 if (Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) radio.volume = p.volume;
             } catch (e) { /* испорченные настройки — берём по умолчанию */ }
         }
 
         function radioSavePrefs() {
-            try { localStorage.setItem(RADIO_PREFS_KEY, JSON.stringify({ index: radio.index, volume: radio.volume })); }
-            catch (e) { /* хранилище недоступно — не страшно */ }
+            safeSetItem(RADIO_PREFS_KEY, JSON.stringify({ stations: radio.stations, index: radio.index, volume: radio.volume }));
+        }
+
+        // null — адрес годится, иначе текст ошибки
+        function radioCheckUrl(url) {
+            let u;
+            try { u = new URL(url); } catch (e) { return 'это не похоже на адрес'; }
+            if (u.protocol !== 'https:' && u.protocol !== 'http:') return 'адрес должен начинаться с https://';
+            return null;
+        }
+
+        // Добавить станцию. Возвращает null или текст ошибки.
+        function radioAddStation(name, url) {
+            url = String(url || '').trim();
+            name = String(name || '').trim();
+            const err = radioCheckUrl(url);
+            if (err) return err;
+            if (radio.stations.some(s => s.url === url)) return 'такая станция уже есть';
+            if (radio.stations.length >= RADIO_MAX_STATIONS) return `не больше ${RADIO_MAX_STATIONS} станций`;
+            if (!name) name = new URL(url).hostname;
+            radio.stations.push({ name: name.slice(0, 40), url });
+            if (radio.stations.length === 1) radio.index = 0;
+            radioSavePrefs();
+            radioRenderList();
+            radioSetStatus(radio.status === 'error' ? 'off' : radio.status);
+            return null;
+        }
+
+        function radioRemoveStation(i) {
+            if (i < 0 || i >= radio.stations.length) return false;
+            if (radio.on && i === radio.index) radioStop();
+            radio.stations.splice(i, 1);
+            if (radio.index >= radio.stations.length) radio.index = Math.max(0, radio.stations.length - 1);
+            else if (i < radio.index) radio.index--;
+            radioSavePrefs();
+            radioRenderList();
+            radioSetStatus(radio.on ? radio.status : 'off');
+            return true;
+        }
+
+        function radioSelect(i) {
+            if (i < 0 || i >= radio.stations.length) return;
+            radio.index = i;
+            radioSavePrefs();
+            radioRenderList();
+            if (radio.on) radioPlay(); else radioSetStatus('off');
+        }
+
+        // Форма «добавить станцию» в панели
+        function radioAddFromForm() {
+            const nameEl = document.getElementById('radioName');
+            const urlEl = document.getElementById('radioUrl');
+            const err = radioAddStation(nameEl.value, urlEl.value);
+            const msg = document.getElementById('radioFormMsg');
+            if (err) {
+                msg.textContent = `Не добавлено: ${err}`;
+                msg.className = 'radio-note error';
+                return false;
+            }
+            msg.textContent = 'Станция добавлена';
+            msg.className = 'radio-note';
+            nameEl.value = '';
+            urlEl.value = '';
+            return true;
+        }
+
+        function radioRenderList() {
+            const list = document.getElementById('radioList');
+            if (!list || typeof list.appendChild !== 'function') return;
+            list.innerHTML = '';
+            if (!radio.stations.length) {
+                const li = document.createElement('li');
+                li.className = 'radio-empty';
+                li.textContent = 'Пока пусто — добавь станцию ниже';
+                list.appendChild(li);
+                return;
+            }
+            radio.stations.forEach((s, i) => {
+                const li = document.createElement('li');
+                li.className = i === radio.index ? 'current' : '';
+                li.innerHTML = `<button class="radio-pick" onclick="radioSelect(${i})" title="${escapeHtml(s.url)}">${i === radio.index ? '♪ ' : ''}${escapeHtml(s.name)}</button>
+                    <button class="radio-del" onclick="radioRemoveStation(${i})" aria-label="Удалить станцию">✕</button>`;
+                list.appendChild(li);
+            });
         }
 
         function radioSetStatus(status) {
             radio.status = status;
             const text = { off: 'выключено', connecting: 'подключение…', live: 'в эфире', error: 'станция недоступна' }[status];
             const st = document.getElementById('radioStatus');
-            st.textContent = text;
+            st.textContent = radio.stations.length ? text : 'добавь станцию в «Мои станции»';
             st.classList.toggle('live', status === 'live');
             st.classList.toggle('error', status === 'error');
-            document.getElementById('radioStation').textContent = RADIO_STATIONS[radio.index].name;
+            const cur = radioCurrent();
+            document.getElementById('radioStation').textContent = cur ? cur.name : 'Станций нет';
             document.getElementById('radioToggle').textContent = radio.on ? '■ Выкл' : '▶ Вкл';
             const tb = document.getElementById('tRadio');
             if (tb && tb.classList) tb.classList.toggle('on', radio.on);
@@ -4030,19 +4296,26 @@
             a.addEventListener('waiting', () => { if (radio.on) radioSetStatus('connecting'); });
             a.addEventListener('error', () => {
                 if (!radio.on) return;
+                const cur = radioCurrent();
                 radioStop(false);
                 radioSetStatus('error');
-                showNotification(`📻 ${RADIO_STATIONS[radio.index].name} сейчас недоступна — попробуй другую станцию`);
+                showNotification(`📻 ${cur ? cur.name : 'Станция'} сейчас недоступна — проверь адрес или выбери другую`);
             });
             radio.audio = a;
             return a;
         }
 
         function radioPlay() {
+            const cur = radioCurrent();
+            if (!cur) {
+                radioPanelToggle(true);
+                showNotification('📻 Сначала добавь станцию в «Мои станции»');
+                return;
+            }
             const a = radioEnsureAudio();
             radio.on = true;
             a.volume = radio.volume;
-            a.src = RADIO_STATIONS[radio.index].url;
+            a.src = cur.url;
             radioSetStatus('connecting');
             const p = a.play();
             if (p && typeof p.catch === 'function') {
@@ -4070,9 +4343,8 @@
         }
 
         function radioSwitch(step) {
-            radio.index = (radio.index + step + RADIO_STATIONS.length) % RADIO_STATIONS.length;
-            radioSavePrefs();
-            if (radio.on) radioPlay(); else radioSetStatus(radio.status === 'error' ? 'off' : radio.status);
+            if (!radio.stations.length) return;
+            radioSelect((radio.index + step + radio.stations.length) % radio.stations.length);
         }
 
         function radioSetVolume(v) {
@@ -4081,12 +4353,21 @@
             radioSavePrefs();
         }
 
+        // Панель радио: клавиша M (Ь) или кнопка «Радио» на телефоне показывают и прячут её
+        function radioPanelToggle(open) {
+            const panel = document.getElementById('radioPanel');
+            const show = open === undefined ? !panel.classList.contains('open') : open;
+            panel.classList.toggle('open', show);
+            return show;
+        }
+
         // Значок поверх игры, пока играет радио
         function renderRadioBadge() {
-            if (!radio.on) return;
+            const cur = radioCurrent();
+            if (!radio.on || !cur) return;
             const scale = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
             const size = Math.round(12 * scale);
-            const text = `♪ ${RADIO_STATIONS[radio.index].name}${radio.status === 'connecting' ? '…' : ''}`;
+            const text = `♪ ${cur.name}${radio.status === 'connecting' ? '…' : ''}`;
             ctx.save();
             ctx.font = `${size}px "Courier New", monospace`;
             const w = ctx.measureText ? ctx.measureText(text).width : text.length * size * 0.6;
@@ -4101,6 +4382,7 @@
         }
 
         radioLoadPrefs();
+        radioRenderList();
         radioSetStatus('off');
         document.getElementById('radioVolume').value = Math.round(radio.volume * 100);
 
@@ -4110,6 +4392,8 @@
         const ONE_SHOT_KEYS = new Set(['KeyE', 'KeyQ', 'KeyR', 'KeyC', 'KeyH', 'KeyM', 'Backquote', 'KeyG', 'Escape']);
 
         function onKeyDown(e) {
+            // набор текста в полях (название станции, адрес, имя сохранения) — не управление
+            if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.code !== 'Enter' && e.code !== 'Escape') return;
             keys[e.code] = true;
             if (e.repeat && ONE_SHOT_KEYS.has(e.code)) return;
 
@@ -4130,7 +4414,7 @@
             if (e.code === 'KeyR' && !gameState.paused) deployRope();
             if (e.code === 'KeyC' && !gameState.paused) openCage();
             if (e.code === 'KeyH' && !gameState.paused) heal();
-            if (e.code === 'KeyM' && !gameState.paused) radioToggle();
+            if (e.code === 'KeyM' && !gameState.paused) radioPanelToggle();
 
             if (e.code === 'Escape') {
                 e.preventDefault();
@@ -4176,6 +4460,12 @@
             if (touchMode) return;
             touchMode = true;
             document.body.classList.add('touch');
+            // кнопки сохранений — в меню ☰, сразу под «Вернуться в игру»
+            const savePanel = document.getElementById('savePanel');
+            const menuClose = document.getElementById('menuClose');
+            if (menuClose && menuClose.parentNode && menuClose.parentNode.insertBefore) {
+                menuClose.parentNode.insertBefore(savePanel, menuClose.nextSibling);
+            }
             fitCanvasForDevice();
         }
 
