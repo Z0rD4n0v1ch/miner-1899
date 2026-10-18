@@ -479,6 +479,54 @@
             font-size: 12px;
         }
 
+        /* настройки */
+        .setting {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        .setting-label {
+            color: #ffa500;
+            margin-bottom: 8px;
+        }
+
+        .setting-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .setting-options .btn {
+            margin: 0;
+            padding: 8px 6px;
+            font-size: 12px;
+        }
+
+        .setting-options .btn.chosen {
+            background: #ffa500;
+            color: #000;
+        }
+
+        .setting-check {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            cursor: pointer;
+            line-height: 1.4;
+        }
+
+        .setting-check input {
+            margin-top: 3px;
+            accent-color: #ffa500;
+        }
+
+        .setting-note {
+            color: #888;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
         .notification {
             position: fixed;
             top: 20px;
@@ -627,6 +675,9 @@
 
             /* широкий экран: слева сохранения и радио, в центре игра, справа статистика */
             #leftPanel { order: 0; width: 200px; flex-shrink: 0; max-height: calc(100vh - 80px); overflow-y: auto; }
+            /* настройка «поменять панели местами» */
+            body.swap-panels #leftPanel { order: 2; }
+            body.swap-panels #sidebar { order: 0; }
             #gameCanvas { order: 1; }
             #sidebar { order: 2; }
 
@@ -887,6 +938,7 @@
         <button class="btn btn-secondary" onclick="importSave()">⬆️ Импорт</button>
         <button class="btn btn-danger" onclick="newGame()">🆕 Новая игра</button>
         <button class="btn btn-secondary radio-open-btn" onclick="radioPanelToggle()">📻 Радио (M)</button>
+        <button class="btn btn-secondary" onclick="openSettings()">⚙️ Настройки</button>
     </div>
 
     <div id="radioPanel">
@@ -989,6 +1041,7 @@
         <p><span class="key">H</span> (<span class="key">Р</span>) - Лечиться: бинт или аптечка</p>
         <p><span class="key">M</span> (<span class="key">Ь</span>) - Радио: показать или скрыть панель (станции добавляешь сам)</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
+        <p>⚙️ «Настройки» на панели сохранений: где показывать уведомления, поменять панели местами</p>
         <p id="debugHelp" style="display: none;"><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.</p>
         <p>Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.</p>
@@ -1109,6 +1162,35 @@
             <button class="tbtn" data-key="KeyH" style="grid-column: 1; grid-row: 2;">Лечить</button>
             <button class="tbtn" data-key="KeyC" style="grid-column: 1; grid-row: 3;">Клеть</button>
             <button class="tbtn" id="tDig" data-key="Space" data-hold>⛏</button>
+        </div>
+    </div>
+
+    <!-- Настройки -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">⚙️ Настройки</div>
+            <div class="setting">
+                <div class="setting-label">Где показывать уведомления</div>
+                <div class="setting-options" id="notifyOptions">
+                    <button class="btn btn-secondary" data-notify="top-right" onclick="setNotifyPosition('top-right')">↗ справа сверху</button>
+                    <button class="btn btn-secondary" data-notify="top-left" onclick="setNotifyPosition('top-left')">↖ слева сверху</button>
+                    <button class="btn btn-secondary" data-notify="top-center" onclick="setNotifyPosition('top-center')">↑ сверху по центру</button>
+                    <button class="btn btn-secondary" data-notify="bottom-right" onclick="setNotifyPosition('bottom-right')">↘ справа снизу</button>
+                    <button class="btn btn-secondary" data-notify="bottom-left" onclick="setNotifyPosition('bottom-left')">↙ слева снизу</button>
+                    <button class="btn btn-secondary" data-notify="bottom-center" onclick="setNotifyPosition('bottom-center')">↓ снизу по центру</button>
+                </div>
+                <button class="btn btn-small btn-secondary" onclick="showNotification('🔔 Так будут выглядеть уведомления')">Показать пример</button>
+            </div>
+            <div class="setting">
+                <label class="setting-check">
+                    <input type="checkbox" id="swapPanels" onchange="setSwapPanels(this.checked)">
+                    Поменять панели местами: статистика — слева, сохранения, радио и настройки — справа
+                </label>
+                <div class="setting-note">Для широкого экрана. На узком экране и на телефоне панели не по бокам, и эта настройка не действует.</div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeSettings()">Готово</button>
+            </div>
         </div>
     </div>
 
@@ -4359,12 +4441,74 @@
         const MAX_NOTIFICATIONS = 4;
         const liveNotifications = [];
 
+        // ---- Настройки игрока (хранятся в браузере, не в сохранениях) ----
+        const SETTINGS_KEY = 'miner_settings';
+        const NOTIFY_POSITIONS = ['top-right', 'top-left', 'top-center', 'bottom-right', 'bottom-left', 'bottom-center'];
+        const settings = { notify: 'top-right', swap: false };
+
+        function loadSettings() {
+            try {
+                const st = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+                if (NOTIFY_POSITIONS.includes(st.notify)) settings.notify = st.notify;
+                settings.swap = st.swap === true;
+            } catch (e) { /* испорченные настройки — по умолчанию */ }
+        }
+
+        function saveSettings() {
+            safeSetItem(SETTINGS_KEY, JSON.stringify(settings));
+        }
+
+        function applySettings() {
+            if (document.body && document.body.classList) document.body.classList.toggle('swap-panels', settings.swap);
+            const box = document.getElementById('swapPanels');
+            if (box) box.checked = settings.swap;
+            if (document.querySelectorAll) {
+                document.querySelectorAll('#notifyOptions [data-notify]').forEach(b =>
+                    b.classList.toggle('chosen', b.dataset.notify === settings.notify));
+            }
+            restackNotifications();
+        }
+
+        function setNotifyPosition(pos) {
+            if (!NOTIFY_POSITIONS.includes(pos)) return false;
+            settings.notify = pos;
+            saveSettings();
+            applySettings();
+            return true;
+        }
+
+        function setSwapPanels(on) {
+            settings.swap = !!on;
+            saveSettings();
+            applySettings();
+        }
+
+        function openSettings() {
+            gameState.paused = true;
+            applySettings();
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+            gameState.paused = false;
+        }
+
+        // Расставить уведомления стопкой у выбранного края. На телефоне — только сверху
+        // (внизу кнопки) и ниже сводки здоровья и глубины.
         function restackNotifications() {
             const onPhone = document.body && document.body.classList && document.body.classList.contains('touch');
-            let top = onPhone ? 44 : 20;
+            let [vert, horiz] = settings.notify.split('-');
+            if (onPhone) vert = 'top';
+            let offset = vert === 'top' && onPhone ? 44 : 20;
             for (const n of liveNotifications) {
-                n.style.top = top + 'px';
-                top += (n.offsetHeight || 50) + 8;
+                const st = n.style;
+                st.top = vert === 'top' ? offset + 'px' : 'auto';
+                st.bottom = vert === 'bottom' ? offset + 'px' : 'auto';
+                st.left = horiz === 'left' ? '20px' : horiz === 'center' ? '50%' : 'auto';
+                st.right = horiz === 'right' ? (onPhone ? '8px' : '20px') : 'auto';
+                st.transform = horiz === 'center' ? 'translateX(-50%)' : 'none';
+                offset += (n.offsetHeight || 50) + 8;
             }
         }
 
@@ -4693,6 +4837,7 @@
                 e.preventDefault();
                 if (gameState.paused) {
                     closeCage();
+                    closeSettings();
                     closeShop();
                     closeSaveModal();
                     closeLoadModal();
@@ -4820,6 +4965,8 @@
         });
 
         if (DEBUG_ALLOWED) document.getElementById('debugHelp').style.display = '';
+        loadSettings();
+        applySettings();
 
         // Автосохранение каждые 30 секунд
         setInterval(autoSave, AUTOSAVE_INTERVAL);
