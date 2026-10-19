@@ -5,7 +5,7 @@
 # Использование:
 #   ./sync.sh doctor            проверить готовность (запусти первым)
 #   ./sync.sh init              первая загрузка проекта на GitHub
-#   ./sync.sh push [сообщение]  закоммитить правки и отправить
+#   ./sync.sh push [сообщение]  закоммитить правки и отправить (правки с GitHub забираются сами)
 #   ./sync.sh release 1.2.0     выпустить версию: bump + тег + push
 #   ./sync.sh pull              забрать изменения с GitHub
 #   ./sync.sh status            что происходит: ветка, коммиты, теги
@@ -272,6 +272,45 @@ cmd_init() {
     fi
 }
 
+# ---------- правки с GitHub ----------
+
+# Забрать коммиты, которые есть на GitHub, но нет здесь (например, правки README через
+# сайт GitHub), и поставить свои коммиты поверх. Вызывается перед отправкой, когда
+# всё уже закоммичено. При конфликте ничего не ломает: объединение отменяется,
+# твои коммиты остаются как были.
+sync_from_remote() {
+    has_origin || return 0
+    git fetch -q origin "$BRANCH" || { warn "не удалось связаться с GitHub — проверь интернет"; return 1; }
+    local behind
+    behind="$(git rev-list --count "HEAD..origin/$BRANCH" 2>/dev/null || echo 0)"
+    [ "$behind" = "0" ] && return 0
+
+    info "на GitHub есть правки, которых нет у тебя ($behind) — забираю:"
+    git log --oneline "HEAD..origin/$BRANCH" | sed 's/^/    /'
+    local out
+    if out="$(git pull -q --rebase origin "$BRANCH" 2>&1)"; then
+        ok "правки с GitHub забраны, твои коммиты — поверх"
+        return 0
+    fi
+
+    local files
+    files="$(git diff --name-only --diff-filter=U 2>/dev/null | sed 's/^/    /')"
+    git rebase --abort 2>/dev/null || true
+    # не конфликт, а что-то другое — показываем, что сказал Git
+    if [ -z "$files" ]; then
+        printf '%s\n' "$out"
+        die "Не удалось забрать правки с GitHub (см. выше). Твои коммиты на месте."
+    fi
+    err "Правки с GitHub и твои меняют одни и те же места:"
+    [ -n "$files" ] && printf '%s\n' "$files"
+    printf '\n  Ничего не потеряно: объединение отменено, твой коммит на месте, на GitHub ничего не ушло.\n'
+    printf '  Что делать — пришли этот вывод Claude, или реши сам:\n'
+    printf '    git pull --rebase origin %s   # Git остановится на конфликте\n' "$BRANCH"
+    printf '    # поправь файлы, затем: git add <файл> && git rebase --continue\n'
+    printf '    ./sync.sh push\n'
+    exit 1
+}
+
 # ---------- push ----------
 
 cmd_push() {
@@ -297,6 +336,8 @@ cmd_push() {
         die "origin не привязан. Сначала выполни: ./sync.sh init"
     fi
 
+    sync_from_remote
+
     info "отправляю в origin/$BRANCH..."
     git push origin "$BRANCH"
     ok "отправлено"
@@ -308,13 +349,10 @@ cmd_pull() {
     require_repo
     has_origin || die "origin не привязан. Сначала: ./sync.sh init"
 
-    if [ -n "$(git status --porcelain)" ]; then
-        die "Есть незакоммиченные правки — сначала ./sync.sh push, иначе pull перетрёт их."
-    fi
-
     head_ "Получение изменений"
     git fetch origin --prune
-    git pull --rebase origin "$BRANCH"
+    # --autostash: незакоммиченные правки на время откладываются и возвращаются обратно
+    git pull --rebase --autostash origin "$BRANCH"
     ok "локальная копия обновлена"
 }
 
@@ -378,6 +416,9 @@ cmd_release() {
         info "незакоммиченных правок нет"
     fi
 
+    # 3½. правки с GitHub — до тега, чтобы тег встал на итоговый коммит
+    sync_from_remote
+
     # 4. тег
     git tag -a "$tag" -m "Release ${version}"
     ok "тег $tag создан"
@@ -405,7 +446,7 @@ cmd_help() {
     printf 'Запускать из папки проекта.\n\n'
     printf '  %s./sync.sh doctor%s            проверить готовность (git, ключи, доступ)\n' "$C_BOLD" "$C_OFF"
     printf '  %s./sync.sh init%s              первая загрузка на GitHub\n' "$C_BOLD" "$C_OFF"
-    printf '  %s./sync.sh push%s "сообщение"  закоммитить и отправить\n' "$C_BOLD" "$C_OFF"
+    printf '  %s./sync.sh push%s "сообщение"  закоммитить и отправить (правки с GitHub — сами)\n' "$C_BOLD" "$C_OFF"
     printf '  %s./sync.sh release%s 1.2.0     выпустить версию: bump + тег + push\n' "$C_BOLD" "$C_OFF"
     printf '  %s./sync.sh pull%s              забрать изменения с GitHub\n' "$C_BOLD" "$C_OFF"
     printf '  %s./sync.sh status%s            ветка, коммиты, теги, расхождение\n' "$C_BOLD" "$C_OFF"
