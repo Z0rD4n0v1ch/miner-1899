@@ -1,4 +1,23 @@
 <!DOCTYPE html>
+<!--
+    Miner 1899 — 2D-игра про шахтёра
+    Copyright (C) 2026 Z0rD4n0v1ch
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+    Исходный код: https://github.com/Z0rD4n0v1ch/miner-1899
+-->
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -735,6 +754,16 @@
             font-size: 12px;
         }
 
+        .license-note {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #888;
+        }
+
+        .license-note a {
+            color: #c8a165;
+        }
+
         /* настройки */
         .setting {
             margin-bottom: 18px;
@@ -1193,7 +1222,7 @@
     </style>
 </head>
 <body>
-    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.7.1</span></h1>
+    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.7.0</span></h1>
     <div id="layout">
     <!-- Слева: сохранения и радио (радио открывается клавишей M) -->
     <aside id="leftPanel">
@@ -1351,6 +1380,7 @@
         <p><span class="key">V</span> (<span class="key">М</span>) - Видео: маленький телевизор (YouTube, RuTube, VK, .mp4)</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p>⚙️ «Настройки» на панели сохранений: где показывать уведомления, поменять панели местами</p>
+        <p class="license-note">Miner 1899 — свободная игра под лицензией <a href="https://github.com/Z0rD4n0v1ch/miner-1899/blob/main/LICENSE" target="_blank" rel="noopener">AGPL-3.0</a>. <a href="https://github.com/Z0rD4n0v1ch/miner-1899" target="_blank" rel="noopener">Исходный код</a></p>
         <p id="debugHelp" style="display: none;"><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.</p>
         <p>Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.</p>
@@ -1583,7 +1613,7 @@
             if (typeof updateCamera === 'function' && world.length) updateCamera();
         }
         const SAVE_VERSION = 7;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс
-        const GAME_VERSION = '1.7.1';
+        const GAME_VERSION = '1.7.0';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
         // Физика игрока. Скорости — в блоках в секунду, ускорения — в блоках/с².

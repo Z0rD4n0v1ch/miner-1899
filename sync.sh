@@ -16,6 +16,8 @@
 #   REPO_NAME     имя репозитория (по умолчанию — имя папки проекта)
 #   USE_HTTPS=1   использовать HTTPS вместо SSH
 #   GAME_FILE     файл игры (по умолчанию miner-1899.html)
+#   ASSISTED_BY   строка о помощи ИИ в конце коммитов push
+#                 (по умолчанию «Claude (Anthropic)»; ASSISTED_BY= — без неё)
 #
 
 set -euo pipefail
@@ -24,6 +26,9 @@ GITHUB_USER="${GITHUB_USER:-Z0rD4n0v1ch}"
 REPO_NAME="${REPO_NAME:-$(basename "$(pwd)")}"
 BRANCH="${BRANCH:-main}"
 GAME_FILE="${GAME_FILE:-miner-1899.html}"
+# Отметка в коммитах: проект делается с помощью Claude. Пустое значение отключает её:
+#   ASSISTED_BY= ./sync.sh push "сообщение"
+ASSISTED_BY="${ASSISTED_BY-Claude (Anthropic)}"
 
 if [ -t 1 ]; then
     C_OK=$'\033[32m'; C_ERR=$'\033[31m'; C_WARN=$'\033[33m'
@@ -328,7 +333,11 @@ cmd_push() {
             [ -n "$message" ] || die "Пустое сообщение — отменяю."
         fi
         git add -A
-        git commit -q -m "$message"
+        if [ -n "$ASSISTED_BY" ]; then
+            git commit -q -m "$message" -m "Assisted-by: $ASSISTED_BY"
+        else
+            git commit -q -m "$message"
+        fi
         ok "коммит создан: $message"
     fi
 
@@ -450,6 +459,8 @@ cmd_help() {
     printf '  %s./sync.sh release%s 1.2.0     выпустить версию: bump + тег + push\n' "$C_BOLD" "$C_OFF"
     printf '  %s./sync.sh pull%s              забрать изменения с GitHub\n' "$C_BOLD" "$C_OFF"
     printf '  %s./sync.sh status%s            ветка, коммиты, теги, расхождение\n' "$C_BOLD" "$C_OFF"
+    printf '\nКоммиты push помечаются строкой «Assisted-by: %s».\n' "${ASSISTED_BY:-—}"
+    printf 'Без неё: ASSISTED_BY= ./sync.sh push "сообщение"\n'
     printf '\nНастройка (переменные окружения):\n'
     printf '  GITHUB_USER=%s   REPO_NAME=%s   USE_HTTPS=1\n\n' "$GITHUB_USER" "$REPO_NAME"
     printf 'Обычный день:\n'
