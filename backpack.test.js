@@ -68,7 +68,7 @@ fresh(); run('updateUI()');
 check('пустой рюкзак — «пусто»', els.backpackList.textContent === 'пусто');
 fill('GOLD', 2); fill('PLATINUM', 1); fill('COAL', 3); run('updateUI()');
 check(`список от дорогой руды к дешёвой и стоимость: «${els.backpackList.textContent}»`,
-    els.backpackList.textContent === 'платина 1 · золото 2 · уголь 3 ≈ 108 руб.');
+    els.backpackList.textContent === 'платина 1 · золото 2 · уголь 3 ≈ 108 ¤');
 
 console.log('Улучшения рюкзака');
 fresh();

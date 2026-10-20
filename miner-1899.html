@@ -621,6 +621,32 @@
             background: #b01030;
         }
 
+        #sideButtons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        #sideButtons .btn {
+            margin: 0;
+            padding: 10px 6px;
+        }
+
+        /* подсказки по управлению скрыты, пока не нажата кнопка «Управление» */
+        #controls {
+            display: none;
+        }
+
+        body.show-controls #controls {
+            display: block;
+        }
+
+        #sideButtons .btn.on {
+            background: #ffa500;
+            color: #000;
+        }
+
         #controls {
             margin-top: 15px;
             padding: 15px;
@@ -762,6 +788,42 @@
 
         .license-note a {
             color: #c8a165;
+        }
+
+        /* монета — вместо «руб.»: рисуется стилями, поэтому видна в любой системе */
+        .coin {
+            display: inline-block;
+            width: 0.85em;
+            height: 0.85em;
+            margin-left: 0.22em;
+            vertical-align: -0.08em;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #fff6c2 0 12%, #f6c945 38%, #c8901a 75%, #8a5f0c);
+            box-shadow: inset 0 0 0 0.09em rgba(255, 235, 150, 0.55), 0 0 0 0.06em #6e4b08;
+        }
+
+        /* персонаж */
+        .char-row {
+            text-align: left;
+            margin-bottom: 16px;
+        }
+
+        .char-head {
+            display: flex;
+            justify-content: space-between;
+            color: #ffa500;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .char-ready {
+            color: #7CFC00 !important;
+        }
+
+        .char-sub {
+            color: #aaa;
+            font-size: 12px;
+            margin-top: 4px;
         }
 
         /* настройки */
@@ -1075,6 +1137,11 @@
             font-size: 16px;   /* меньше 16px — iPhone приближает страницу при вводе */
         }
 
+        /* в Telegram во весь экран сверху его кнопки «закрыть» и «⋯» — отступаем от них */
+        body.telegram {
+            padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+        }
+
         body.touch h1 {
             display: none;
         }
@@ -1330,7 +1397,7 @@
         </div>
         <div class="stat">
             <div class="stat-label">Деньги</div>
-            <div class="stat-value" id="money">0 руб.</div>
+            <div class="stat-value" id="money">0<span class="coin" role="img" aria-label="монет"></span></div>
         </div>
         <div class="stat">
             <div class="stat-label">Очки</div>
@@ -1361,9 +1428,19 @@
             <div class="stat-value" id="meds" style="font-size: 14px;">—</div>
         </div>
         <div class="stat wide">
+            <div class="stat-label">Персонаж (P)</div>
+            <div class="stat-value" id="heroStats" style="font-size: 13px;">Сила 1 · Выносливость 1</div>
+        </div>
+        <div class="stat wide">
             <div class="stat-label">Снаряжение</div>
             <div class="stat-value" id="gear" style="font-size: 14px;">—</div>
         </div>
+    </div>
+
+    <!-- под статистикой: персонаж и подсказки по управлению -->
+    <div id="sideButtons">
+        <button class="btn btn-secondary" onclick="openCharacter()">👷 Персонаж (P)</button>
+        <button class="btn btn-secondary" id="controlsToggle" onclick="toggleControls()">🎮 Управление</button>
     </div>
 
     <div id="controls">
@@ -1378,6 +1455,7 @@
         <p><span class="key">H</span> (<span class="key">Р</span>) - Лечиться: бинт или аптечка</p>
         <p><span class="key">M</span> (<span class="key">Ь</span>) - Радио: показать или скрыть панель (станции добавляешь сам)</p>
         <p><span class="key">V</span> (<span class="key">М</span>) - Видео: маленький телевизор (YouTube, RuTube, VK, .mp4)</p>
+        <p><span class="key">P</span> (<span class="key">З</span>) - Персонаж: сила и выносливость; тоники — в лавке</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p>⚙️ «Настройки» на панели сохранений: где показывать уведомления, поменять панели местами</p>
         <p class="license-note">Miner 1899 — свободная игра под лицензией <a href="https://github.com/Z0rD4n0v1ch/miner-1899/blob/main/LICENSE" target="_blank" rel="noopener">AGPL-3.0</a>. <a href="https://github.com/Z0rD4n0v1ch/miner-1899" target="_blank" rel="noopener">Исходный код</a></p>
@@ -1504,6 +1582,17 @@
         </div>
     </div>
 
+    <!-- Персонаж -->
+    <div id="characterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">👷 Персонаж</div>
+            <div id="characterInfo"></div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeCharacter()">Готово</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Настройки -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -1612,7 +1701,7 @@
             VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
             if (typeof updateCamera === 'function' && world.length) updateCamera();
         }
-        const SAVE_VERSION = 7;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс
+        const SAVE_VERSION = 8;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс; 8: характеристики
         const GAME_VERSION = '1.7.2';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
@@ -1722,7 +1811,7 @@
             [BLOCK_TYPES.RUBY]:    { key: 'ruby',    name: 'Рубин',  price: 55,  score: 100, weight: 0.5 },
             // особая руда биомов
             [BLOCK_TYPES.COAL]:     { key: 'coal',     name: 'Уголь',   price: 4,   score: 5,   weight: 1 },
-            [BLOCK_TYPES.SILVER]:   { key: 'silver',   name: 'Серебро', price: 15,  score: 25,  weight: 1.5 },
+            [BLOCK_TYPES.SILVER]:   { key: 'silver',   name: 'Серебро', price: 20,  score: 25,  weight: 1.5 },
             [BLOCK_TYPES.EMERALD]:  { key: 'emerald',  name: 'Изумруд', price: 35,  score: 75,  weight: 0.5 },
             [BLOCK_TYPES.PLATINUM]: { key: 'platinum', name: 'Платина', price: 80,  score: 150, weight: 3 }
         };
@@ -1822,7 +1911,7 @@
         // Номер лопаты в SHOVELS (0 — лопаты нет)
         let shovelTier = 0;
 
-        // Долг лавке в рублях
+        // Долг лавке в монетах
         let debt = 0;
 
         // Копание с удержанием: какой блок копаем и насколько (0..1)
@@ -1910,7 +1999,8 @@
         const GEN = {
             caveScale: 0.085, caveGateBase: 0.615, caveGateDepthBonus: 0.115,
             lavaScale: 0.06,  lavaThreshold: 0.60,  lavaStartDepth: 0.55,
-            goldScale: 0.30,  goldThreshold: 0.91,  goldPeak: 0.40, goldWidth: 0.38,
+            // золото: почти нет у поверхности, гуще всего на 200–400 м — чтобы тянуло вглубь
+            goldScale: 0.30,  goldThreshold: 0.91,  goldPeak: 0.38, goldWidth: 0.30,
             diamondScale: 0.36, diamondThreshold: 0.93,  diamondFrom: 0.45,
             rubyScale: 0.40,  rubyThreshold: 0.95,   rubyFrom: 0.62,
             // мягкая порода карманами в камне: песок у поверхности, глина в середине, гравий внизу
@@ -1979,7 +2069,7 @@
                     // золото — колокол вокруг goldPeak: редко у поверхности и на дне
                     const goldBand = Math.abs(d - GEN.goldPeak) / GEN.goldWidth;
                     if (goldBand < 1) {
-                        const goldGate = GEN.goldThreshold - (1 - goldBand * goldBand) * 0.035;
+                        const goldGate = GEN.goldThreshold - (1 - goldBand * goldBand) * 0.05;
                         if (goldNoise(x, y) > goldGate) {
                             row[x] = BLOCK_TYPES.GOLD; continue;
                         }
@@ -2379,18 +2469,18 @@
             const box = document.getElementById('cageInfo');
             let action;
             if (stats.money >= cost) {
-                action = `<button class="btn" onclick="callCage()">Вызвать за ${cost} руб.</button>`;
+                action = `<button class="btn" onclick="callCage()">Вызвать за ${cost}${COIN}</button>`;
             } else if (cageCreditOk(cost)) {
-                action = `<button class="btn" onclick="callCage()">Вызвать в долг, вернуть ${cost * DEBT_MULT} руб.</button>`;
+                action = `<button class="btn" onclick="callCage()">Вызвать в долг, вернуть ${cost * DEBT_MULT}${COIN}</button>`;
             } else {
-                action = `<button class="btn" disabled>Нужно ${cost} руб.</button>`;
+                action = `<button class="btn" disabled>Нужно ${cost}${COIN}</button>`;
             }
             const stuckHint = stats.money < cost && !cageCreditOk(cost)
-                ? `<p>Долг не может быть больше ${DEBT_LIMIT} руб. Выбраться можно и без клети: <b>W + пробел</b> копает вверх — над головой и вверх-вперёд; на получившуюся ступеньку запрыгни и копай дальше.</p>` : '';
-            box.innerHTML = `<p>Глубина ${depth} м. Подъём клетью — ${cost} руб.</p>
+                ? `<p>Долг не может быть больше ${DEBT_LIMIT}${COIN} Выбраться можно и без клети: <b>W + пробел</b> копает вверх — над головой и вверх-вперёд; на получившуюся ступеньку запрыгни и копай дальше.</p>` : '';
+            box.innerHTML = `<p>Глубина ${depth} м. Подъём клетью — ${cost}${COIN}</p>
                 <p>Клеть спустится за <b>${wait} с</b>. Всё это время стой на месте: сдвинешься или тебя ранят — вызов сорвётся. Платишь, когда клеть пришла.</p>
                 <p>Рюкзак поднимется с тобой; наверху клеть останавливается у лавки.</p>
-                <p>У тебя: ${stats.money} руб.${debt > 0 ? ` · долг: ${debt} руб.` : ''}</p>${stuckHint}
+                <p>У тебя: ${stats.money}${COIN}${debt > 0 ? ` · долг: ${debt}${COIN}` : ''}</p>${stuckHint}
                 <div class="modal-buttons">${action}
                 <button class="btn btn-secondary" onclick="closeCage()">Отмена</button></div>`;
             document.getElementById('cageModal').classList.add('active');
@@ -2408,10 +2498,10 @@
             const cost = cageCost(depth);
             if (stats.money >= cost) {
                 stats.money -= cost;
-                showNotification(`⬆️ Клеть подняла тебя с ${depth} м за ${cost} руб.`);
+                showNotification(`⬆️ Клеть подняла тебя с ${depth} м за ${cost} ¤`);
             } else if (cageCreditOk(cost)) {
                 debt += cost * DEBT_MULT;
-                showNotification(`⬆️ Подъём в долг: долг теперь ${debt} руб., вернёшь с выручки`);
+                showNotification(`⬆️ Подъём в долг: долг теперь ${debt} ¤, вернёшь с выручки`);
             } else {
                 return false;
             }
@@ -2427,7 +2517,7 @@
         }
 
         function buyLadders() {
-            if (stats.money < LADDER_PACK.price) { showNotification(`💰 Не хватает ${LADDER_PACK.price - stats.money} руб.`); return false; }
+            if (stats.money < LADDER_PACK.price) { showNotification(`💰 Не хватает ${LADDER_PACK.price - stats.money} ¤`); return false; }
             stats.money -= LADDER_PACK.price;
             ladders = Math.min(MAX_GEAR, ladders + LADDER_PACK.count);
             showNotification(`🧗 Куплено ${LADDER_PACK.count} лестниц`);
@@ -2436,7 +2526,7 @@
         }
 
         function buyRope() {
-            if (stats.money < ROPE_PRICE) { showNotification(`💰 Не хватает ${ROPE_PRICE - stats.money} руб.`); return false; }
+            if (stats.money < ROPE_PRICE) { showNotification(`💰 Не хватает ${ROPE_PRICE - stats.money} ¤`); return false; }
             stats.money -= ROPE_PRICE;
             ropes = Math.min(MAX_GEAR, ropes + 1);
             showNotification('🧗 Куплена верёвка');
@@ -2673,7 +2763,7 @@
             player.y = SURFACE_Y - 2;
             player.vx = 0;
             player.vy = 0;
-            health = MAX_HEALTH;
+            health = maxHealth();
             resetDig();
             showNotification(lost > 0
                 ? (keep > 0 ? `💀 ${reason}. Из короба высыпалось ${lost} шт., половина уцелела. −50 очков`
@@ -2826,8 +2916,8 @@
             fallingBlocks = still;
 
             // восстановление — не в жару и не сразу после урона
-            if (!hot && hazardClock - lastDamageAt > REGEN_DELAY && health < MAX_HEALTH) {
-                health = Math.min(MAX_HEALTH, health + REGEN_RATE * dt);
+            if (!hot && hazardClock - lastDamageAt > REGEN_DELAY && health < maxHealth()) {
+                health = Math.min(maxHealth(), health + REGEN_RATE * dt);
             }
         }
 
@@ -2847,7 +2937,7 @@
         function buyBelt(tier) {
             const b = BELTS[tier];
             if (!b || tier <= beltTier) return false;
-            if (stats.money < b.price) { showNotification(`💰 Не хватает ${b.price - stats.money} руб.`); return false; }
+            if (stats.money < b.price) { showNotification(`💰 Не хватает ${b.price - stats.money} ¤`); return false; }
             stats.money -= b.price;
             beltTier = tier;
             showNotification(`🩹 ${b.name}: ${b.bandages} бинтов и ${b.medkits} аптечки`);
@@ -2863,9 +2953,9 @@
         // Клавиша H: берётся то, что лучше подходит — при большой потере здоровья
         // аптечка, при небольшой бинт (чтобы не тратить аптечку зря)
         function heal() {
-            if (health >= MAX_HEALTH) { showNotification('🩹 Ты и так здоров'); return false; }
+            if (health >= maxHealth()) { showNotification('🩹 Ты и так здоров'); return false; }
             if (hazardClock - lastHealAt < HEAL_COOLDOWN) return false;
-            const missing = MAX_HEALTH - health;
+            const missing = maxHealth() - health;
             let item = null;
             if (medkits > 0 && (missing >= 50 || bandages === 0)) item = 'medkit';
             else if (bandages > 0) item = 'bandage';
@@ -2873,7 +2963,7 @@
             const amount = item === 'medkit' ? MEDKIT.heal : BANDAGE.heal;
             if (item === 'medkit') medkits--; else bandages--;
             const before = health;
-            health = Math.min(MAX_HEALTH, health + amount);
+            health = Math.min(maxHealth(), health + amount);
             lastHealAt = hazardClock;
             showNotification(`${item === 'medkit' ? '✚ Аптечка' : '🩹 Бинт'}: +${Math.round(health - before)} здоровья`);
             updateUI();
@@ -2887,7 +2977,7 @@
                 showNotification(`🩹 На поясе нет места — больше ${medLimit(kind)} не унести. Пояс побольше — в лавке`);
                 return false;
             }
-            if (stats.money < m.price) { showNotification(`💰 Не хватает ${m.price - stats.money} руб.`); return false; }
+            if (stats.money < m.price) { showNotification(`💰 Не хватает ${m.price - stats.money} ¤`); return false; }
             stats.money -= m.price;
             if (kind === 'medkit') medkits = Math.min(MAX_MEDS, medkits + 1);
             else bandages = Math.min(MAX_MEDS, bandages + 1);
@@ -2896,7 +2986,7 @@
         }
 
         function resetHazards() {
-            health = MAX_HEALTH;
+            health = maxHealth();
             lastDamageAt = -Infinity;
             damageFlash = 0;
             crumbling = [];
@@ -3281,7 +3371,7 @@
             if (!c) return false;
             if (hitCooldown > 0) return true;
             hitCooldown = HIT_COOLDOWN;
-            c.hp -= PICK_DAMAGE[pickaxeTier];
+            c.hp -= PICK_DAMAGE[pickaxeTier] * hitMult();
             c.hurt = 0.15;
             c.x += player.direction * 0.4;    // отбросить
             if (c.type === 'bat' && c.state === 'sleep') c.state = 'hunt';
@@ -3367,7 +3457,7 @@
         function buyLamp(tier = 1) {
             const l = LAMPS[tier];
             if (!l || tier <= lampTier) return false;
-            if (stats.money < l.price) { showNotification(`💰 Не хватает ${l.price - stats.money} руб.`); return false; }
+            if (stats.money < l.price) { showNotification(`💰 Не хватает ${l.price - stats.money} ¤`); return false; }
             stats.money -= l.price;
             lampTier = tier;
             lampLit = true;
@@ -3378,7 +3468,7 @@
 
         function buyCanary() {
             if (hasCanary) return false;
-            if (stats.money < CANARY_PRICE) { showNotification(`💰 Не хватает ${CANARY_PRICE - stats.money} руб.`); return false; }
+            if (stats.money < CANARY_PRICE) { showNotification(`💰 Не хватает ${CANARY_PRICE - stats.money} ¤`); return false; }
             stats.money -= CANARY_PRICE;
             hasCanary = true;
             showNotification('🐤 Куплена канарейка: она забеспокоится рядом с газом');
@@ -3515,7 +3605,7 @@
         }
 
         function burden() {
-            return Math.min(1, backpackWeight() * BACKPACKS[backpackTier].weightMult / WEIGHT_FOR_MAX_SLOW);
+            return Math.min(1, backpackWeight() * BACKPACKS[backpackTier].weightMult / weightCap());
         }
 
         function walkFactor() { return 1 - MAX_WALK_SLOW * burden(); }
@@ -3554,7 +3644,7 @@
         function buyBackpack(tier) {
             const b = BACKPACKS[tier];
             if (!b || tier <= backpackTier) return false;
-            if (stats.money < b.price) { showNotification(`💰 Не хватает ${b.price - stats.money} руб.`); return false; }
+            if (stats.money < b.price) { showNotification(`💰 Не хватает ${b.price - stats.money} ¤`); return false; }
             stats.money -= b.price;
             backpackTier = tier;
             showNotification(`🎒 Куплен ${b.name.toLowerCase()}: ${b.capacity} мест`);
@@ -3570,20 +3660,140 @@
         }
 
         // Продать всё содержимое рюкзака. Возвращает выручку.
+        // ============ ПЕРСОНАЖ: СИЛА И ВЫНОСЛИВОСТЬ ============
+        // Уровни 1–10. Очки копятся от дела: сила — за вес проданной руды (поднял наверх
+        // и сдал), выносливость — за выкопанные блоки. Уровень растёт, когда очков хватает
+        // и в лавке куплен тоник. При смерти ничего не теряется.
+        const STAT_MAX = 10;
+        const STAT_INFO = {
+            str: { name: 'Сила',         tonic: 'Тоник силы',         pointsPerLevel: 40,  emoji: '💪' },
+            end: { name: 'Выносливость', tonic: 'Тоник выносливости', pointsPerLevel: 100, emoji: '🏃' }
+        };
+        const TONIC_PRICE_PER_LEVEL = 120;
+        // Требования кирок: [сила, выносливость]
+        const PICK_REQ = [[1, 1], [2, 1], [4, 3], [6, 5]];
+
+        const hero = { str: 1, end: 1, strPts: 0, endPts: 0 };
+
+        function pointsToNext(stat) { return STAT_INFO[stat].pointsPerLevel * hero[stat]; }
+        function tonicPrice(stat) { return TONIC_PRICE_PER_LEVEL * hero[stat]; }
+
+        // Что даёт каждая характеристика
+        function weightCap() { return WEIGHT_FOR_MAX_SLOW + 10 * (hero.str - 1); }           // переносимый вес
+        function hitMult() { return 1 + 0.1 * (hero.str - 1); }                              // сила удара
+        function digMult() { return 1 + 0.05 * (hero.end - 1); }                             // скорость копания
+        function maxHealth() { return MAX_HEALTH + 10 * (hero.end - 1); }                    // здоровье
+
+        function addPoints(stat, n) {
+            if (!(n > 0)) return;
+            const key = stat + 'Pts';
+            const before = hero[key];
+            hero[key] = Math.round((hero[key] + n) * 10) / 10;
+            // подсказать один раз, когда очков стало хватать на следующий уровень
+            if (hero[stat] < STAT_MAX && before < pointsToNext(stat) && hero[key] >= pointsToNext(stat)) {
+                showNotification(`${STAT_INFO[stat].emoji} ${STAT_INFO[stat].name}: очков хватает на уровень ${hero[stat] + 1} — купи тоник в лавке`);
+            }
+        }
+
+        function pickReqMet(tier) {
+            const [s, e] = PICK_REQ[tier];
+            return hero.str >= s && hero.end >= e;
+        }
+
+        function pickReqText(tier) {
+            const [s, e] = PICK_REQ[tier];
+            const parts = [];
+            if (s > 1) parts.push(`сила ${s}`);
+            if (e > 1) parts.push(`выносливость ${e}`);
+            return parts.join(', ');
+        }
+
+        // Выпить тоник: уровень +1, если хватает очков и денег
+        function buyTonic(stat) {
+            const info = STAT_INFO[stat];
+            if (!info) return false;
+            if (hero[stat] >= STAT_MAX) { showNotification(`${info.emoji} ${info.name} уже максимальная`); return false; }
+            const need = pointsToNext(stat), have = hero[stat + 'Pts'];
+            if (have < need) { showNotification(`${info.emoji} Мало очков: ${Math.floor(have)} из ${need}`); return false; }
+            const price = tonicPrice(stat);
+            if (stats.money < price) { showNotification(`💰 Не хватает ${price - stats.money} ¤`); return false; }
+            stats.money -= price;
+            hero[stat + 'Pts'] = Math.round((have - need) * 10) / 10;
+            hero[stat]++;
+            if (stat === 'end') health = Math.min(maxHealth(), health + 10);
+            showNotification(`${info.emoji} ${info.tonic}: ${info.name.toLowerCase()} теперь ${hero[stat]}`);
+            updateUI(); renderShopList(); renderCharacter();
+            return true;
+        }
+
+        // На сколько уровней уже хватает очков (деньги на тоники — отдельно)
+        function levelsAvailable(stat) {
+            let lvl = hero[stat], pts = hero[stat + 'Pts'], n = 0;
+            while (lvl < STAT_MAX && pts >= STAT_INFO[stat].pointsPerLevel * lvl) { pts -= STAT_INFO[stat].pointsPerLevel * lvl; lvl++; n++; }
+            return n;
+        }
+
+        // Сколько стоят тоники на все уровни, на которые хватает очков
+        function tonicsCost(stat) {
+            let sum = 0;
+            for (let i = 0; i < levelsAvailable(stat); i++) sum += TONIC_PRICE_PER_LEVEL * (hero[stat] + i);
+            return sum;
+        }
+
+        function statLine(stat) {
+            const info = STAT_INFO[stat];
+            if (hero[stat] >= STAT_MAX) return `${info.name} ${hero[stat]} (макс.)`;
+            const n = levelsAvailable(stat);
+            return `${info.name} ${hero[stat]} · ${Math.floor(hero[stat + 'Pts'])}/${pointsToNext(stat)}${n ? ` ↑${n}` : ''}`;
+        }
+
+        function renderCharacter() {
+            const box = document.getElementById('characterInfo');
+            if (!box) return;
+            const row = (stat, gives) => {
+                const info = STAT_INFO[stat];
+                const max = hero[stat] >= STAT_MAX;
+                const pct = max ? 100 : Math.min(100, hero[stat + 'Pts'] / pointsToNext(stat) * 100);
+                return `<div class="char-row">
+                    <div class="char-head"><span>${info.emoji} ${info.name}</span><b>${hero[stat]}</b></div>
+                    <div class="backpack-bar"><div class="backpack-fill" style="width:${pct}%"></div></div>
+                    <div class="char-sub">${max ? 'максимальный уровень' : `очки: ${Math.floor(hero[stat + 'Pts'])} из ${pointsToNext(stat)} · тоник — ${tonicPrice(stat)}${COIN} в лавке`}</div>
+                    ${levelsAvailable(stat) ? `<div class="char-sub char-ready">очков хватит ещё на ${levelsAvailable(stat)} ур. — тоники на них стоят ${tonicsCost(stat)}${COIN}</div>` : ''}
+                    <div class="char-sub">${gives}</div>
+                </div>`;
+            };
+            box.innerHTML =
+                row('str', `переносимый вес: ${weightCap()} · удар ×${hitMult().toFixed(1)}. Очки — за вес проданной руды`) +
+                row('end', `копание ×${digMult().toFixed(2)} · здоровье ${maxHealth()}. Очки — за выкопанные блоки`) +
+                `<div class="char-sub">Кирки требуют: железная — ${pickReqText(1)}; стальная — ${pickReqText(2)}; с алмазным жалом — ${pickReqText(3)}.</div>`;
+        }
+
+        function openCharacter() {
+            gameState.paused = true;
+            renderCharacter();
+            document.getElementById('characterModal').classList.add('active');
+        }
+
+        function closeCharacter() {
+            document.getElementById('characterModal').classList.remove('active');
+            gameState.paused = false;
+        }
+
         function sellBackpack() {
             const earned = backpackValue();
             const count = backpackCount();
             if (count === 0) return 0;
+            addPoints('str', backpackWeight());
             const repaid = Math.min(debt, earned);
             debt -= repaid;
             stats.money += earned - repaid;
             backpack = emptyBackpack();
             if (repaid > 0) {
                 showNotification(debt > 0
-                    ? `💰 Продано за ${earned} руб., ${repaid} ушло в долг. Осталось вернуть ${debt} руб.`
-                    : `💰 Продано за ${earned} руб., ${repaid} ушло в долг. Долг погашен!`);
+                    ? `💰 Продано за ${earned} ¤, ${repaid} ушло в долг. Осталось вернуть ${debt} ¤`
+                    : `💰 Продано за ${earned} ¤, ${repaid} ушло в долг. Долг погашен!`);
             } else {
-                showNotification(`💰 Продано: ${count} шт. за ${earned} руб.`);
+                showNotification(`💰 Продано: ${count} шт. за ${earned} ¤`);
             }
             updateUI();
             return earned;
@@ -3593,8 +3803,12 @@
         function buyPickaxe(tier) {
             const p = PICKAXES[tier];
             if (!p || tier <= pickaxeTier) return false;
+            if (!pickReqMet(tier)) {
+                showNotification(`⛏️ Кирка «${p.name}» слишком тяжела: нужна ${pickReqText(tier)}`);
+                return false;
+            }
             if (stats.money < p.price) {
-                showNotification(`💰 Не хватает ${p.price - stats.money} руб.`);
+                showNotification(`💰 Не хватает ${p.price - stats.money} ¤`);
                 return false;
             }
             stats.money -= p.price;
@@ -3611,7 +3825,7 @@
             const sh = SHOVELS[tier];
             if (!sh || tier <= shovelTier) return false;
             if (stats.money < sh.price) {
-                showNotification(`💰 Не хватает ${sh.price - stats.money} руб.`);
+                showNotification(`💰 Не хватает ${sh.price - stats.money} ¤`);
                 return false;
             }
             stats.money -= sh.price;
@@ -3631,7 +3845,7 @@
             shovelTier = tier;
             debt = sh.price * DEBT_MULT;
             resetDig();
-            showNotification(`🛠️ ${sh.name} в долг. Вернёшь ${debt} руб. с первой выручки`);
+            showNotification(`🛠️ ${sh.name} в долг. Вернёшь ${debt} ¤ с первой выручки`);
             updateUI();
             renderShopList();
             return true;
@@ -3653,9 +3867,9 @@
         }
 
         function renderShopList() {
-            document.getElementById('shopMoney').textContent = debt > 0
-                ? `У тебя: ${stats.money} руб. · долг лавке: ${debt} руб.`
-                : `У тебя: ${stats.money} руб.`;
+            setCoinText(document.getElementById('shopMoney'), debt > 0
+                ? `У тебя: ${stats.money} ¤ · долг лавке: ${debt} ¤`
+                : `У тебя: ${stats.money} ¤`);
             const list = document.getElementById('shopList');
             list.innerHTML = '';
             const section = title => {
@@ -3674,9 +3888,9 @@
                 item.className = 'shop-item' + (owned ? ' owned' : '');
                 let action;
                 if (owned) action = '<button class="btn btn-small" disabled>Есть</button>';
-                else if (stats.money >= sh.price) action = `<button class="btn btn-small" onclick="buyShovel(${tier})">Купить за ${sh.price} руб.</button>`;
-                else if (debt === 0 && tier === 1) action = `<button class="btn btn-small" onclick="takeShovelOnCredit(${tier})">В долг, вернуть ${sh.price * DEBT_MULT} руб.</button>`;
-                else action = `<button class="btn btn-small" disabled>${sh.price} руб.</button>`;
+                else if (stats.money >= sh.price) action = `<button class="btn btn-small" onclick="buyShovel(${tier})">Купить за ${sh.price}${COIN}</button>`;
+                else if (debt === 0 && tier === 1) action = `<button class="btn btn-small" onclick="takeShovelOnCredit(${tier})">В долг, вернуть ${sh.price * DEBT_MULT}${COIN}</button>`;
+                else action = `<button class="btn btn-small" disabled>${sh.price}${COIN}</button>`;
                 item.innerHTML = `
                     <div>
                         <div class="shop-item-name">🛠️ ${sh.name}</div>
@@ -3701,8 +3915,8 @@
                 const action = g.owned
                     ? '<button class="btn btn-small" disabled>Есть</button>'
                     : stats.money >= g.price
-                    ? `<button class="btn btn-small" onclick="${g.fn}">Купить за ${g.price} руб.</button>`
-                    : `<button class="btn btn-small" disabled>${g.price} руб.</button>`;
+                    ? `<button class="btn btn-small" onclick="${g.fn}">Купить за ${g.price}${COIN}</button>`
+                    : `<button class="btn btn-small" disabled>${g.price}${COIN}</button>`;
                 item.innerHTML = `
                     <div>
                         <div class="shop-item-name">${g.name}</div>
@@ -3720,8 +3934,8 @@
                 const item = document.createElement('div');
                 item.className = 'shop-item';
                 const action = stats.money >= m.price
-                    ? `<button class="btn btn-small" onclick="buyMed('${m.kind}')">Купить за ${m.price} руб.</button>`
-                    : `<button class="btn btn-small" disabled>${m.price} руб.</button>`;
+                    ? `<button class="btn btn-small" onclick="buyMed('${m.kind}')">Купить за ${m.price}${COIN}</button>`
+                    : `<button class="btn btn-small" disabled>${m.price}${COIN}</button>`;
                 item.innerHTML = `
                     <div>
                         <div class="shop-item-name">${m.name}</div>
@@ -3739,8 +3953,8 @@
                 let action;
                 if (tier === beltTier) action = '<button class="btn btn-small" disabled>Надет</button>';
                 else if (tier < beltTier) action = '<button class="btn btn-small" disabled>Хуже твоего</button>';
-                else if (stats.money < b.price) action = `<button class="btn btn-small" disabled>${b.price} руб.</button>`;
-                else action = `<button class="btn btn-small" onclick="buyBelt(${tier})">Купить за ${b.price} руб.</button>`;
+                else if (stats.money < b.price) action = `<button class="btn btn-small" disabled>${b.price}${COIN}</button>`;
+                else action = `<button class="btn btn-small" onclick="buyBelt(${tier})">Купить за ${b.price}${COIN}</button>`;
                 item.innerHTML = `
                     <div>
                         <div class="shop-item-name">🎽 ${b.name}</div>
@@ -3758,8 +3972,8 @@
                 let action;
                 if (tier === backpackTier) action = '<button class="btn btn-small" disabled>На плечах</button>';
                 else if (tier < backpackTier) action = '<button class="btn btn-small" disabled>Меньше твоего</button>';
-                else if (stats.money < b.price) action = `<button class="btn btn-small" disabled>${b.price} руб.</button>`;
-                else action = `<button class="btn btn-small" onclick="buyBackpack(${tier})">Купить за ${b.price} руб.</button>`;
+                else if (stats.money < b.price) action = `<button class="btn btn-small" disabled>${b.price}${COIN}</button>`;
+                else action = `<button class="btn btn-small" onclick="buyBackpack(${tier})">Купить за ${b.price}${COIN}</button>`;
                 item.innerHTML = `
                     <div>
                         <div class="shop-item-name">🎒 ${b.name}</div>
@@ -3769,6 +3983,25 @@
                 list.appendChild(item);
             });
 
+            section('Тоники');
+            for (const stat of ['str', 'end']) {
+                const info = STAT_INFO[stat];
+                const item = document.createElement('div');
+                item.className = 'shop-item';
+                let action;
+                if (hero[stat] >= STAT_MAX) action = '<button class="btn btn-small" disabled>Максимум</button>';
+                else if (hero[stat + 'Pts'] < pointsToNext(stat)) action = `<button class="btn btn-small" disabled>Очки ${Math.floor(hero[stat + 'Pts'])}/${pointsToNext(stat)}</button>`;
+                else if (stats.money < tonicPrice(stat)) action = `<button class="btn btn-small" disabled>${tonicPrice(stat)}${COIN}</button>`;
+                else action = `<button class="btn btn-small" onclick="buyTonic('${stat}')">Выпить за ${tonicPrice(stat)}${COIN}</button>`;
+                item.innerHTML = `
+                    <div>
+                        <div class="shop-item-name">${info.emoji} ${info.tonic}</div>
+                        <div class="shop-item-info">${info.name.toLowerCase()} ${hero[stat]} → ${Math.min(STAT_MAX, hero[stat] + 1)}; нужны очки и деньги</div>
+                    </div>
+                    ${action}`;
+                list.appendChild(item);
+            }
+
             section('Кирки');
             const opens = ['камень, золото, уголь, серебро', '+ алмазы, изумруды', '+ рубины, платина', 'всё, быстрее всех'];
             PICKAXES.forEach((p, tier) => {
@@ -3777,12 +4010,14 @@
                 let action;
                 if (tier === pickaxeTier) action = '<button class="btn btn-small" disabled>В руках</button>';
                 else if (tier < pickaxeTier) action = '<button class="btn btn-small" disabled>Хуже твоей</button>';
-                else if (stats.money < p.price) action = `<button class="btn btn-small" disabled>${p.price} руб.</button>`;
-                else action = `<button class="btn btn-small" onclick="buyPickaxe(${tier})">Купить за ${p.price} руб.</button>`;
+                else if (!pickReqMet(tier)) action = `<button class="btn btn-small" disabled>Нужна ${pickReqText(tier)}</button>`;
+                else if (stats.money < p.price) action = `<button class="btn btn-small" disabled>${p.price}${COIN}</button>`;
+                else action = `<button class="btn btn-small" onclick="buyPickaxe(${tier})">Купить за ${p.price}${COIN}</button>`;
+                const req = tier > 0 ? ` · требует: ${pickReqText(tier)}` : '';
                 item.innerHTML = `
                     <div>
                         <div class="shop-item-name">⛏️ ${p.name}</div>
-                        <div class="shop-item-info">скорость ×${p.speed} · ${opens[tier]}</div>
+                        <div class="shop-item-info">скорость ×${p.speed} · ${opens[tier]}${req}</div>
                     </div>
                     ${action}`;
                 list.appendChild(item);
@@ -3846,7 +4081,13 @@
         // Сколько секунд копать блок лучшим из имеющихся инструментов.
         // Если известно, где блок (x, y), камень твёрже в глубоких биомах —
         // ровно там, где он нарисован цветом этого биома.
+        // Время копания с учётом выносливости (лестницы, верёвки и паутину это не касается)
         function digTime(block, x, y) {
+            const t = rawDigTime(block, x, y);
+            return (isClimbable(block) || block === BLOCK_TYPES.WEB) ? t : t / digMult();
+        }
+
+        function rawDigTime(block, x, y) {
             if (isClimbable(block)) return 0.15;     // снять лестницу или смотать верёвку
             if (block === BLOCK_TYPES.WEB) return 0.1;
             if (SOFT[block] !== undefined) {
@@ -3925,6 +4166,7 @@
             if (block === BLOCK_TYPES.ROPE) { takeRope(targetX, targetY); updateUI(); return; }
             if (block === BLOCK_TYPES.BRIDGE) { takeBridge(targetX, targetY); updateUI(); return; }
             if (block === BLOCK_TYPES.WEB) { setBlock(targetX, targetY, BLOCK_TYPES.AIR); return; }
+            addPoints('end', SOFT[block] !== undefined ? 0.5 : 1);
 
             if (block !== BLOCK_TYPES.AIR && block !== BLOCK_TYPES.BEDROCK) {
                 const result = addToBackpack(block);
@@ -4140,7 +4382,7 @@
         // Краткая сводка поверх игры на телефоне (полная панель — по кнопке «☰»)
         function renderTouchHud() {
             const depth = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN));
-            const text = `❤ ${Math.ceil(health)}  ${depth} м  🎒 ${backpackCount()}/${backpackCapacity()}  ${stats.money} руб.`;
+            const text = `❤ ${Math.ceil(health)}  ${depth} м  🎒 ${backpackCount()}/${backpackCapacity()}  ${stats.money}   `;
             // холст на телефоне ужат — шрифт увеличиваем, чтобы на экране было ~13 px
             const scale = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
             const size = Math.round(13 * scale);
@@ -4152,6 +4394,15 @@
             ctx.fillStyle = health <= 30 ? '#FF6B6B' : '#FFD27F';
             ctx.textAlign = 'center';
             ctx.fillText(text, canvas.width / 2, 4 + size * 1.15);
+            // монета после суммы денег
+            const cx = canvas.width / 2 + w / 2 - size * 0.55, cy = 4 + size * 0.8, r = size * 0.42;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fillStyle = '#F6C945';
+            ctx.fill();
+            ctx.lineWidth = Math.max(1, size * 0.08);
+            ctx.strokeStyle = '#8A5F0C';
+            ctx.stroke();
             ctx.restore();
         }
 
@@ -4237,8 +4488,8 @@
             const parts = Object.keys(backpack).filter(k => backpack[k] > 0)
                 .sort((a, b) => oreByKey(b).price - oreByKey(a).price)
                 .map(k => `${oreByKey(k).name.toLowerCase()} ${backpack[k]}`);
-            document.getElementById('backpackList').textContent = parts.length
-                ? `${parts.join(' · ')} ≈ ${backpackValue()} руб.` : 'пусто';
+            setCoinText(document.getElementById('backpackList'), parts.length
+                ? `${parts.join(' · ')} ≈ ${backpackValue()} ¤` : 'пусто');
             const slow = Math.round((1 - walkFactor()) * 100);
             document.getElementById('backpackWeight').textContent = slow > 0
                 ? `вес ${backpackWeight()} · медленнее на ${slow}%` : '';
@@ -4248,16 +4499,17 @@
             hpEl.textContent = hp;
             hpEl.classList.toggle('full', hp <= 30);
             const hpFill = document.getElementById('healthFill');
-            hpFill.style.width = (hp / MAX_HEALTH * 100) + '%';
+            hpFill.style.width = (hp / maxHealth() * 100) + '%';
             hpFill.classList.toggle('full', hp <= 30);
 
             const moneyEl = document.getElementById('money');
-            moneyEl.textContent = debt > 0 ? `${stats.money} руб. (долг ${debt})` : `${stats.money} руб.`;
+            setCoinText(moneyEl, debt > 0 ? `${stats.money} ¤ (долг ${debt})` : `${stats.money} ¤`);
             moneyEl.classList.toggle('full', debt > 0);
             document.getElementById('pickaxe').textContent = PICKAXES[pickaxeTier].name;
             document.getElementById('shovel').textContent = SHOVELS[shovelTier].name;
             document.getElementById('ladders').textContent = ladders;
             document.getElementById('ropes').textContent = ropes;
+            document.getElementById('heroStats').textContent = `${statLine('str')}   ${statLine('end')}`;
             const gearList = [lampTier ? LAMPS[lampTier].name.toLowerCase() + (lampLit ? '' : ' (погасла)') : null,
                               beltTier ? BELTS[beltTier].name.toLowerCase() : null, hasCanary ? 'канарейка' : null].filter(Boolean);
             document.getElementById('gear').textContent = gearList.length ? gearList.join(', ') : '—';
@@ -4350,6 +4602,7 @@
                 health: Math.round(health),
                 ladders: ladders,
                 ropes: ropes,
+                hero: { str: hero.str, end: hero.end, strPts: hero.strPts, endPts: hero.endPts },
                 lamp: lampTier,
                 lampLit: lampLit,
                 belt: beltTier,
@@ -4387,6 +4640,10 @@
             // 6 → 7: лампа стала двух видов (купленная раньше — открытая), появился пояс
             if (saveData.version === 6) {
                 saveData = Object.assign({}, saveData, { version: 7, lamp: saveData.lamp === true ? 1 : 0, lampLit: true, belt: 0 });
+            }
+            // 7 → 8: появились характеристики — все с первого уровня
+            if (saveData.version === 7) {
+                saveData = Object.assign({}, saveData, { version: 8, hero: { str: 1, end: 1, strPts: 0, endPts: 0 } });
             }
             return saveData;
         }
@@ -4456,8 +4713,7 @@
             const dbt = Number(saveData.debt);
             debt = (Number.isFinite(dbt) && dbt > 0) ? Math.round(dbt) : 0;
             resetHazards();
-            const hpSaved = Number(saveData.health);
-            health = (Number.isFinite(hpSaved) && hpSaved > 0) ? Math.min(MAX_HEALTH, hpSaved) : MAX_HEALTH;
+
             const gearCount = (v, dflt) => {
                 const n = Number(v);
                 return Number.isInteger(n) && n >= 0 ? Math.min(MAX_GEAR, n) : dflt;
@@ -4469,6 +4725,13 @@
             const medCount = v => { const n = Number(v); return Number.isInteger(n) && n >= 0 ? Math.min(MAX_MEDS, n) : 0; };
             bandages = medCount(saveData.bandages);
             medkits = medCount(saveData.medkits);
+            const hs = saveData.hero || {};
+            const lvl = v => { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= STAT_MAX ? n : 1; };
+            const pts = v => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.min(1e6, n) : 0; };
+            hero.str = lvl(hs.str); hero.end = lvl(hs.end); hero.strPts = pts(hs.strPts); hero.endPts = pts(hs.endPts);
+            // здоровье — после выносливости: от неё зависит максимум
+            const hpSaved = Number(saveData.health);
+            health = (Number.isFinite(hpSaved) && hpSaved > 0) ? Math.min(maxHealth(), hpSaved) : maxHealth();
             const lt = Number(saveData.lamp);
             lampTier = (Number.isInteger(lt) && lt >= 0 && lt < LAMPS.length) ? lt : 0;
             lampLit = saveData.lampLit !== false;
@@ -4626,6 +4889,7 @@
                 lampTier = 0;
                 lampLit = true;
                 beltTier = 0;
+                Object.assign(hero, { str: 1, end: 1, strPts: 0, endPts: 0 });
                 fallTop = null;
                 cageCall = null;
                 hasCanary = false;
@@ -4706,7 +4970,7 @@
                             </div>
                             <div class="save-slot-info">
                                 💾 ${date}<br>
-                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${Number(save.stats.money) || 0} руб. | ⛏️ ${PICKAXES[save.pickaxe]?.name ?? PICKAXES[0].name} | 🏆 Очки: ${Number(save.stats.score) || 0}
+                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${Number(save.stats.money) || 0}${COIN} | ⛏️ ${PICKAXES[save.pickaxe]?.name ?? PICKAXES[0].name} | 🏆 Очки: ${Number(save.stats.score) || 0}
                             </div>
                             <div class="save-slot-actions">
                                 <button class="btn btn-small" onclick="openSaveNameModal(${i})">Перезаписать</button>
@@ -4743,7 +5007,7 @@
                     const save = JSON.parse(backup);
                     const date = new Date(save.savedAt).toLocaleString('ru-RU');
                     slot.innerHTML = `<div class="save-slot-title">Резервная копия прошлой игры</div>
-                        <div class="save-slot-info">💾 ${date} | 💰 ${Number(save.stats && save.stats.money) || 0} руб.</div>`;
+                        <div class="save-slot-info">💾 ${date} | 💰 ${Number(save.stats && save.stats.money) || 0}${COIN}</div>`;
                     slot.onclick = () => loadFromSlot('backup');
                 } catch (e) {
                     slot.innerHTML = '<div class="save-slot-title">Резервная копия: повреждена</div>';
@@ -4768,7 +5032,7 @@
                             </div>
                             <div class="save-slot-info">
                                 💾 ${date}<br>
-                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${Number(save.stats.money) || 0} руб. | ⛏️ ${PICKAXES[save.pickaxe]?.name ?? PICKAXES[0].name} | 🏆 Очки: ${Number(save.stats.score) || 0}
+                                ⏱️ Время: ${playtime} мин | 💰 Деньги: ${Number(save.stats.money) || 0}${COIN} | ⛏️ ${PICKAXES[save.pickaxe]?.name ?? PICKAXES[0].name} | 🏆 Очки: ${Number(save.stats.score) || 0}
                             </div>
                         `;
                         slot.onclick = () => loadFromSlot(i);
@@ -4782,6 +5046,15 @@
 
                 container.appendChild(slot);
             }
+        }
+
+        // Деньги — монеты. В тексте отмечаются знаком ¤, в разметке он заменяется значком монеты
+        const COIN = '<span class="coin" role="img" aria-label="монет"></span>';
+        function withCoins(text) { return escapeHtml(text).replace(/¤/g, COIN); }
+        // Записать текст с деньгами: в разметке ¤ станет монетой
+        function setCoinText(el, text) {
+            el.textContent = text;
+            if (String(text).includes('¤')) el.innerHTML = withCoins(text);
         }
 
         // Текст, введённый игроком, в разметку вставляется только экранированным
@@ -4798,7 +5071,7 @@
         const SETTINGS_KEY = 'miner_settings';
         const NOTIFY_POSITIONS = ['top-right', 'top-left', 'top-center', 'bottom-right', 'bottom-left', 'bottom-center'];
         // вид радио и видео по умолчанию простой: граммофон и телевизор игрок включает сам
-        const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain' };
+        const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false };
         const RADIO_SKINS = ['plain', 'gramophone'];
         const VIDEO_SKINS = ['plain', 'tv'];
 
@@ -4807,6 +5080,7 @@
                 const st = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
                 if (NOTIFY_POSITIONS.includes(st.notify)) settings.notify = st.notify;
                 settings.swap = st.swap === true;
+                settings.showControls = st.showControls === true;
                 if (RADIO_SKINS.includes(st.radioSkin)) settings.radioSkin = st.radioSkin;
                 if (VIDEO_SKINS.includes(st.videoSkin)) settings.videoSkin = st.videoSkin;
             } catch (e) { /* испорченные настройки — по умолчанию */ }
@@ -4819,11 +5093,14 @@
         function applySettings() {
             if (document.body && document.body.classList) {
                 document.body.classList.toggle('swap-panels', settings.swap);
+                document.body.classList.toggle('show-controls', settings.showControls);
                 document.body.classList.toggle('radio-gramophone', settings.radioSkin === 'gramophone');
                 document.body.classList.toggle('video-plain', settings.videoSkin === 'plain');
             }
             const box = document.getElementById('swapPanels');
             if (box) box.checked = settings.swap;
+            const ct = document.getElementById('controlsToggle');
+            if (ct && ct.classList) ct.classList.toggle('on', settings.showControls);
             if (document.querySelectorAll) {
                 document.querySelectorAll('#notifyOptions [data-notify]').forEach(b =>
                     b.classList.toggle('chosen', b.dataset.notify === settings.notify));
@@ -4851,6 +5128,14 @@
         function setVideoSkin(skin) {
             if (!VIDEO_SKINS.includes(skin)) return false;
             settings.videoSkin = skin; saveSettings(); applySettings(); return true;
+        }
+
+        // Кнопка «Управление»: показать или скрыть подсказки по клавишам (запоминается)
+        function toggleControls(on) {
+            settings.showControls = on === undefined ? !settings.showControls : !!on;
+            saveSettings();
+            applySettings();
+            return settings.showControls;
         }
 
         function setSwapPanels(on) {
@@ -4888,21 +5173,37 @@
             }
         }
 
+        const stopTimer = id => { if (typeof clearTimeout === 'function') clearTimeout(id); };
+
         function showNotification(message) {
+            // такое же сообщение уже на экране — не плодим копии, а пишем «×2», «×3»…
+            const same = liveNotifications.find(n => n._message === message);
+            if (same) {
+                same._count++;
+                setCoinText(same, `${message} ×${same._count}`);
+                stopTimer(same._timer);
+                same._timer = setTimeout(() => dropNotification(same), 3000);
+                restackNotifications();
+                return;
+            }
             const notif = document.createElement('div');
             notif.className = 'notification';
-            notif.textContent = message;
+            notif._message = message;
+            notif._count = 1;
+            setCoinText(notif, message);
             document.body.appendChild(notif);
             liveNotifications.push(notif);
-            while (liveNotifications.length > MAX_NOTIFICATIONS) liveNotifications.shift().remove();
+            while (liveNotifications.length > MAX_NOTIFICATIONS) dropNotification(liveNotifications[0]);
             restackNotifications();
+            notif._timer = setTimeout(() => dropNotification(notif), 3000);
+        }
 
-            setTimeout(() => {
-                notif.remove();
-                const i = liveNotifications.indexOf(notif);
-                if (i >= 0) liveNotifications.splice(i, 1);
-                restackNotifications();
-            }, 3000);
+        function dropNotification(notif) {
+            stopTimer(notif._timer);
+            notif.remove();
+            const i = liveNotifications.indexOf(notif);
+            if (i >= 0) liveNotifications.splice(i, 1);
+            restackNotifications();
         }
 
         // Игровой цикл
@@ -5418,7 +5719,7 @@
         // Обработка клавиатуры (сенсорные кнопки зовут те же функции)
         // Клавиши-действия срабатывают один раз на нажатие: автоповтор при удержании
         // не должен, например, тратить бинты один за другим
-        const ONE_SHOT_KEYS = new Set(['KeyE', 'KeyQ', 'KeyR', 'KeyT', 'KeyC', 'KeyH', 'KeyM', 'KeyV', 'Backquote', 'KeyG', 'Escape']);
+        const ONE_SHOT_KEYS = new Set(['KeyE', 'KeyQ', 'KeyR', 'KeyT', 'KeyC', 'KeyH', 'KeyM', 'KeyV', 'KeyP', 'Backquote', 'KeyG', 'Escape']);
 
         function onKeyDown(e) {
             // набор текста в полях (название станции, адрес, имя сохранения) — не управление
@@ -5446,12 +5747,14 @@
             if (e.code === 'KeyH' && !gameState.paused) heal();
             if (e.code === 'KeyM' && !gameState.paused) radioPanelToggle();
             if (e.code === 'KeyV' && !gameState.paused) videoPanelToggle();
+            if (e.code === 'KeyP' && !gameState.paused) openCharacter();
 
             if (e.code === 'Escape') {
                 e.preventDefault();
                 if (gameState.paused) {
                     closeCage();
                     closeSettings();
+                    closeCharacter();
                     closeShop();
                     closeSaveModal();
                     closeLoadModal();
@@ -5579,6 +5882,43 @@
         });
 
         if (DEBUG_ALLOWED) document.getElementById('debugHelp').style.display = '';
+
+        // ============ TELEGRAM ============
+        // Игра открыта как мини-приложение Telegram? Тогда Telegram передаёт в адресе
+        // параметры tgWebApp… — только в этом случае подключаем скрипт Telegram (вне
+        // Telegram игра никуда не обращается). Разворачиваем игру на весь экран и
+        // отключаем «свайп вниз — закрыть», иначе он мешает копать вниз пальцем.
+        function inTelegram() {
+            if (typeof location === 'undefined') return false;
+            return /tgWebApp/.test(String(location.hash || '') + String(location.search || ''));
+        }
+
+        function setupTelegram(tg) {
+            if (!tg) return false;
+            document.body.classList.add('telegram');
+            try { tg.ready(); } catch (e) { /* старый клиент */ }
+            try { tg.expand(); } catch (e) { /* не критично */ }
+            const atLeast = v => typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast(v);
+            if (atLeast('7.7') && tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+            if (atLeast('6.1')) {
+                try { tg.setHeaderColor('#1a1a1a'); tg.setBackgroundColor('#1a1a1a'); } catch (e) { /* не критично */ }
+            }
+            // на телефоне — во весь экран (Bot API 8.0); на компьютере окно и так большое
+            if (atLeast('8.0') && /android|ios/.test(String(tg.platform)) && tg.requestFullscreen) {
+                try { tg.requestFullscreen(); } catch (e) { /* не критично */ }
+            }
+            // не дать случайно закрыть игру с несохранённым прогрессом
+            if (atLeast('6.2') && tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+            if (typeof tg.onEvent === 'function') tg.onEvent('viewportChanged', () => { if (typeof fitCanvasForDevice === 'function') fitCanvasForDevice(); });
+            return true;
+        }
+
+        if (inTelegram() && document.createElement && document.head && document.head.appendChild) {
+            const tgScript = document.createElement('script');
+            tgScript.src = 'https://telegram.org/js/telegram-web-app.js';
+            tgScript.onload = () => setupTelegram(window.Telegram && window.Telegram.WebApp);
+            document.head.appendChild(tgScript);
+        }
         loadSettings();
         applySettings();
 

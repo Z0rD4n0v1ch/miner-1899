@@ -55,8 +55,8 @@ function drop(n) {
 }
 
 console.log('Цены');
-check('руда дешевле: уголь 4, золото 8, серебро 15, алмаз 30, изумруд 35, рубин 55, платина 80',
-    run("['COAL','GOLD','SILVER','DIAMOND','EMERALD','RUBY','PLATINUM'].map(k => ORES[BLOCK_TYPES[k]].price).join()") === '4,8,15,30,35,55,80');
+check('руда: уголь 4, золото 8, серебро 20, алмаз 30, изумруд 35, рубин 55, платина 80',
+    run("['COAL','GOLD','SILVER','DIAMOND','EMERALD','RUBY','PLATINUM'].map(k => ORES[BLOCK_TYPES[k]].price).join()") === '4,8,20,30,35,55,80');
 check('кирки дороже: 150 / 900 / 2500', run('PICKAXES.map(p => p.price).join()') === '0,150,900,2500');
 check('рюкзаки: 200 / 700, стальная лопата 300', run('BACKPACKS[1].price') === 200 && run('BACKPACKS[2].price') === 700 && run('SHOVELS[2].price') === 300);
 check('очки за руду прежние — рекорды сравнимы', run('ORES[BLOCK_TYPES.PLATINUM].score') === 150);
@@ -172,7 +172,7 @@ check(`в коробе тот же груз замедляет меньше (${k
 console.log('Сохранения');
 room(100); run('lampTier = 1; lampLit = false; beltTier = 2;');
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
-check('SAVE_VERSION = 7, лампа, её огонь и пояс сохраняются', save.version === 7 && save.lamp === 1 && save.lampLit === false && save.belt === 2);
+check('SAVE_VERSION = 8, лампа, её огонь и пояс сохраняются', save.version === 8 && save.lamp === 1 && save.lampLit === false && save.belt === 2);
 run('lampTier = 0; lampLit = true; beltTier = 0;'); run(`loadSaveData(${JSON.stringify(save)})`);
 check('и восстанавливаются', run('lampTier') === 1 && run('lampLit') === false && run('beltTier') === 2);
 const v6 = Object.assign({}, save, { version: 6, lamp: true }); delete v6.lampLit; delete v6.belt;

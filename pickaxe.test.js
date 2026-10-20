@@ -114,6 +114,7 @@ check('рубин стальной киркой выкопан и в рюкза�
 
 console.log('Покупка');
 setup('STONE');
+run('hero.str = 10; hero.end = 10;');   // требования кирок проверяются в character.test.js
 check('без денег не купить', run('buyPickaxe(1)') === false && run('pickaxeTier') === 0);
 check('сообщает, сколько не хватает', notes.some(n => n.includes('Не хватает 150')));
 run('stats.money = 200;');
@@ -146,7 +147,7 @@ press('Escape'); release('Escape');
 check('ESC закрывает лавку', run('gameState.paused') === false && !els.shopModal.classList.contains('active'));
 
 console.log('Сохранения');
-check('SAVE_VERSION = 7', run('SAVE_VERSION') === 7);
+check('SAVE_VERSION = 8', run('SAVE_VERSION') === 8);
 setup('STONE', 2);
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
 check('кирка попадает в сохранение', save.pickaxe === 2);

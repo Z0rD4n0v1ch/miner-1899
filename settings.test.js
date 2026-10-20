@@ -78,6 +78,16 @@ check('битые настройки — по умолчанию', (() => { cons
 check('совсем битые — без ошибок', boot({ miner_settings: 'не json' }).run('settings.notify') === 'top-right');
 check('настройки не попадают в сохранение игры', !('settings' in JSON.parse(g2.run('JSON.stringify(createSaveData("t"))'))));
 
+console.log('Кнопка «Управление»');
+g = boot();
+check('по умолчанию подсказки по управлению скрыты', !g.body.classList.contains('show-controls') && /#controls \{\s*display: none;/.test(html) && /body\.show-controls #controls \{\s*display: block;/.test(html));
+check('кнопка «Управление» — под статистикой, рядом с «Персонажем»', /<div id="sideButtons">[\s\S]*?openCharacter\(\)[\s\S]*?toggleControls\(\)">🎮 Управление<\/button>/.test(html));
+g.run('toggleControls()');
+check('нажал — показаны, кнопка подсвечена', g.body.classList.contains('show-controls') && g.els.controlsToggle.classList.contains('on'));
+check('запоминается', boot(g.store).body.classList.contains('show-controls'));
+g.run('toggleControls()');
+check('ещё раз — скрыты', !g.body.classList.contains('show-controls') && !g.els.controlsToggle.classList.contains('on'));
+
 console.log('Телефон');
 g = boot({ miner_settings: '{"notify":"bottom-left"}' }, '?touch=1');
 g.run('showNotification("x")');

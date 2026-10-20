@@ -54,7 +54,7 @@ function room(depth, fill = 'STONE') {
          for (let y = F - 6; y <= F + 2; y++) for (let x = 40; x <= 62; x++)
              world[y][x] = (y >= F - 4 && y <= F) ? BLOCK_TYPES.AIR : BLOCK_TYPES.${fill};
          player.x = 50; player.y = F; player.vx = 0; player.vy = 0; player.onGround = true; player.direction = 1;`);
-    notes.length = 0;
+    notes.length = 0; run('liveNotifications.length = 0');
 }
 function tick(seconds, extra = '') {
     run(`for (let i = 0; i < ${Math.round(seconds * 60)}; i++) { ${extra} updatePlayer(1/60); updateHazards(1/60); }`);
@@ -103,7 +103,7 @@ check('пробел в сторону лавы не роняет игру', !thr
 check('лава при этом не копается и подсказки про кирку нет', run('getBlock(51, F)') === run('BLOCK_TYPES.LAVA') && !notes.some(n => n.includes('не поддаётся')));
 room(650);
 run('for (let x = 49; x <= 53; x++) world[F + 1][x] = BLOCK_TYPES.LAVA; player.y = F - 2;');
-frameErrors = 0; notes.length = 0;
+frameErrors = 0; notes.length = 0; run('liveNotifications.length = 0');
 run('keys = {KeyD: true, Space: true, KeyS: true}; for (let i = 0; i < 120; i++) gameLoop(1000 + i * 16.7); keys = {};');
 check('падение в лаву с зажатым пробелом — без ошибок, смерть и возврат наверх', frameErrors === 0 && notes.some(n => n.includes('Лава')) && run('player.y') < run('F - 100'));
 frameErrors = 0;
@@ -116,7 +116,7 @@ run(`(() => { generateWorld(7); let t = 5000;
     keys = {}; })()`);
 check('десятки настоящих лавовых озёр мира — ни одной ошибки в кадре', frameErrors === 0);
 run('const realHazards = updateHazards; updateHazards = () => { throw new Error("тест"); };');
-rafCalls = 0; frameErrors = 0; notes.length = 0;
+rafCalls = 0; frameErrors = 0; notes.length = 0; run('liveNotifications.length = 0');
 run('gameLoop(90000); gameLoop(90016); updateHazards = realHazards;');
 check('если в кадре всё же ошибка — игра продолжает работать', rafCalls === 2 && frameErrors === 2);
 check('и сообщает об этом один раз, а не каждый кадр', notes.filter(n => n.includes('Ошибка в игре')).length === 1);

@@ -174,7 +174,7 @@ check('ждать: секунда на 10 м (500 м → 50 с)', run('cageWait(
 shaft(500); run('stats.money = 200; addToBackpack(BLOCK_TYPES.EMERALD); addToBackpack(BLOCK_TYPES.GOLD);');
 press('KeyC');
 check('C открывает окно клети, игра на паузе', run('gameState.paused') === true && els.cageModal.classList.contains('active'));
-check('в окне цена, ожидание и кнопка «Вызвать»', els.cageInfo.innerHTML.includes('110 руб.') && els.cageInfo.innerHTML.includes('50 с') && els.cageInfo.innerHTML.includes('callCage()'));
+check('в окне цена, ожидание и кнопка «Вызвать»', els.cageInfo.innerHTML.includes('110<span class="coin"') && els.cageInfo.innerHTML.includes('50 с') && els.cageInfo.innerHTML.includes('callCage()'));
 press('Escape');
 check('ESC закрывает', run('gameState.paused') === false && !els.cageModal.classList.contains('active'));
 run('openCage(); callCage();');
@@ -218,7 +218,7 @@ run('closeShop()');
 console.log('Сохранения и смерть');
 shaft(); run('ladders = 12; ropes = 3; world[B][50] = BLOCK_TYPES.LADDER; world[B - 1][50] = BLOCK_TYPES.ROPE;');
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
-check('SAVE_VERSION = 7', run('SAVE_VERSION') === 7 && save.version === 7);
+check('SAVE_VERSION = 8', run('SAVE_VERSION') === 8 && save.version === 8);
 run('ladders = 0; ropes = 0; world[B][50] = BLOCK_TYPES.AIR; world[B - 1][50] = BLOCK_TYPES.AIR;');
 run(`loadSaveData(${JSON.stringify(save)})`);
 check('снаряжение восстанавливается', run('ladders') === 12 && run('ropes') === 3);

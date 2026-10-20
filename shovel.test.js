@@ -138,7 +138,7 @@ check('после покупки — «Есть»', shovelItem().innerHTML.inclu
 run('closeShop()');
 
 console.log('Сохранения');
-check('SAVE_VERSION = 7', run('SAVE_VERSION') === 7);
+check('SAVE_VERSION = 8', run('SAVE_VERSION') === 8);
 setup('STONE', 1, 1);
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
 check('лопата попадает в сохранение', save.shovel === 1);

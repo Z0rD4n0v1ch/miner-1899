@@ -90,7 +90,7 @@ check('деньги не списались', run('stats.money') === 0);
 check('после этого лопата отмечена «Есть»', shovelItem().innerHTML.includes('Есть'));
 check('в лавке видно долг', els.shopMoney.textContent.includes('долг лавке: 80'));
 run('updateUI()');
-check('в панели «0 руб. (долг 80)» и красным', els.money.textContent === '0 руб. (долг 80)' && els.money.classList.contains('full'));
+check('в панели «0 ¤ (долг 80)» и красным', els.money.textContent === '0 ¤ (долг 80)' && els.money.classList.contains('full'));
 check('второй раз в долг не дают', run('takeShovelOnCredit(1)') === false);
 run('closeShop()');
 
@@ -102,7 +102,7 @@ run('for (let i = 0; i < 10; i++) addToBackpack(BLOCK_TYPES.GOLD); sellBackpack(
 check('вторая выручка: 40 в долг, 40 себе', run('stats.money') === 40 && run('debt') === 0);
 check('уведомление о погашении', notes.some(n => n.includes('Долг погашен')));
 run('updateUI()');
-check('долг пропал из панели', els.money.textContent === '40 руб.' && !els.money.classList.contains('full'));
+check('долг пропал из панели', els.money.textContent === '40 ¤' && !els.money.classList.contains('full'));
 run('for (let i = 0; i < 2; i++) addToBackpack(BLOCK_TYPES.GOLD); sellBackpack();');
 check('дальше выручка целиком своя', run('stats.money') === 56);
 check('всего за лопату отдано 80 — вдвое больше цены', 40 + 80 + 16 - 56 === 80);
@@ -122,7 +122,7 @@ fresh(0);
 run('debt = 10;');
 check('при непогашенном долге новый не дают', run('takeShovelOnCredit(1)') === false);
 fresh(0);
-run('stats.money = 500; debt = 80; pickaxeTier = 0;');
+run('stats.money = 500; debt = 80; pickaxeTier = 0; hero.str = 2;');
 check('с долгом покупать на свои деньги можно', run('buyPickaxe(1)') === true && run('debt') === 80);
 
 console.log('Сохранения');

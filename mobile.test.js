@@ -112,7 +112,7 @@ check('«Вернуться в игру» — пауза снята', !body.clas
 console.log('Сводка поверх игры');
 run('health = 64; stats.money = 120; backpack = emptyBackpack(); addToBackpack(BLOCK_TYPES.GOLD); player.y = DEPTH_ORIGIN + 230; updateCamera();');
 texts.length = 0; run('render()');
-check('на экране здоровье, глубина, рюкзак и деньги', texts.some(t => t.includes('❤ 64') && t.includes('230 м') && t.includes('1/20') && t.includes('120 руб.')));
+check('на экране здоровье, глубина, рюкзак и деньги', texts.some(t => t.includes('❤ 64') && t.includes('230 м') && t.includes('1/20') && /120\s*$/.test(t.trim())));
 check('шрифт сводки увеличен под ужатый холст', run('Math.round(13 * canvas.width / 400)') > 13);
 check('игровой цикл в сенсорном режиме не падает', (() => { run('gameLoop(16); gameLoop(33);'); return true; })());
 
