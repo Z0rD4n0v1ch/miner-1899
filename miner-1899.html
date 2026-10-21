@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-    Miner 1899 — 2D-игра про шахтёра
+    Шахтёр 1899 (Miner 1899) — 2D-игра про шахтёра
     Copyright (C) 2026 Z0rD4n0v1ch
 
     This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Miner 1899 — 2D шахтёр</title>
+    <title>Шахтёр 1899 — 2D-игра про шахтёра</title>
     <style>
         * {
             margin: 0;
@@ -1418,7 +1418,7 @@
     </style>
 </head>
 <body>
-    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v2.0.0</span></h1>
+    <h1>⛏️ Шахтёр 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.7.2</span></h1>
     <div id="layout">
     <!-- Слева: сохранения и радио (радио открывается клавишей M) -->
     <aside id="leftPanel">
@@ -1593,7 +1593,7 @@
         <p><span class="key">P</span> (<span class="key">З</span>) - Персонаж: сила и выносливость; тоники — в лавке</p>
         <p><span class="key">ESC</span> - Меню сохранений</p>
         <p>⚙️ «Настройки» на панели сохранений: где показывать уведомления, поменять панели местами</p>
-        <p class="license-note">Miner 1899 — свободная игра под лицензией <a href="https://github.com/Z0rD4n0v1ch/miner-1899/blob/main/LICENSE" target="_blank" rel="noopener">AGPL-3.0</a>. <a href="https://github.com/Z0rD4n0v1ch/miner-1899" target="_blank" rel="noopener">Исходный код</a></p>
+        <p class="license-note">Шахтёр 1899 — свободная игра под лицензией <a href="https://github.com/Z0rD4n0v1ch/miner-1899/blob/main/LICENSE" target="_blank" rel="noopener">AGPL-3.0</a>. <a href="https://github.com/Z0rD4n0v1ch/miner-1899" target="_blank" rel="noopener">Исходный код</a></p>
         <p id="debugHelp" style="display: none;"><span class="key">`</span> (<span class="key">Ё</span>) - Режим отладки</p>
         <p>Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.</p>
         <p>Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.</p>
@@ -1894,7 +1894,7 @@
             if (typeof updateCamera === 'function' && world.length) updateCamera();
         }
         const SAVE_VERSION = 10;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс; 8: характеристики; 9: цель и итоги; 10: режим (хардкор)
-        const GAME_VERSION = '2.0.0';
+        const GAME_VERSION = '1.7.2';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
         // Физика игрока. Скорости — в блоках в секунду, ускорения — в блоках/с².
