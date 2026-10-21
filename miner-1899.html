@@ -633,6 +633,49 @@
             padding: 10px 6px;
         }
 
+        #sideButtons .ach-btn {
+            grid-column: 1 / -1;
+        }
+
+        /* достижения */
+        .ach-total {
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+
+        .ach-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #333;
+            text-align: left;
+            opacity: 0.55;
+        }
+
+        .ach-row.got {
+            opacity: 1;
+        }
+
+        .ach-icon {
+            font-size: 20px;
+        }
+
+        .ach-name {
+            color: #ffa500;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .ach-row:not(.got) .ach-name {
+            color: #ccc;
+        }
+
+        .ach-text {
+            color: #aaa;
+            font-size: 12px;
+        }
+
         /* подсказки по управлению скрыты, пока не нажата кнопка «Управление» */
         #controls {
             display: none;
@@ -1531,6 +1574,7 @@
     <div id="sideButtons">
         <button class="btn btn-secondary" onclick="openCharacter()">👷 Персонаж (P)</button>
         <button class="btn btn-secondary" id="controlsToggle" onclick="toggleControls()">🎮 Управление</button>
+        <button class="btn btn-secondary ach-btn" onclick="openAchievements()">🏅 Достижения</button>
     </div>
 
     <div id="controls">
@@ -1540,6 +1584,7 @@
         <p><span class="key">E</span> (<span class="key">У</span>) у лавки - Купить инструменты</p>
         <p><span class="key">Q</span> (<span class="key">Й</span>) - Поставить лестницу, <span class="key">W</span>/<span class="key">S</span> - лезть</p>
         <p><span class="key">R</span> (<span class="key">К</span>) - Спустить верёвку в колодец перед собой</p>
+        <p><span class="key">L</span> (<span class="key">Д</span>) - Зажечь погасшую лампу спичкой</p>
         <p><span class="key">T</span> (<span class="key">Е</span>) - Натянуть верёвку-переправу через пропасть или лаву</p>
         <p><span class="key">C</span> (<span class="key">С</span>) - Клеть: платный подъём наверх</p>
         <p><span class="key">H</span> (<span class="key">Р</span>) - Лечиться: бинт или аптечка</p>
@@ -1659,6 +1704,7 @@
             <button class="tbtn big" id="tDown" data-key="KeyS" data-hold>▼</button>
             <button class="tbtn" data-toggle="ShiftLeft" style="grid-column: 1; grid-row: 3;">Бег</button>
             <button class="tbtn" data-key="KeyT" style="grid-column: 3; grid-row: 3;">Перепр.</button>
+            <button class="tbtn" data-key="KeyL" id="tLight" style="grid-column: 2; grid-row: 2;">🔥</button>
             <button class="tbtn" data-menu style="grid-column: 1; grid-row: 1;">☰</button>
             <button class="tbtn" data-key="KeyM" id="tRadio" style="grid-column: 3; grid-row: 1;">Радио</button>
         </div>
@@ -1713,6 +1759,17 @@
             <div class="modal-buttons">
                 <button class="btn" id="finalContinue" onclick="continueAfterFinal()">Играть дальше</button>
                 <button class="btn btn-secondary" onclick="newGameAfterFinal()">Новая игра</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Достижения -->
+    <div id="achievementsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">🏅 Достижения</div>
+            <div id="achievementsInfo"></div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeAchievements()">Готово</button>
             </div>
         </div>
     </div>
@@ -2349,6 +2406,11 @@
             if (code === 'Backquote') {
                 debug.on = !debug.on;
                 if (!debug.on) debug.fly = false;
+                // игра, в которой включали отладку, достижений не даёт (телепорт, полёт…)
+                if (debug.on && !run.debugUsed) {
+                    run.debugUsed = true;
+                    showNotification('🛠️ В этой игре включали отладку — достижения в ней не выдаются');
+                }
                 showNotification(debug.on ? '🛠️ Режим отладки включён' : '🛠️ Режим отладки выключен');
                 return true;
             }
@@ -2629,6 +2691,7 @@
         }
 
         function rideCage() {
+            trip.gear = true;
             const depth = currentDepth();
             if (depth < CAGE_MIN_DEPTH) return false;
             const cost = cageCost(depth);
@@ -2661,6 +2724,39 @@
             return true;
         }
 
+        // Спички: зажечь погасшую открытую лампу прямо в шахте (клавиша L / Д).
+        // Чиркнуть спичкой в облаке рудничного газа — взрыв.
+        const MATCHES_PACK = { count: 10, price: 8 };
+        let matches = 0;
+
+        function lightLamp() {
+            if (lampTier === 0) { showNotification('🔥 Лампы нет — её продают в лавке'); return false; }
+            if (lampLit) { showNotification('🔥 Лампа и так горит'); return false; }
+            if (matches <= 0) { showNotification('🔥 Спичек нет — купи коробок в лавке'); return false; }
+            matches--;
+            const px = player.x + PLAYER_W / 2, py = player.y + 0.5;
+            const cloud = gasClouds.find(g => Math.hypot(px - g.x, py - g.y) < g.radius);
+            if (cloud) {
+                gasClouds.splice(gasClouds.indexOf(cloud), 1);
+                gasBlast(cloud.x, cloud.y);
+                updateUI();
+                return false;
+            }
+            lampLit = true;
+            showNotification(`🔥 Лампа зажжена. Спичек осталось: ${matches}`);
+            updateUI();
+            return true;
+        }
+
+        function buyMatches() {
+            if (stats.money < MATCHES_PACK.price) { showNotification(`💰 Не хватает ${MATCHES_PACK.price - stats.money} ¤`); return false; }
+            stats.money -= MATCHES_PACK.price;
+            matches = Math.min(MAX_GEAR, matches + MATCHES_PACK.count);
+            showNotification(`🔥 Куплен коробок спичек: ${MATCHES_PACK.count} шт.`);
+            updateUI(); renderShopList();
+            return true;
+        }
+
         function buyRope() {
             if (stats.money < ROPE_PRICE) { showNotification(`💰 Не хватает ${ROPE_PRICE - stats.money} ¤`); return false; }
             stats.money -= ROPE_PRICE;
@@ -2683,7 +2779,7 @@
                 if (drop > SAFE_FALL) {
                     if (lampShines() && LAMPS[lampTier].open) {
                         lampLit = false;
-                        showNotification('🔦 Открытая лампа погасла от падения. Зажечь снова — у лавки');
+                        showNotification(matches > 0 ? '🔦 Открытая лампа погасла от падения — зажги спичкой (L)' : '🔦 Открытая лампа погасла от падения. Зажечь — спичкой (продаются в лавке) или у лавки');
                     }
                     damage(Math.round((drop - SAFE_FALL) * FALL_DAMAGE_PER_BLOCK), 'Падение с высоты');
                 }
@@ -2889,6 +2985,7 @@
 
         function die(reason) {
             run.deaths++;
+            trip.maxDepth = 0; trip.gear = true;   // смерть — не «выбрался сам»
             run.reachedBottom = false;          // «вернуться живым»: дно засчитывается заново
             if (mode.hardcore && mode.variant === 'oneLife') { hardcoreGameOver(reason); return; }
             if (mode.hardcore && mode.variant === 'harsh') {
@@ -3001,7 +3098,9 @@
             lampLit = false;
             damageFlash = 1;
             showNotification('💥 Открытая лампа подожгла рудничный газ! Лампа погасла');
+            const deathsBefore = run.deaths;
             damage(GAS_BLAST_DAMAGE, 'Взрыв рудничного газа');
+            if (run.deaths === deathsBefore && !gameOver) unlock('gasSurvivor');
         }
 
         function updateHazards(dt) {
@@ -3525,6 +3624,9 @@
         function killCreature(c) {
             c.hp = 0;
             run.kills++;
+            if (c.type === 'rat') countUp('rat');
+            if (c.type === 'spider') countUp('spider');
+            if (c.type === 'salamander') unlock('salamander');
             if (c.loot) {
                 if (addToBackpack(BLOCK_TYPES[c.loot.toUpperCase()]) !== 'full') {
                     showNotification('🐀 Крыса поймана — добыча вернулась в рюкзак');
@@ -3896,6 +3998,122 @@
             ctx.restore();
         }
 
+        // ============ ДОСТИЖЕНИЯ ============
+        // Общие для всех игр: хранятся в браузере отдельно от сохранений и не теряются
+        // при новой игре. Награда — значок. Счётчики (крысы, пауки) тоже общие.
+        const ACH_KEY = 'miner_achievements';
+        const ACHIEVEMENTS = [
+            { id: 'firstOre',    group: '⛏️ Шахта',     name: 'Первая жила',             text: 'добыть первую руду' },
+            { id: 'clay',        group: '⛏️ Шахта',     name: 'Глина под ногами',        text: 'спуститься в Глиняные штольни (200 м)' },
+            { id: 'granite',     group: '⛏️ Шахта',     name: 'Гранитный пояс',          text: 'спуститься в Гранитные недра (400 м)' },
+            { id: 'fire',        group: '⛏️ Шахта',     name: 'Огненное дно',            text: 'спуститься на 600 м' },
+            { id: 'bottom',      group: '⛏️ Шахта',     name: 'Дно мира',                text: 'спуститься до 780 м' },
+            { id: 'stairs',      group: '⛏️ Шахта',     name: 'Ступенька за ступенькой', text: 'подняться наверх с 50 м без лестниц, верёвок и клети' },
+            { id: 'diamond',     group: '💎 Руда',      name: 'Первый алмаз',            text: 'добыть алмаз' },
+            { id: 'emerald',     group: '💎 Руда',      name: 'Изумрудный блеск',        text: 'добыть изумруд' },
+            { id: 'platinum',    group: '💎 Руда',      name: 'Платиновая жила',         text: 'добыть платину' },
+            { id: 'fullKorob',   group: '💎 Руда',      name: 'Полный короб',            text: 'продать за раз полный шахтёрский короб (50 штук)' },
+            { id: 'earn1000',    group: '💰 Деньги',    name: 'Первая тысяча',           text: 'заработать за игру 1 000 монет' },
+            { id: 'earn10000',   group: '💰 Деньги',    name: 'Купец',                   text: 'заработать за игру 10 000 монет' },
+            { id: 'debtFree',    group: '💰 Деньги',    name: 'Без долгов',              text: 'вернуть долг лавке' },
+            { id: 'diamondPick', group: '🛠 Снаряжение', name: 'Алмазное жало',           text: 'купить кирку с алмазным жалом' },
+            { id: 'allRounder',  group: '🛠 Снаряжение', name: 'Мастер на все руки',      text: 'сила и выносливость 5' },
+            { id: 'rats',        group: '🐀 Твари',     name: 'Крысолов',                text: 'поймать 10 крыс', counter: 'rat', need: 10 },
+            { id: 'spiders',     group: '🐀 Твари',     name: 'Гроза пауков',            text: 'победить 10 пауков', counter: 'spider', need: 10 },
+            { id: 'salamander',  group: '🐀 Твари',     name: 'Укротитель огня',         text: 'победить саламандру' },
+            { id: 'gasSurvivor', group: '💀 Риск',      name: 'Пережил газ',             text: 'выжить во взрыве рудничного газа' },
+            { id: 'ironMiner',   group: '💀 Риск',      name: 'Железный шахтёр',         text: 'выполнить цель в хардкоре «Одна жизнь»' }
+        ];
+        const ach = { got: {}, counters: {} };     // got: id → дата получения (мс)
+        // для «Ступенька за ступенькой»: самая большая глубина и было ли снаряжение в этом походе
+        const trip = { maxDepth: 0, gear: false };
+
+        function loadAchievements() {
+            try {
+                const a = JSON.parse(localStorage.getItem(ACH_KEY) || '{}');
+                const ids = new Set(ACHIEVEMENTS.map(x => x.id));
+                ach.got = {};
+                for (const [k, v] of Object.entries(a.got || {})) if (ids.has(k) && Number.isFinite(v)) ach.got[k] = v;
+                ach.counters = {};
+                for (const [k, v] of Object.entries(a.counters || {})) if (Number.isInteger(v) && v >= 0) ach.counters[k] = v;
+            } catch (e) { ach.got = {}; ach.counters = {}; }
+        }
+
+        function saveAchievements() { safeSetItem(ACH_KEY, JSON.stringify(ach)); }
+
+        function unlock(id) {
+            if (run.debugUsed || debug.on) return false;
+            const a = ACHIEVEMENTS.find(x => x.id === id);
+            if (!a || ach.got[id]) return false;
+            ach.got[id] = Date.now();
+            saveAchievements();
+            showNotification(`🏅 Достижение: ${a.name}`);
+            renderAchievements();
+            return true;
+        }
+
+        function countUp(counter) {
+            if (run.debugUsed || debug.on) return;
+            ach.counters[counter] = (ach.counters[counter] || 0) + 1;
+            for (const a of ACHIEVEMENTS) if (a.counter === counter && ach.counters[counter] >= a.need) unlock(a.id);
+            saveAchievements();
+        }
+
+        // Проверки, которые зависят от состояния — раз в кадр (дёшево)
+        function checkAchievements() {
+            const d = currentDepth();
+            if (d >= 200) unlock('clay');
+            if (d >= 400) unlock('granite');
+            if (d >= 600) unlock('fire');
+            if (d >= BOTTOM_DEPTH) unlock('bottom');
+            if (run.earned >= 1000) unlock('earn1000');
+            if (run.earned >= 10000) unlock('earn10000');
+            if (hero.str >= 5 && hero.end >= 5) unlock('allRounder');
+            // поход вниз и обратно без снаряжения
+            if (player.y < SURFACE_Y) {
+                if (trip.maxDepth >= 50 && !trip.gear) unlock('stairs');
+                trip.maxDepth = 0; trip.gear = false;
+            } else {
+                if (d > trip.maxDepth) trip.maxDepth = d;
+                if (player.climbing) trip.gear = true;
+            }
+        }
+
+        // Добыта руда (положена в рюкзак)
+        function onOreMined(block) {
+            unlock('firstOre');
+            if (block === BLOCK_TYPES.DIAMOND) unlock('diamond');
+            if (block === BLOCK_TYPES.EMERALD) unlock('emerald');
+            if (block === BLOCK_TYPES.PLATINUM) unlock('platinum');
+        }
+
+        function renderAchievements() {
+            const box = document.getElementById('achievementsInfo');
+            if (!box) return;
+            const got = ACHIEVEMENTS.filter(a => ach.got[a.id]).length;
+            let html = `<div class="ach-total">Получено ${got} из ${ACHIEVEMENTS.length}</div>`;
+            let group = '';
+            for (const a of ACHIEVEMENTS) {
+                if (a.group !== group) { group = a.group; html += `<div class="shop-section">${group}</div>`; }
+                const when = ach.got[a.id];
+                const progress = a.counter && !when ? ` (${Math.min(a.need, ach.counters[a.counter] || 0)}/${a.need})` : '';
+                html += `<div class="ach-row${when ? ' got' : ''}"><span class="ach-icon">${when ? '🏅' : '🔒'}</span>
+                    <div><div class="ach-name">${a.name}</div><div class="ach-text">${a.text}${progress}${when ? ' · ' + new Date(when).toLocaleDateString('ru-RU') : ''}</div></div></div>`;
+            }
+            box.innerHTML = html;
+        }
+
+        function openAchievements() {
+            gameState.paused = true;
+            renderAchievements();
+            document.getElementById('achievementsModal').classList.add('active');
+        }
+
+        function closeAchievements() {
+            document.getElementById('achievementsModal').classList.remove('active');
+            gameState.paused = false;
+        }
+
         // ============ ЦЕЛИ И ИТОГИ ============
         // Цель выбирается в начале новой игры. Когда она выполнена — финальный экран с
         // итогами; дальше можно играть свободно или начать заново.
@@ -3910,9 +4128,9 @@
         };
         const goal = { id: 'free', amount: 0, done: false };
         // итоги текущей игры
-        const run = { earned: 0, deaths: 0, kills: 0, maxDepth: 0, platinumSold: 0, reachedBottom: false };
+        const run = { earned: 0, deaths: 0, kills: 0, maxDepth: 0, platinumSold: 0, reachedBottom: false, debugUsed: false };
 
-        function resetRun() { Object.assign(run, { earned: 0, deaths: 0, kills: 0, maxDepth: 0, platinumSold: 0, reachedBottom: false }); }
+        function resetRun() { Object.assign(run, { earned: 0, deaths: 0, kills: 0, maxDepth: 0, platinumSold: 0, reachedBottom: false, debugUsed: false }); }
 
         function goalTitle() {
             const g = GOALS[goal.id];
@@ -3951,8 +4169,10 @@
             }
             if (!goal.done && goalReached()) {
                 goal.done = true;
+                if (mode.hardcore && mode.variant === 'oneLife' && goal.id !== 'free') unlock('ironMiner');
                 showFinal();
             }
+            checkAchievements();
         }
 
         function openGoalPicker() {
@@ -4150,8 +4370,10 @@
             addPoints('str', backpackWeight());
             run.earned += earned;
             run.platinumSold += backpack.platinum || 0;
+            if (backpackTier === 2 && count >= BACKPACKS[2].capacity) unlock('fullKorob');
             const repaid = Math.min(debt, earned);
             debt -= repaid;
+            if (repaid > 0 && debt === 0) unlock('debtFree');
             stats.money += earned - repaid;
             backpack = emptyBackpack();
             if (repaid > 0) {
@@ -4179,6 +4401,7 @@
             }
             stats.money -= p.price;
             pickaxeTier = tier;
+            if (tier === 3) unlock('diamondPick');
             resetDig();
             showNotification(`⛏️ Куплена кирка: ${p.name}`);
             updateUI();
@@ -4270,6 +4493,7 @@
             // снаряжение для подъёма: покупается сколько угодно раз
             const gear = [
                 { name: `🧗 Лестницы ×${LADDER_PACK.count}`, info: `ставятся клавишей Q · у тебя: ${ladders}`, price: LADDER_PACK.price, fn: 'buyLadders()' },
+                { name: '🔥 Спички ×' + MATCHES_PACK.count, info: `зажечь погасшую открытую лампу в шахте — клавиша L · у тебя: ${matches}`, price: MATCHES_PACK.price, fn: 'buyMatches()' },
                 { name: '🧗 Верёвка', info: `${ROPE_LENGTH} м, спускается клавишей R · у тебя: ${ropes}`, price: ROPE_PRICE, fn: 'buyRope()' },
                 { name: '🔦 Открытая лампа', info: 'светит на 4 блока, отпугивает мышей и пауков; гаснет при падении, поджигает газ', price: LAMPS[1].price, fn: 'buyLamp(1)', owned: lampTier >= 1 },
                 { name: '🔦 Лампа Дэви', info: 'закрытая: светит на 3 блока, не гаснет и не поджигает газ', price: LAMPS[2].price, fn: 'buyLamp(2)', owned: lampTier >= 2 },
@@ -4536,6 +4760,7 @@
 
             if (block !== BLOCK_TYPES.AIR && block !== BLOCK_TYPES.BEDROCK) {
                 const result = addToBackpack(block);
+            if (result === 'added' || result === 'swapped') onOreMined(block);
                 if (result === 'added') {
                     addScore(ORES[block].score);
                     if (backpackCount() === backpackCapacity()) {
@@ -4879,6 +5104,7 @@
             document.getElementById('heroStats').textContent = `${statLine('str')}   ${statLine('end')}`;
             setCoinText(document.getElementById('goalStat'), (mode.hardcore ? '💀 ' : '') + goalProgress());
             const gearList = [lampTier ? LAMPS[lampTier].name.toLowerCase() + (lampLit ? '' : ' (погасла)') : null,
+                              matches ? `спички ${matches}` : null,
                               beltTier ? BELTS[beltTier].name.toLowerCase() : null, hasCanary ? 'канарейка' : null].filter(Boolean);
             document.getElementById('gear').textContent = gearList.length ? gearList.join(', ') : '—';
             const meds = [bandages ? `бинты ${bandages}` : null, medkits ? `аптечки ${medkits}` : null].filter(Boolean);
@@ -4970,6 +5196,7 @@
                 health: Math.round(health),
                 ladders: ladders,
                 ropes: ropes,
+                matches: matches,
                 hero: { str: hero.str, end: hero.end, strPts: hero.strPts, endPts: hero.endPts },
                 goal: { id: goal.id, amount: goal.amount, done: goal.done },
                 mode: Object.assign({}, mode),
@@ -5103,6 +5330,7 @@
             };
             ladders = gearCount(saveData.ladders, START_LADDERS);
             ropes = gearCount(saveData.ropes, 0);
+            matches = gearCount(saveData.matches, 0);
             const bpTier = Number(saveData.backpackTier);
             backpackTier = (Number.isInteger(bpTier) && bpTier >= 0 && bpTier < BACKPACKS.length) ? bpTier : 0;
             const medCount = v => { const n = Number(v); return Number.isInteger(n) && n >= 0 ? Math.min(MAX_MEDS, n) : 0; };
@@ -5120,7 +5348,7 @@
             const rs = saveData.run || {};
             const cnt = v => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0; };
             Object.assign(run, { earned: cnt(rs.earned), deaths: cnt(rs.deaths), kills: cnt(rs.kills), maxDepth: cnt(rs.maxDepth),
-                                 platinumSold: cnt(rs.platinumSold), reachedBottom: rs.reachedBottom === true });
+                                 platinumSold: cnt(rs.platinumSold), reachedBottom: rs.reachedBottom === true, debugUsed: rs.debugUsed === true });
             const hs = saveData.hero || {};
             const lvl = v => { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= STAT_MAX ? n : 1; };
             const pts = v => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.min(1e6, n) : 0; };
@@ -5285,6 +5513,7 @@
                 debt = 0;
                 ladders = START_LADDERS;
                 ropes = 0;
+                matches = 0;
                 lampTier = 0;
                 lampLit = true;
                 beltTier = 0;
@@ -6126,7 +6355,7 @@
         // Обработка клавиатуры (сенсорные кнопки зовут те же функции)
         // Клавиши-действия срабатывают один раз на нажатие: автоповтор при удержании
         // не должен, например, тратить бинты один за другим
-        const ONE_SHOT_KEYS = new Set(['KeyE', 'KeyQ', 'KeyR', 'KeyT', 'KeyC', 'KeyH', 'KeyM', 'KeyV', 'KeyP', 'Backquote', 'KeyG', 'Escape']);
+        const ONE_SHOT_KEYS = new Set(['KeyE', 'KeyQ', 'KeyR', 'KeyT', 'KeyL', 'KeyC', 'KeyH', 'KeyM', 'KeyV', 'KeyP', 'Backquote', 'KeyG', 'Escape']);
 
         function onKeyDown(e) {
             // набор текста в полях (название станции, адрес, имя сохранения) — не управление
@@ -6150,6 +6379,7 @@
             if (e.code === 'KeyQ' && !gameState.paused) placeLadder();
             if (e.code === 'KeyR' && !gameState.paused) deployRope();
             if (e.code === 'KeyT' && !gameState.paused) deployBridge();
+            if (e.code === 'KeyL' && !gameState.paused) lightLamp();
             if (e.code === 'KeyC' && !gameState.paused) openCage();
             if (e.code === 'KeyH' && !gameState.paused) heal();
             if (e.code === 'KeyM' && !gameState.paused) radioPanelToggle();
@@ -6162,6 +6392,7 @@
                     closeCage();
                     closeSettings();
                     closeCharacter();
+                    closeAchievements();
                     closeShop();
                     closeSaveModal();
                     closeLoadModal();
@@ -6328,6 +6559,7 @@
         }
         loadSettings();
         applySettings();
+        loadAchievements();
 
         // Автосохранение каждые 30 секунд
         setInterval(autoSave, AUTOSAVE_INTERVAL);
