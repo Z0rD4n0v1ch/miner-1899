@@ -802,6 +802,60 @@
             box-shadow: inset 0 0 0 0.09em rgba(255, 235, 150, 0.55), 0 0 0 0.06em #6e4b08;
         }
 
+        /* цели и итоги */
+        .goal-intro {
+            color: #aaa;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .goal-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #3a3a3a;
+            text-align: left;
+        }
+
+        .goal-name {
+            color: #ffa500;
+            font-weight: bold;
+        }
+
+        .goal-text {
+            color: #aaa;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .goal-buttons {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .goal-btn {
+            margin: 0;
+            padding: 7px 10px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .final-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #3a3a3a;
+            text-align: left;
+        }
+
+        .final-row b {
+            color: #ffa500;
+        }
+
         /* персонаж */
         .char-row {
             text-align: left;
@@ -1289,7 +1343,7 @@
     </style>
 </head>
 <body>
-    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.8.0</span></h1>
+    <h1>⛏️ Miner 1899 <span style="font-size:14px;color:#888;font-weight:normal">v1.7.2</span></h1>
     <div id="layout">
     <!-- Слева: сохранения и радио (радио открывается клавишей M) -->
     <aside id="leftPanel">
@@ -1426,6 +1480,10 @@
         <div class="stat">
             <div class="stat-label">Лечение (H)</div>
             <div class="stat-value" id="meds" style="font-size: 14px;">—</div>
+        </div>
+        <div class="stat wide">
+            <div class="stat-label">Цель</div>
+            <div class="stat-value" id="goalStat" style="font-size: 13px;">⛏️ Свободная игра</div>
         </div>
         <div class="stat wide">
             <div class="stat-label">Персонаж (P)</div>
@@ -1582,6 +1640,27 @@
         </div>
     </div>
 
+    <!-- Выбор цели -->
+    <div id="goalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">⛏️ Выбери цель</div>
+            <div class="goal-intro">Цель можно выполнить и закончить игру с итогами — или просто копать без цели.</div>
+            <div id="goalOptions"></div>
+        </div>
+    </div>
+
+    <!-- Финальный экран -->
+    <div id="finalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">🏆 Цель выполнена!</div>
+            <div id="finalInfo"></div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="continueAfterFinal()">Играть дальше</button>
+                <button class="btn btn-secondary" onclick="newGameAfterFinal()">Новая игра</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Персонаж -->
     <div id="characterModal" class="modal">
         <div class="modal-content">
@@ -1701,8 +1780,8 @@
             VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
             if (typeof updateCamera === 'function' && world.length) updateCamera();
         }
-        const SAVE_VERSION = 8;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс; 8: характеристики
-        const GAME_VERSION = '1.8.0';
+        const SAVE_VERSION = 9;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс; 8: характеристики; 9: цель и итоги
+        const GAME_VERSION = '1.7.2';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
         // Физика игрока. Скорости — в блоках в секунду, ускорения — в блоках/с².
@@ -2752,6 +2831,8 @@
         }
 
         function die(reason) {
+            run.deaths++;
+            run.reachedBottom = false;          // «вернуться живым»: дно засчитывается заново
             const keep = BACKPACKS[backpackTier].keepOnDeath;
             const before = backpackCount();
             for (const k in backpack) backpack[k] = Math.floor(backpack[k] * keep);
@@ -3381,6 +3462,7 @@
 
         function killCreature(c) {
             c.hp = 0;
+            run.kills++;
             if (c.loot) {
                 if (addToBackpack(BLOCK_TYPES[c.loot.toUpperCase()]) !== 'full') {
                     showNotification('🐀 Крыса поймана — добыча вернулась в рюкзак');
@@ -3660,6 +3742,128 @@
         }
 
         // Продать всё содержимое рюкзака. Возвращает выручку.
+        // ============ ЦЕЛИ И ИТОГИ ============
+        // Цель выбирается в начале новой игры. Когда она выполнена — финальный экран с
+        // итогами; дальше можно играть свободно или начать заново.
+        const BOTTOM_DEPTH = 780;                     // м — считается «дном шахты»
+        const WEALTH_OPTIONS = [10000, 15000, 25000];
+        const GOALS = {
+            free:     { name: 'Свободная игра', emoji: '⛏️', text: 'Без цели: копай сколько хочешь' },
+            platinum: { name: 'Платина наверх', emoji: '💎', text: 'Добыть платину на Огненном дне и продать её в лавке' },
+            bottom:   { name: 'Дно шахты',      emoji: '🕳️', text: 'Спуститься до 780 м и живым вернуться на поверхность' },
+            wealth:   { name: 'Состояние',      emoji: '💰', text: 'Заработать за игру столько монет' },
+            master:   { name: 'Мастер',         emoji: '💪', text: 'Поднять силу и выносливость до 10' }
+        };
+        const goal = { id: 'free', amount: 0, done: false };
+        // итоги текущей игры
+        const run = { earned: 0, deaths: 0, kills: 0, maxDepth: 0, platinumSold: 0, reachedBottom: false };
+
+        function resetRun() { Object.assign(run, { earned: 0, deaths: 0, kills: 0, maxDepth: 0, platinumSold: 0, reachedBottom: false }); }
+
+        function goalTitle() {
+            const g = GOALS[goal.id];
+            return goal.id === 'wealth' ? `${g.name}: ${goal.amount.toLocaleString('ru-RU')} ¤` : g.name;
+        }
+
+        // Строка прогресса для панели
+        function goalProgress() {
+            if (goal.done) return `${GOALS[goal.id].emoji} ${goalTitle()} — выполнена ✓`;
+            switch (goal.id) {
+                case 'platinum': return `💎 Платина наверх · продано: ${run.platinumSold}`;
+                case 'bottom': return run.reachedBottom ? '🕳️ Дно взято — поднимись наверх!' : `🕳️ Дно шахты · глубже всего: ${run.maxDepth}/${BOTTOM_DEPTH} м`;
+                case 'wealth': return `💰 Заработано ${run.earned.toLocaleString('ru-RU')} / ${goal.amount.toLocaleString('ru-RU')} ¤`;
+                case 'master': return `💪 Мастер · сила ${hero.str}/10 · выносливость ${hero.end}/10`;
+                default: return '⛏️ Свободная игра';
+            }
+        }
+
+        function goalReached() {
+            switch (goal.id) {
+                case 'platinum': return run.platinumSold > 0;
+                case 'bottom': return run.reachedBottom && player.y < SURFACE_Y;
+                case 'wealth': return run.earned >= goal.amount;
+                case 'master': return hero.str >= STAT_MAX && hero.end >= STAT_MAX;
+                default: return false;
+            }
+        }
+
+        // Каждый кадр: глубина и проверка цели
+        function updateGoal() {
+            const d = currentDepth();
+            if (d > run.maxDepth) run.maxDepth = d;
+            if (d >= BOTTOM_DEPTH && !run.reachedBottom) {
+                run.reachedBottom = true;
+                if (goal.id === 'bottom' && !goal.done) showNotification('🕳️ Дно шахты! Теперь — живым наверх');
+            }
+            if (!goal.done && goalReached()) {
+                goal.done = true;
+                showFinal();
+            }
+        }
+
+        function openGoalPicker() {
+            gameState.paused = true;
+            const box = document.getElementById('goalOptions');
+            const btn = (id, label, extra = '') => `<button class="btn goal-btn" onclick="chooseGoal('${id}'${extra})">${label}</button>`;
+            const row = id => {
+                const g = GOALS[id];
+                const buttons = id === 'wealth'
+                    ? WEALTH_OPTIONS.map(n => btn(id, `${n.toLocaleString('ru-RU')} ¤`, `, ${n}`)).join('')
+                    : btn(id, 'Выбрать');
+                return `<div class="goal-row"><div><div class="goal-name">${g.emoji} ${g.name}</div><div class="goal-text">${g.text}</div></div><div class="goal-buttons">${buttons}</div></div>`;
+            };
+            box.innerHTML = ['platinum', 'bottom', 'wealth', 'master', 'free'].map(row).join('').replace(/¤/g, COIN);
+            document.getElementById('goalModal').classList.add('active');
+        }
+
+        function chooseGoal(id, amount) {
+            if (!GOALS[id]) return false;
+            goal.id = id;
+            goal.amount = id === 'wealth' ? (WEALTH_OPTIONS.includes(amount) ? amount : WEALTH_OPTIONS[1]) : 0;
+            goal.done = false;
+            document.getElementById('goalModal').classList.remove('active');
+            gameState.paused = false;
+            showNotification(`${GOALS[id].emoji} Цель: ${goalTitle()}`);
+            updateUI();
+            return true;
+        }
+
+        function formatTime(sec) {
+            const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s2 = Math.floor(sec % 60);
+            return h ? `${h} ч ${m} мин` : `${m} мин ${s2} с`;
+        }
+
+        // Финальный экран
+        function showFinal() {
+            gameState.paused = true;
+            const rows = [
+                ['Цель', goalTitle()],
+                ['Время игры', formatTime(stats.playtime)],
+                ['Глубже всего', `${run.maxDepth} м`],
+                ['Заработано', `${run.earned.toLocaleString('ru-RU')} ¤`],
+                ['Очки', stats.score.toLocaleString('ru-RU')],
+                ['Смертей', run.deaths],
+                ['Побеждено тварей', run.kills],
+                ['Кирка', PICKAXES[pickaxeTier].name],
+                ['Сила / выносливость', `${hero.str} / ${hero.end}`]
+            ];
+            document.getElementById('finalInfo').innerHTML = rows.map(([k, v]) =>
+                `<div class="final-row"><span>${k}</span><b>${withCoins(String(v))}</b></div>`).join('');
+            document.getElementById('finalModal').classList.add('active');
+        }
+
+        function continueAfterFinal() {
+            document.getElementById('finalModal').classList.remove('active');
+            gameState.paused = false;
+            updateUI();
+        }
+
+        function newGameAfterFinal() {
+            document.getElementById('finalModal').classList.remove('active');
+            gameState.paused = false;
+            newGame(true);
+        }
+
         // ============ ПЕРСОНАЖ: СИЛА И ВЫНОСЛИВОСТЬ ============
         // Уровни 1–10. Очки копятся от дела: сила — за вес проданной руды (поднял наверх
         // и сдал), выносливость — за выкопанные блоки. Уровень растёт, когда очков хватает
@@ -3784,6 +3988,8 @@
             const count = backpackCount();
             if (count === 0) return 0;
             addPoints('str', backpackWeight());
+            run.earned += earned;
+            run.platinumSold += backpack.platinum || 0;
             const repaid = Math.min(debt, earned);
             debt -= repaid;
             stats.money += earned - repaid;
@@ -4510,6 +4716,7 @@
             document.getElementById('ladders').textContent = ladders;
             document.getElementById('ropes').textContent = ropes;
             document.getElementById('heroStats').textContent = `${statLine('str')}   ${statLine('end')}`;
+            setCoinText(document.getElementById('goalStat'), goalProgress());
             const gearList = [lampTier ? LAMPS[lampTier].name.toLowerCase() + (lampLit ? '' : ' (погасла)') : null,
                               beltTier ? BELTS[beltTier].name.toLowerCase() : null, hasCanary ? 'канарейка' : null].filter(Boolean);
             document.getElementById('gear').textContent = gearList.length ? gearList.join(', ') : '—';
@@ -4603,6 +4810,8 @@
                 ladders: ladders,
                 ropes: ropes,
                 hero: { str: hero.str, end: hero.end, strPts: hero.strPts, endPts: hero.endPts },
+                goal: { id: goal.id, amount: goal.amount, done: goal.done },
+                run: Object.assign({}, run),
                 lamp: lampTier,
                 lampLit: lampLit,
                 belt: beltTier,
@@ -4644,6 +4853,10 @@
             // 7 → 8: появились характеристики — все с первого уровня
             if (saveData.version === 7) {
                 saveData = Object.assign({}, saveData, { version: 8, hero: { str: 1, end: 1, strPts: 0, endPts: 0 } });
+            }
+            // 8 → 9: цели и итоги игры — старые игры продолжаются как свободные
+            if (saveData.version === 8) {
+                saveData = Object.assign({}, saveData, { version: 9, goal: { id: 'free', amount: 0, done: false }, run: {} });
             }
             return saveData;
         }
@@ -4725,6 +4938,14 @@
             const medCount = v => { const n = Number(v); return Number.isInteger(n) && n >= 0 ? Math.min(MAX_MEDS, n) : 0; };
             bandages = medCount(saveData.bandages);
             medkits = medCount(saveData.medkits);
+            const gs = saveData.goal || {};
+            goal.id = GOALS[gs.id] ? gs.id : 'free';
+            goal.amount = goal.id === 'wealth' ? (WEALTH_OPTIONS.includes(gs.amount) ? gs.amount : WEALTH_OPTIONS[1]) : 0;
+            goal.done = gs.done === true;
+            const rs = saveData.run || {};
+            const cnt = v => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0; };
+            Object.assign(run, { earned: cnt(rs.earned), deaths: cnt(rs.deaths), kills: cnt(rs.kills), maxDepth: cnt(rs.maxDepth),
+                                 platinumSold: cnt(rs.platinumSold), reachedBottom: rs.reachedBottom === true });
             const hs = saveData.hero || {};
             const lvl = v => { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= STAT_MAX ? n : 1; };
             const pts = v => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? Math.min(1e6, n) : 0; };
@@ -4869,8 +5090,8 @@
         }
 
         // Новая игра
-        function newGame() {
-            if (confirm('Начать новую игру? Несохранённый прогресс будет потерян.')) {
+        function newGame(noConfirm) {
+            if (noConfirm === true || confirm('Начать новую игру? Несохранённый прогресс будет потерян.')) {
                 worldSeed = Date.now();
                 generateWorld(worldSeed);
                 player.x = WORLD_WIDTH / 2;
@@ -4900,8 +5121,11 @@
                 resetDig();
                 stats.playtime = 0;
                 gameState.startTime = Date.now();
+                resetRun();
+                Object.assign(goal, { id: 'free', amount: 0, done: false });
                 updateUI();
                 showNotification('🆕 Новая игра начата');
+                setTimeout(openGoalPicker, 0);     // выбор цели — сразу после начала
             }
         }
 
@@ -5238,6 +5462,7 @@
                 updateCreatures(dt);
                 updateCage(dt);
                 checkShop();
+                updateGoal();
                 updateBiome(currentTime);
                 updateCamera();
             }
@@ -5928,6 +6153,7 @@
         // Инициализация
         if (!tryLoadAutosave()) {
             generateWorld();
+            setTimeout(openGoalPicker, 0);         // первая игра — выбрать цель
         }
         updateUI();
         requestAnimationFrame(gameLoop);

@@ -172,7 +172,7 @@ check(`в коробе тот же груз замедляет меньше (${k
 console.log('Сохранения');
 room(100); run('lampTier = 1; lampLit = false; beltTier = 2;');
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
-check('SAVE_VERSION = 8, лампа, её огонь и пояс сохраняются', save.version === 8 && save.lamp === 1 && save.lampLit === false && save.belt === 2);
+check('SAVE_VERSION = 9, лампа, её огонь и пояс сохраняются', save.version === 9 && save.lamp === 1 && save.lampLit === false && save.belt === 2);
 run('lampTier = 0; lampLit = true; beltTier = 0;'); run(`loadSaveData(${JSON.stringify(save)})`);
 check('и восстанавливаются', run('lampTier') === 1 && run('lampLit') === false && run('beltTier') === 2);
 const v6 = Object.assign({}, save, { version: 6, lamp: true }); delete v6.lampLit; delete v6.belt;

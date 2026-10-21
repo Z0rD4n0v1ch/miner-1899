@@ -147,7 +147,7 @@ press('Escape'); release('Escape');
 check('ESC закрывает лавку', run('gameState.paused') === false && !els.shopModal.classList.contains('active'));
 
 console.log('Сохранения');
-check('SAVE_VERSION = 8', run('SAVE_VERSION') === 8);
+check('SAVE_VERSION = 9', run('SAVE_VERSION') === 9);
 setup('STONE', 2);
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
 check('кирка попадает в сохранение', save.pickaxe === 2);
