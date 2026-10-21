@@ -45,7 +45,9 @@ const frame = () => run('updateGoal()');
 console.log('Выбор цели');
 check('первая игра без сохранения — сразу предлагается выбрать цель', timers.length >= 1);
 timers.forEach(f => f && f());
-check('окно выбора открыто, игра на паузе', el('goalModal').classList.contains('active') && run('gameState.paused'));
+check('сначала — выбор режима', el('modeModal').classList.contains('active') && run('gameState.paused'));
+run('chooseMode(false)');
+check('обычная игра — дальше окно выбора цели, игра на паузе', !el('modeModal').classList.contains('active') && el('goalModal').classList.contains('active') && run('gameState.paused'));
 const opts = el('goalOptions').innerHTML;
 check('пять вариантов: платина, дно, состояние, мастер, свободная', ['Платина наверх', 'Дно шахты', 'Состояние', 'Мастер', 'Свободная игра'].every(t => opts.includes(t)));
 check('для «Состояния» три суммы: 10 000, 15 000, 25 000', opts.includes("chooseGoal('wealth', 10000)") && opts.includes("chooseGoal('wealth', 15000)") && opts.includes("chooseGoal('wealth', 25000)"));
@@ -114,7 +116,7 @@ check('побеждённые твари считаются', run('run.kills') =
 console.log('Новая игра и сохранения');
 fresh('wealth', 15000); run('run.earned = 777; run.kills = 3; run.maxDepth = 321;');
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
-check('SAVE_VERSION = 9: цель и итоги в сохранении', save.version === 9 && save.goal.id === 'wealth' && save.goal.amount === 15000 && save.run.earned === 777);
+check('SAVE_VERSION = 10: цель и итоги в сохранении', save.version === 10 && save.goal.id === 'wealth' && save.goal.amount === 15000 && save.run.earned === 777);
 run("chooseGoal('free'); resetRun();"); run(`loadSaveData(${JSON.stringify(save)})`);
 check('восстанавливаются', run('goal.id') === 'wealth' && run('goal.amount') === 15000 && run('run.kills') === 3 && run('run.maxDepth') === 321);
 const v8 = Object.assign({}, save, { version: 8 }); delete v8.goal; delete v8.run;
@@ -122,12 +124,12 @@ check('сохранение v8 — свободная игра, итоги с н
 check('мусор — свободная игра', run(`loadSaveData(${JSON.stringify(Object.assign({}, save, { goal: { id: 'x' }, run: { earned: -5 } }))})`) && run('goal.id') === 'free' && run('run.earned') === 0);
 timers.length = 0; confirmAnswer = true; run('newGame();'); confirmAnswer = false;
 check('новая игра — итоги с нуля, свободная до выбора', run('run.earned') === 0 && run('goal.id') === 'free');
-timers.forEach(f => f && f());
-check('и сразу окно выбора цели', el('goalModal').classList.contains('active'));
+timers.forEach(f => f && f()); run('chooseMode(false)');
+check('и сразу выбор режима, затем цели', el('goalModal').classList.contains('active'));
 run("chooseGoal('bottom')");
 fresh('platinum'); run('goal.done = true; showFinal();'); timers.length = 0;
 run('newGameAfterFinal()'); timers.forEach(f => f && f());
-check('«Новая игра» на финальном экране — без лишнего вопроса, сразу выбор цели', !el('finalModal').classList.contains('active') && el('goalModal').classList.contains('active') && run('run.earned') === 0);
+check('«Новая игра» на финальном экране — без лишнего вопроса, сразу выбор режима', !el('finalModal').classList.contains('active') && el('modeModal').classList.contains('active') && run('run.earned') === 0);
 
 console.log(`\n${passed}/${passed + failed} проверок пройдено`);
 process.exit(failed ? 1 : 0);

@@ -218,7 +218,7 @@ run('closeShop()');
 console.log('Сохранения и смерть');
 shaft(); run('ladders = 12; ropes = 3; world[B][50] = BLOCK_TYPES.LADDER; world[B - 1][50] = BLOCK_TYPES.ROPE;');
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
-check('SAVE_VERSION = 9', run('SAVE_VERSION') === 9 && save.version === 9);
+check('SAVE_VERSION = 10', run('SAVE_VERSION') === 10 && save.version === 10);
 run('ladders = 0; ropes = 0; world[B][50] = BLOCK_TYPES.AIR; world[B - 1][50] = BLOCK_TYPES.AIR;');
 run(`loadSaveData(${JSON.stringify(save)})`);
 check('снаряжение восстанавливается', run('ladders') === 12 && run('ropes') === 3);

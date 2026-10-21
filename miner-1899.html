@@ -802,6 +802,38 @@
             box-shadow: inset 0 0 0 0.09em rgba(255, 235, 150, 0.55), 0 0 0 0.06em #6e4b08;
         }
 
+        /* выбор режима */
+        .mode-choice {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .mode-btn {
+            margin: 0;
+            padding: 14px 10px;
+            font-size: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .mode-btn span {
+            font-size: 11px;
+            font-weight: normal;
+            opacity: 0.85;
+        }
+
+        #hcOptions {
+            text-align: left;
+        }
+
+        #hcOptions .setting-check {
+            margin: 6px 0;
+            font-size: 13px;
+        }
+
         /* цели и итоги */
         .goal-intro {
             color: #aaa;
@@ -1640,6 +1672,30 @@
         </div>
     </div>
 
+    <!-- Выбор режима -->
+    <div id="modeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">⛏️ Новая игра</div>
+            <div class="mode-choice">
+                <button class="btn mode-btn" onclick="chooseMode(false)">⛏️ Обычная игра<span>смерть — потеря рюкзака, сохранения как обычно</span></button>
+                <button class="btn btn-danger mode-btn" onclick="showHardcoreOptions()">💀 Хардкор<span>только автосохранение, очки ×1.5</span></button>
+            </div>
+            <div id="hcOptions" style="display: none;">
+                <div class="setting-label">Что будет при смерти</div>
+                <label class="setting-check"><input type="radio" name="hcVariant" id="hcOneLife" checked> 💀 Одна жизнь — смерть заканчивает игру</label>
+                <label class="setting-check"><input type="radio" name="hcVariant" id="hcHarsh"> ⚖️ Суровый — сгорают очки, сила и выносливость −1</label>
+                <div class="setting-label" style="margin-top: 12px;">Усложнения</div>
+                <label class="setting-check"><input type="checkbox" id="hcNoRegen"> Без восстановления здоровья — только бинты и аптечки</label>
+                <label class="setting-check"><input type="checkbox" id="hcNoCage"> Клеть не ходит</label>
+                <label class="setting-check"><input type="checkbox" id="hcFierce"> Твари опаснее — кусают в 1.5 раза сильнее и чаще</label>
+                <label class="setting-check"><input type="checkbox" id="hcDark"> Темнота — без лампы видно лишь пару блоков</label>
+                <div class="modal-buttons">
+                    <button class="btn btn-danger" onclick="startHardcoreFromForm()">Начать хардкор</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Выбор цели -->
     <div id="goalModal" class="modal">
         <div class="modal-content">
@@ -1652,10 +1708,10 @@
     <!-- Финальный экран -->
     <div id="finalModal" class="modal">
         <div class="modal-content">
-            <div class="modal-title">🏆 Цель выполнена!</div>
+            <div class="modal-title" id="finalTitle">🏆 Цель выполнена!</div>
             <div id="finalInfo"></div>
             <div class="modal-buttons">
-                <button class="btn" onclick="continueAfterFinal()">Играть дальше</button>
+                <button class="btn" id="finalContinue" onclick="continueAfterFinal()">Играть дальше</button>
                 <button class="btn btn-secondary" onclick="newGameAfterFinal()">Новая игра</button>
             </div>
         </div>
@@ -1780,7 +1836,7 @@
             VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
             if (typeof updateCamera === 'function' && world.length) updateCamera();
         }
-        const SAVE_VERSION = 9;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс; 8: характеристики; 9: цель и итоги
+        const SAVE_VERSION = 10;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс; 8: характеристики; 9: цель и итоги; 10: режим (хардкор)
         const GAME_VERSION = '1.7.2';
         const AUTOSAVE_INTERVAL = 30000; // 30 секунд
 
@@ -2499,7 +2555,7 @@
 
         function callCage() {
             const depth = currentDepth();
-            if (depth < CAGE_MIN_DEPTH || cageBlocked()) return false;
+            if (depth < CAGE_MIN_DEPTH || cageBlocked() || mode.noCage) return false;
             const cost = cageCost(depth);
             if (stats.money < cost && !cageCreditOk(cost)) return false;
             cageCall = { left: cageWait(depth), x: player.x, y: player.y, damageAt: lastDamageAt };
@@ -2540,6 +2596,7 @@
         function openCage() {
             const depth = currentDepth();
             if (depth < CAGE_MIN_DEPTH) { showNotification('⬆️ До поверхности рукой подать'); return false; }
+            if (mode.noCage) { showNotification('💀 В этом хардкоре клеть не ходит — только лестницы, верёвки и ступеньки'); return false; }
             if (cageBlocked()) { showNotification('⬆️ На Огненное дно клеть не спускается — выбирайся сам'); return false; }
             if (cageCall) { showNotification(`⬆️ Клеть уже в пути: ${Math.ceil(cageCall.left)} с`); return false; }
             gameState.paused = true;
@@ -2833,6 +2890,11 @@
         function die(reason) {
             run.deaths++;
             run.reachedBottom = false;          // «вернуться живым»: дно засчитывается заново
+            if (mode.hardcore && mode.variant === 'oneLife') { hardcoreGameOver(reason); return; }
+            if (mode.hardcore && mode.variant === 'harsh') {
+                harshPenalty();
+                showNotification(`💀 Суровый хардкор: очки сгорели, сила ${hero.str}, выносливость ${hero.end}`);
+            }
             const keep = BACKPACKS[backpackTier].keepOnDeath;
             const before = backpackCount();
             for (const k in backpack) backpack[k] = Math.floor(backpack[k] * keep);
@@ -2997,7 +3059,7 @@
             fallingBlocks = still;
 
             // восстановление — не в жару и не сразу после урона
-            if (!hot && hazardClock - lastDamageAt > REGEN_DELAY && health < maxHealth()) {
+            if (!hot && !mode.noRegen && hazardClock - lastDamageAt > REGEN_DELAY && health < maxHealth()) {
                 health = Math.min(maxHealth(), health + REGEN_RATE * dt);
             }
         }
@@ -3314,11 +3376,11 @@
         function tryBite(c) {
             if (c.bite > 0 || lampScares(c)) return;
             if (!boxesOverlap(creatureBox(c), playerBox())) return;
-            c.bite = BITE_COOLDOWN;
+            c.bite = BITE_COOLDOWN / (mode.fierce ? HC_FIERCE_MULT : 1);
             if (c.type === 'rat') {
                 stealOre(c);
             } else {
-                damage(CREATURES[c.type].damage, CREATURES[c.type].name);
+                damage(CREATURES[c.type].damage * (mode.fierce ? HC_FIERCE_MULT : 1), CREATURES[c.type].name);
             }
         }
 
@@ -3423,7 +3485,7 @@
                 f.y += f.vy * dt;
                 if (f.life <= 0 || isBlocked(f.x, f.y)) continue;
                 if (f.x > player.x && f.x < player.x + PLAYER_W && f.y > player.y && f.y < player.y + 1) {
-                    damage(CREATURES.salamander.damage, 'Плевок саламандры');
+                    damage(CREATURES.salamander.damage * (mode.fierce ? HC_FIERCE_MULT : 1), 'Плевок саламандры');
                     continue;
                 }
                 keep.push(f);
@@ -3471,7 +3533,7 @@
                 }
                 c.loot = null;
             }
-            stats.score += 5;
+            addScore(5);
             updateUI();
         }
 
@@ -3742,6 +3804,98 @@
         }
 
         // Продать всё содержимое рюкзака. Возвращает выручку.
+        // ============ РЕЖИМ: ОБЫЧНЫЙ ИЛИ ХАРДКОР ============
+        // Выбирается в начале новой игры, до цели. Хардкор:
+        //   «Одна жизнь» — смерть заканчивает игру; «Суровый» — при смерти сгорают
+        //   непотраченные очки и теряется по уровню силы и выносливости.
+        // В хардкоре только автосохранение (нельзя сохраниться и загрузиться после смерти),
+        // очки ×1.5. Усложнения на выбор: без восстановления здоровья, без клети,
+        // опасные твари, темнота без лампы.
+        const HC_SCORE_MULT = 1.5;
+        const HC_FIERCE_MULT = 1.5;
+        const mode = { hardcore: false, variant: 'oneLife', noRegen: false, noCage: false, fierce: false, dark: false };
+        let gameOver = false;
+
+        function scoreMult() { return mode.hardcore ? HC_SCORE_MULT : 1; }
+        function addScore(n) { stats.score += Math.round(n * scoreMult()); }
+
+        function modeTitle() {
+            if (!mode.hardcore) return 'Обычная игра';
+            const extra = [mode.noRegen && 'без лечения', mode.noCage && 'без клети', mode.fierce && 'злые твари', mode.dark && 'темнота'].filter(Boolean);
+            return `💀 Хардкор: ${mode.variant === 'oneLife' ? 'одна жизнь' : 'суровый'}${extra.length ? ' · ' + extra.join(', ') : ''}`;
+        }
+
+        function openModePicker() {
+            gameState.paused = true;
+            const box = document.getElementById('hcOptions');
+            if (box && box.style) box.style.display = 'none';
+            document.getElementById('modeModal').classList.add('active');
+        }
+
+        function showHardcoreOptions() {
+            const box = document.getElementById('hcOptions');
+            if (box && box.style) box.style.display = '';
+        }
+
+        // Выбор режима; options — для хардкора: { variant, noRegen, noCage, fierce, dark }
+        function chooseMode(hardcore, options) {
+            const o = options || {};
+            Object.assign(mode, {
+                hardcore: !!hardcore,
+                variant: o.variant === 'harsh' ? 'harsh' : 'oneLife',
+                noRegen: !!(hardcore && o.noRegen), noCage: !!(hardcore && o.noCage),
+                fierce: !!(hardcore && o.fierce), dark: !!(hardcore && o.dark)
+            });
+            document.getElementById('modeModal').classList.remove('active');
+            openGoalPicker();
+            return true;
+        }
+
+        // Кнопка «Начать хардкор» берёт выбор из окна
+        function startHardcoreFromForm() {
+            const v = id => { const e = document.getElementById(id); return !!(e && e.checked); };
+            return chooseMode(true, { variant: v('hcHarsh') ? 'harsh' : 'oneLife',
+                noRegen: v('hcNoRegen'), noCage: v('hcNoCage'), fierce: v('hcFierce'), dark: v('hcDark') });
+        }
+
+        // В хардкоре сохраняться и загружаться нельзя — только автосохранение
+        function hardcoreBlocksSaves() {
+            if (!mode.hardcore) return false;
+            showNotification('💀 В хардкоре только автосохранение: сохраняться и загружаться нельзя');
+            return true;
+        }
+
+        // «Одна жизнь»: смерть заканчивает игру
+        function hardcoreGameOver(reason) {
+            gameOver = true;
+            gameState.paused = true;
+            try { localStorage.removeItem('miner_autosave'); } catch (e) { /* хранилище недоступно */ }
+            showFinal(`💀 Шахта забрала тебя`, reason);
+        }
+
+        // «Суровый»: потери при смерти
+        function harshPenalty() {
+            hero.strPts = 0; hero.endPts = 0;
+            hero.str = Math.max(1, hero.str - 1);
+            hero.end = Math.max(1, hero.end - 1);
+        }
+
+        // Темнота: без лампы видно чуть-чуть вокруг, с лампой — радиус лампы
+        function renderDarkness() {
+            if (!mode.dark || player.y < SURFACE_Y + 1) return;
+            if (typeof ctx.createRadialGradient !== 'function') return;
+            const T = TILE_SIZE;
+            const px = (player.x + PLAYER_W / 2 - camera.x) * T, py = (player.y + 0.5 - camera.y) * T;
+            const r = (lampShines() ? lampRadius() + 1.5 : 2.5) * T;
+            const g = ctx.createRadialGradient(px, py, r * 0.55, px, py, r);
+            g.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            g.addColorStop(1, 'rgba(0, 0, 0, 0.94)');
+            ctx.save();
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+        }
+
         // ============ ЦЕЛИ И ИТОГИ ============
         // Цель выбирается в начале новой игры. Когда она выполнена — финальный экран с
         // итогами; дальше можно играть свободно или начать заново.
@@ -3834,10 +3988,15 @@
         }
 
         // Финальный экран
-        function showFinal() {
+        function showFinal(title, reason) {
             gameState.paused = true;
+            document.getElementById('finalTitle').textContent = title || '🏆 Цель выполнена!';
+            const cont = document.getElementById('finalContinue');
+            if (cont && cont.style) cont.style.display = gameOver ? 'none' : '';
             const rows = [
-                ['Цель', goalTitle()],
+                ...(reason ? [['Причина', reason]] : []),
+                ['Режим', modeTitle()],
+                ['Цель', goalTitle() + (goal.done && gameOver ? ' ✓' : '')],
                 ['Время игры', formatTime(stats.playtime)],
                 ['Глубже всего', `${run.maxDepth} м`],
                 ['Заработано', `${run.earned.toLocaleString('ru-RU')} ¤`],
@@ -3853,6 +4012,7 @@
         }
 
         function continueAfterFinal() {
+            if (gameOver) return;
             document.getElementById('finalModal').classList.remove('active');
             gameState.paused = false;
             updateUI();
@@ -4377,12 +4537,12 @@
             if (block !== BLOCK_TYPES.AIR && block !== BLOCK_TYPES.BEDROCK) {
                 const result = addToBackpack(block);
                 if (result === 'added') {
-                    stats.score += ORES[block].score;
+                    addScore(ORES[block].score);
                     if (backpackCount() === backpackCapacity()) {
                         showNotification('🎒 Рюкзак полон — неси руду в лавку');
                     }
                 } else if (result === 'swapped') {
-                    stats.score += ORES[block].score;
+                    addScore(ORES[block].score);
                     showNotification(`🎒 Выбросил ${oreByKey(lastDropped).name.toLowerCase()} ради: ${ORES[block].name.toLowerCase()}`);
                 } else if (result === 'full') {
                     // блок всё равно выкапывается, но руда пропадает
@@ -4493,6 +4653,7 @@
             renderShop();
             renderDigProgress();
             renderCreatures();
+            renderDarkness();
             renderHazards();
             if (touchMode) renderTouchHud();
             renderRadioBadge();
@@ -4716,7 +4877,7 @@
             document.getElementById('ladders').textContent = ladders;
             document.getElementById('ropes').textContent = ropes;
             document.getElementById('heroStats').textContent = `${statLine('str')}   ${statLine('end')}`;
-            setCoinText(document.getElementById('goalStat'), goalProgress());
+            setCoinText(document.getElementById('goalStat'), (mode.hardcore ? '💀 ' : '') + goalProgress());
             const gearList = [lampTier ? LAMPS[lampTier].name.toLowerCase() + (lampLit ? '' : ' (погасла)') : null,
                               beltTier ? BELTS[beltTier].name.toLowerCase() : null, hasCanary ? 'канарейка' : null].filter(Boolean);
             document.getElementById('gear').textContent = gearList.length ? gearList.join(', ') : '—';
@@ -4811,6 +4972,7 @@
                 ropes: ropes,
                 hero: { str: hero.str, end: hero.end, strPts: hero.strPts, endPts: hero.endPts },
                 goal: { id: goal.id, amount: goal.amount, done: goal.done },
+                mode: Object.assign({}, mode),
                 run: Object.assign({}, run),
                 lamp: lampTier,
                 lampLit: lampLit,
@@ -4858,6 +5020,10 @@
             if (saveData.version === 8) {
                 saveData = Object.assign({}, saveData, { version: 9, goal: { id: 'free', amount: 0, done: false }, run: {} });
             }
+            // 9 → 10: режим — старые игры обычные
+            if (saveData.version === 9) {
+                saveData = Object.assign({}, saveData, { version: 10, mode: { hardcore: false } });
+            }
             return saveData;
         }
 
@@ -4885,7 +5051,7 @@
             return flat;
         }
 
-        function loadSaveData(saveData) {
+        function loadSaveData(saveData, fromAutosave) {
             if (!saveData || typeof saveData !== 'object') {
                 showNotification('⚠️ Файл сохранения повреждён — текущая игра не тронута');
                 return false;
@@ -4897,6 +5063,10 @@
             }
             if (!validateSave(saveData)) {
                 showNotification('⚠️ Файл сохранения повреждён — текущая игра не тронута');
+                return false;
+            }
+            if (saveData.mode && saveData.mode.hardcore === true && fromAutosave !== true) {
+                showNotification('💀 Хардкор-игру можно продолжить только из автосохранения');
                 return false;
             }
 
@@ -4938,6 +5108,11 @@
             const medCount = v => { const n = Number(v); return Number.isInteger(n) && n >= 0 ? Math.min(MAX_MEDS, n) : 0; };
             bandages = medCount(saveData.bandages);
             medkits = medCount(saveData.medkits);
+            const ms = saveData.mode || {};
+            Object.assign(mode, { hardcore: ms.hardcore === true, variant: ms.variant === 'harsh' ? 'harsh' : 'oneLife',
+                noRegen: ms.noRegen === true, noCage: ms.noCage === true, fierce: ms.fierce === true, dark: ms.dark === true });
+            if (!mode.hardcore) Object.assign(mode, { noRegen: false, noCage: false, fierce: false, dark: false });
+            gameOver = false;
             const gs = saveData.goal || {};
             goal.id = GOALS[gs.id] ? gs.id : 'free';
             goal.amount = goal.id === 'wealth' ? (WEALTH_OPTIONS.includes(gs.amount) ? gs.amount : WEALTH_OPTIONS[1]) : 0;
@@ -5028,6 +5203,7 @@
 
         // Автосохранение
         function autoSave() {
+            if (gameOver) return;               // «одна жизнь» закончилась — сохранять нечего
             if (!world.length) return;
             const saveData = createSaveData('Автосохранение');
             if (!safeSetItem('miner_autosave', JSON.stringify(saveData))) warnStorage();
@@ -5042,7 +5218,7 @@
             try { saveData = JSON.parse(data); } catch (e) { return false; }
             if (confirm('Найдено автосохранение. Продолжить?')) {
                 // несовместимое или повреждённое — начинаем новую игру, а не остаёмся без мира
-                return loadSaveData(saveData) === true;
+                return loadSaveData(saveData, true) === true;
             }
             // отказались — прошлая игра не пропадает: она в «Загрузить» как резервная копия
             if (safeSetItem('miner_save_backup', data)) {
@@ -5053,6 +5229,7 @@
 
         // Экспорт в файл
         function exportSave() {
+            if (hardcoreBlocksSaves()) return;
             const saveData = createSaveData('Экспорт');
             const json = JSON.stringify(saveData, null, 2);
             const blob = new Blob([json], { type: 'application/json' });
@@ -5067,6 +5244,7 @@
 
         // Импорт из файла
         function importSave() {
+            if (hardcoreBlocksSaves()) return;
             const input = document.getElementById('importFileInput');
             input.onchange = (e) => {
                 const file = e.target.files[0];
@@ -5125,18 +5303,22 @@
                 Object.assign(goal, { id: 'free', amount: 0, done: false });
                 updateUI();
                 showNotification('🆕 Новая игра начата');
-                setTimeout(openGoalPicker, 0);     // выбор цели — сразу после начала
+                gameOver = false;
+                Object.assign(mode, { hardcore: false, variant: 'oneLife', noRegen: false, noCage: false, fierce: false, dark: false });
+                setTimeout(openModePicker, 0);     // режим и цель — сразу после начала
             }
         }
 
         // UI модалок
         function saveGame() {
+            if (hardcoreBlocksSaves()) return;
             document.getElementById('saveModal').classList.add('active');
             gameState.paused = true;
             updateSaveSlotsList();
         }
 
         function loadGame() {
+            if (hardcoreBlocksSaves()) return;
             document.getElementById('loadModal').classList.add('active');
             gameState.paused = true;
             updateLoadSlotsList();
@@ -6153,7 +6335,7 @@
         // Инициализация
         if (!tryLoadAutosave()) {
             generateWorld();
-            setTimeout(openGoalPicker, 0);         // первая игра — выбрать цель
+            setTimeout(openModePicker, 0);         // первая игра — режим и цель
         }
         updateUI();
         requestAnimationFrame(gameLoop);

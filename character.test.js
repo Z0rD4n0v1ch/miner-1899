@@ -124,7 +124,7 @@ fresh(); run('hero.str = 3; hero.end = 4; hero.strPts = 22; hero.endPts = 77; di
 check('при смерти ничего не теряется', run('hero.str') === 3 && run('hero.end') === 4 && run('hero.strPts') === 22 && run('hero.endPts') === 77);
 check('после смерти здоровье — полный новый максимум (130)', run('health') === 130);
 const save = JSON.parse(run('JSON.stringify(createSaveData("t"))'));
-check('SAVE_VERSION = 9, характеристики в сохранении', save.version === 9 && save.hero.str === 3 && save.hero.endPts === 77);
+check('SAVE_VERSION = 10, характеристики в сохранении', save.version === 10 && save.hero.str === 3 && save.hero.endPts === 77);
 run('Object.assign(hero, { str: 1, end: 1, strPts: 0, endPts: 0 }); health = 50;');
 run(`loadSaveData(${JSON.stringify(Object.assign({}, save, { health: 125 }))})`);
 check('восстанавливаются, и здоровье выше 100 не обрезается', run('hero.end') === 4 && run('hero.strPts') === 22 && run('health') === 125);

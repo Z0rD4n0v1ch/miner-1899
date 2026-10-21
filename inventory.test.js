@@ -121,7 +121,7 @@ run('for (let i = 0; i < 19; i++) addToBackpack(BLOCK_TYPES.GOLD); updateUI();')
 check('полный рюкзак подсвечен', els.backpack.classList.contains('full') && els.backpackFill.classList.contains('full'));
 
 console.log('Сохранения');
-check('SAVE_VERSION = 9', run('SAVE_VERSION') === 9);
+check('SAVE_VERSION = 10', run('SAVE_VERSION') === 10);
 reset();
 run(`generateWorld(12345);
      addToBackpack(BLOCK_TYPES.GOLD); addToBackpack(BLOCK_TYPES.DIAMOND);
