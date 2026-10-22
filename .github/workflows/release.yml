@@ -1,0 +1,59 @@
+# Страница выпуска на GitHub — сама, без «Draft a new release».
+# Когда `./sync.sh release X.Y.Z` (или update-all.sh) отправляет тег vX.Y.Z, эта задача:
+#   1) берёт описание версии из CHANGELOG.md — раздел «## [X.Y.Z]»;
+#   2) создаёт страницу выпуска (или обновляет, если она уже есть);
+#   3) прикладывает файл игры miner-1899.html — его можно скачать одним щелчком.
+# Для уже выпущенных версий: Actions → «Страница выпуска» → Run workflow → тег, например v2.0.0.
+name: Страница выпуска
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег версии, например v2.0.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Описание из CHANGELOG
+        run: |
+          VER="${TAG#v}"
+          tr -d '\r' < CHANGELOG.md | awk -v v="$VER" '
+            /^## \[/ { if (p) exit; if (index($0, "## [" v "]") == 1) { p = 1; next } }
+            /^\[[^]]+\]: http/ { next }
+            p { print }' > notes.md
+          if [ ! -s notes.md ] || ! grep -q '[^[:space:]]' notes.md; then
+            echo "В CHANGELOG.md нет раздела ## [$VER] — описание будет коротким"
+            echo "Версия $VER." > notes.md
+          fi
+          {
+            echo
+            echo "---"
+            echo "**Играть онлайн:** https://z0rd4n0v1ch.github.io/m1899/play/ · или скачай \`miner-1899.html\` ниже и открой в браузере."
+          } >> notes.md
+          cat notes.md
+
+      - name: Страница выпуска и файл игры
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="Шахтёр 1899 ${TAG#v}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE" --notes-file notes.md
+            gh release upload "$TAG" miner-1899.html --clobber
+          else
+            gh release create "$TAG" miner-1899.html --title "$TITLE" --notes-file notes.md --verify-tag
+          fi

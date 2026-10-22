@@ -438,7 +438,8 @@ cmd_release() {
         git push origin "$BRANCH"
         git push origin "$tag"
         ok "версия $version на GitHub: https://github.com/${GITHUB_USER}/${REPO_NAME}/releases/tag/${tag}"
-        printf '\n%sДальше:%s Releases → Draft a new release → выбрать тег %s и вставить описание из CHANGELOG\n' "$C_DIM" "$C_OFF" "$tag"
+        printf '\n%sСтраница выпуска%s с описанием из CHANGELOG и файлом игры появится сама через минуту-две\n' "$C_DIM" "$C_OFF"
+        printf '  (её создаёт .github/workflows/release.yml; ход — во вкладке Actions)\n'
     else
         warn "origin не привязан — тег создан локально. Выполни ./sync.sh init"
     fi
