@@ -1,14 +1,17 @@
 # Страница выпуска на GitHub — сама, без «Draft a new release».
-# Когда `./sync.sh release X.Y.Z` (или update-all.sh) отправляет тег vX.Y.Z, эта задача:
+# Когда выходит версия (`./sync.sh release X.Y.Z` или update-all.sh), эта задача:
 #   1) берёт описание версии из CHANGELOG.md — раздел «## [X.Y.Z]»;
 #   2) создаёт страницу выпуска (или обновляет, если она уже есть);
 #   3) прикладывает файл игры miner-1899.html — его можно скачать одним щелчком.
-# Для уже выпущенных версий: Actions → «Страница выпуска» → Run workflow → тег, например v2.0.0.
+# Запускается двумя путями — что сработает первым: от отправки тега vX.Y.Z и от отправки
+# ветки main, если на последнем коммите стоит тег версии, а страницы выпуска ещё нет.
+# Вручную (например, для старых версий): Actions → «Страница выпуска» → Run workflow → тег.
 name: Страница выпуска
 
 on:
   push:
     tags: ['v*']
+    branches: [main]
   workflow_dispatch:
     inputs:
       tag:
@@ -18,18 +21,55 @@ on:
 permissions:
   contents: write
 
+# два запуска на один выпуск не мешают друг другу: идут по очереди
+concurrency:
+  group: release-page
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+          fetch-tags: true
           ref: ${{ inputs.tag || github.ref }}
 
-      - name: Описание из CHANGELOG
+      - name: Какая версия
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"; FORCE=1
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"; FORCE=1
+          else
+            # отправили main: тег версии на последнем коммите (теги могут прийти чуть позже)
+            TAG=""
+            for i in 1 2 3 4 5 6; do
+              git fetch -q --tags --force origin || true
+              TAG="$(git tag --points-at HEAD | grep -E '^v[0-9]' | sort -V | tail -1 || true)"
+              [ -n "$TAG" ] && break
+              sleep 10
+            done
+            FORCE=0
+          fi
+          if [ -z "$TAG" ]; then echo "На последнем коммите нет тега версии — выпуска нет"; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$FORCE" = "0" ] && gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Страница выпуска $TAG уже есть"; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Версия: $TAG"
+
+      - name: Описание из CHANGELOG
+        if: steps.ver.outputs.skip != '1'
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          git checkout -q "$TAG"
           VER="${TAG#v}"
           tr -d '\r' < CHANGELOG.md | awk -v v="$VER" '
             /^## \[/ { if (p) exit; if (index($0, "## [" v "]") == 1) { p = 1; next } }
@@ -47,13 +87,18 @@ jobs:
           cat notes.md
 
       - name: Страница выпуска и файл игры
+        if: steps.ver.outputs.skip != '1'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ver.outputs.tag }}
         run: |
           TITLE="Шахтёр 1899 ${TAG#v}"
+          # «последняя версия» — только самая новая; страницы для старых версий так не помечаются
+          NEWEST="$(git tag | grep -E '^v[0-9]' | sort -V | tail -1)"
+          LATEST=false; [ "$TAG" = "$NEWEST" ] && LATEST=true
           if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TITLE" --notes-file notes.md
+            gh release edit "$TAG" --title "$TITLE" --notes-file notes.md --latest="$LATEST"
             gh release upload "$TAG" miner-1899.html --clobber
           else
-            gh release create "$TAG" miner-1899.html --title "$TITLE" --notes-file notes.md --verify-tag
+            gh release create "$TAG" miner-1899.html --title "$TITLE" --notes-file notes.md --verify-tag --latest="$LATEST"
           fi

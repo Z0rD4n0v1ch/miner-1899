@@ -435,8 +435,9 @@ cmd_release() {
     # 5. push
     if has_origin; then
         info "отправляю ветку и теги..."
-        git push origin "$BRANCH"
+        # сначала тег, потом ветка: так задача «Страница выпуска» сразу видит тег версии
         git push origin "$tag"
+        git push origin "$BRANCH"
         ok "версия $version на GitHub: https://github.com/${GITHUB_USER}/${REPO_NAME}/releases/tag/${tag}"
         printf '\n%sСтраница выпуска%s с описанием из CHANGELOG и файлом игры появится сама через минуту-две\n' "$C_DIM" "$C_OFF"
         printf '  (её создаёт .github/workflows/release.yml; ход — во вкладке Actions)\n'
