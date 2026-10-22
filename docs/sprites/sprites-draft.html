@@ -1,0 +1,145 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Спрайты — эскизы v2</title><style>
+body{margin:0;background:#1d1714;font:13px 'Courier New',monospace;color:#ddd;padding:18px}
+h2{color:#ffa500;margin:18px 0 8px;font-size:16px} p{color:#aaa;margin:4px 0 10px}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.card{background:#2a2420;border:1px solid #3a302b;border-radius:8px;padding:10px}
+.card b{display:block;color:#ffa500;margin-bottom:6px;font-weight:normal}
+canvas{display:block;image-rendering:auto}
+.frames{display:flex;gap:10px;align-items:flex-end}
+.frames div{text-align:center;color:#888;font-size:11px}
+</style></head><body>
+<h2>Шахтёр 1899 — эскизы спрайтов (SVG), с анимацией</h2>
+<p>Слева — как сейчас в игре, справа — новые спрайты в трёх масштабах клетки: 20 px (мелко, как сейчас), 28 (средне), 36 (крупно). Анимация идёт сама.</p>
+<div id="scenes" class="row"></div>
+<h2>Все кадры</h2>
+<div id="frames" class="row"></div>
+<script>
+// ---------- шахтёр (вид сбоку, смотрит вправо), viewBox 40×40 ----------
+const C = { skin:'#d4a07a', skinD:'#b8835e', shirt:'#6b5a3e', shirtD:'#54452f', strap:'#3e3022', pants:'#3b2f25', boot:'#1d1612',
+            cap:'#5e5a45', capD:'#46432f', brass:'#c8a165', flame:'#ffd65a', wood:'#8b5a2b', iron:'#a7adb3', ironD:'#4a4f55', mous:'#3b2a1e' };
+function miner({ legA=0, legB=0, arm='rest', pick='shoulder', climb=false } = {}) {
+  const leg = (x, dx) => `<rect x="${x}" y="30" width="6" height="7" rx="1" fill="${C.pants}" transform="rotate(${dx} ${x+3} 30)"/>
+     <rect x="${x-1}" y="35.5" width="8" height="3" rx="1.2" fill="${C.boot}" transform="rotate(${dx} ${x+3} 30)"/>`;
+  let pickaxe = '';
+  if (pick === 'shoulder') pickaxe = `<g transform="rotate(-35 27 22)"><rect x="26" y="10" width="2.2" height="17" rx="1" fill="${C.wood}"/>
+        <path d="M18 11 q9 -5 18 1 l-1 2 q-8 -4 -16 0z" fill="${C.iron}" stroke="${C.ironD}" stroke-width=".6"/></g>`;
+  if (pick === 'up') pickaxe = `<g transform="rotate(-80 26 22)"><rect x="25" y="8" width="2.2" height="18" rx="1" fill="${C.wood}"/>
+        <path d="M17 9 q9 -5 18 1 l-1 2 q-8 -4 -16 0z" fill="${C.iron}" stroke="${C.ironD}" stroke-width=".6"/></g>`;
+  if (pick === 'down') pickaxe = `<g transform="rotate(20 26 24)"><rect x="25" y="10" width="2.2" height="18" rx="1" fill="${C.wood}"/>
+        <path d="M17 11 q9 -5 18 1 l-1 2 q-8 -4 -16 0z" fill="${C.iron}" stroke="${C.ironD}" stroke-width=".6"/></g>`;
+  const arms = climb
+    ? `<rect x="10" y="${arm==='a'?8:12}" width="4" height="12" rx="2" fill="${C.shirtD}"/><rect x="26" y="${arm==='a'?12:8}" width="4" height="12" rx="2" fill="${C.shirtD}"/>
+       <circle cx="12" cy="${arm==='a'?8:12}" r="2.2" fill="${C.skin}"/><circle cx="28" cy="${arm==='a'?12:8}" r="2.2" fill="${C.skin}"/>`
+    : `<rect x="24" y="${arm==='swing'?16:20}" width="4" height="9" rx="2" fill="${C.shirtD}" transform="rotate(${arm==='swing'?-60:-20} 26 20)"/>`;
+  const face = climb
+    ? `<circle cx="20" cy="13" r="7" fill="${C.capD}"/>`   // со спины — затылок под кепкой
+    : `<circle cx="21" cy="13" r="6.6" fill="${C.skin}"/><circle cx="25.5" cy="14" r="1.3" fill="${C.skinD}"/>
+       <path d="M20 16.2 q4 2.5 7.5 -.3 v1.6 q-3.6 2.4 -7.5 0z" fill="${C.mous}"/>
+       <circle cx="24" cy="12" r="1" fill="#1d1612"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+    ${leg(13, legA)}${leg(20, legB)}
+    <rect x="11" y="19" width="18" height="13" rx="3" fill="${C.shirt}"/>
+    <rect x="15" y="19" width="2.4" height="13" fill="${C.strap}"/><rect x="22.5" y="19" width="2.4" height="13" fill="${C.strap}"/>
+    ${face}
+    <path d="M13 9 q8 -8 16 0 v2 h-16z" fill="${C.cap}"/><rect x="${climb?13:15}" y="9.5" width="${climb?14:16}" height="2.4" rx="1" fill="${C.capD}"/>
+    ${climb ? '' : `<circle cx="25.5" cy="7.3" r="2.4" fill="${C.brass}" stroke="#5a3d16" stroke-width=".7"/><circle cx="25.5" cy="7.3" r="1.2" fill="${C.flame}"/>`}
+    ${arms}${climb ? '' : pickaxe}
+  </svg>`;
+}
+const MINER = {
+  'стоит': [miner()],
+  'идёт': [miner({ legA:-18, legB:18 }), miner(), miner({ legA:18, legB:-18 }), miner()],
+  'копает': [miner({ arm:'swing', pick:'up' }), miner({ arm:'rest', pick:'down' })],
+  'лезет': [miner({ climb:true, arm:'a', legA:-10 }), miner({ climb:true, arm:'b', legB:-10 })]
+};
+// ---------- твари ----------
+const rat = s => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+ <path d="M6 32 q-4 ${s?-2:1} -5 -5" stroke="#d99a9a" stroke-width="1.6" fill="none"/>
+ <ellipse cx="18" cy="30" rx="12" ry="6.5" fill="#7a6f66"/><ellipse cx="18" cy="32" rx="9" ry="3.6" fill="#968a80"/>
+ <ellipse cx="30" cy="28" rx="6.5" ry="5" fill="#7a6f66"/><circle cx="28" cy="23" r="3" fill="#7a6f66"/><circle cx="28" cy="23" r="1.6" fill="#e8a0a0"/>
+ <circle cx="32" cy="27" r="1.1" fill="#120c0a"/><circle cx="36.8" cy="29" r="1.2" fill="#e8a0a0"/>
+ <rect x="${s?10:12}" y="34.5" width="3" height="3.5" fill="#5f554d"/><rect x="${s?24:22}" y="34.5" width="3" height="3.5" fill="#5f554d"/></svg>`;
+const bat = (s, hang) => hang
+ ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><path d="M20 4 v3" stroke="#3a2c46" stroke-width="2"/>
+    <path d="M14 8 q6 -3 12 0 l-1 16 q-5 5 -10 0z" fill="#4b3a5a"/><path d="M17 22 l1 4 2 -3 2 3 1 -4z" fill="#5c4870"/>
+    <circle cx="18" cy="19" r=".9" fill="#ff4040" opacity="${s?0:1}"/><circle cx="22" cy="19" r=".9" fill="#ff4040" opacity="${s?0:1}"/></svg>`
+ : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+ <path d="M20 19 q-6 ${s?-12:-4} -18 ${s?-9:2} q5 3 4 8 q4 -2 6 2 q3 -3 8 -4z" fill="#4b3a5a"/>
+ <path d="M20 19 q6 ${s?-12:-4} 18 ${s?-9:2} q-5 3 -4 8 q-4 -2 -6 2 q-3 -3 -8 -4z" fill="#4b3a5a"/>
+ <ellipse cx="20" cy="21" rx="5" ry="6" fill="#5c4870"/><path d="M16 16 l1 -4 2 3z M24 16 l-1 -4 -2 3z" fill="#5c4870"/>
+ <circle cx="18" cy="19" r="1.1" fill="#ff4040"/><circle cx="22" cy="19" r="1.1" fill="#ff4040"/>
+ <path d="M18.5 23 l.7 1.5 .7 -1.5 M20.6 23 l.7 1.5 .7 -1.5" stroke="#fff" stroke-width=".5" fill="none"/></svg>`;
+const spider = s => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+ <g stroke="#9a9088" stroke-width="1.6" fill="none" stroke-linecap="round">
+  <path d="M15 26 q-6 -6 -12 0 l-1 ${s?6:9}"/><path d="M15 28 q-6 -2 -11 4 l-1 ${s?6:3}"/><path d="M16 30 q-4 1 -7 ${s?5:8}"/>
+  <path d="M25 26 q6 -6 12 0 l1 ${s?9:6}"/><path d="M25 28 q6 -2 11 4 l1 ${s?3:6}"/><path d="M24 30 q4 1 7 ${s?8:5}"/></g>
+ <ellipse cx="20" cy="27" rx="7" ry="6" fill="#1e1a18" stroke="#9a9088" stroke-width=".8"/><circle cx="20" cy="21" r="4" fill="#2a2420"/>
+ <path d="M18 27 h4 l-2 4z" fill="#c03030"/><circle cx="18.5" cy="20.5" r=".9" fill="#ff5050"/><circle cx="21.5" cy="20.5" r=".9" fill="#ff5050"/></svg>`;
+const salamander = (s, hidden) => hidden
+ ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect x="0" y="26" width="40" height="14" fill="#d23c1e"/>
+    <ellipse cx="24" cy="27" rx="7" ry="3" fill="#e8641e"/><circle cx="21" cy="26" r="1.3" fill="#ffd23c" opacity="${s?.4:1}"/><circle cx="27" cy="26" r="1.3" fill="#ffd23c" opacity="${s?.4:1}"/></svg>`
+ : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+ <path d="M3 ${s?27:31} q6 -4 12 -2 q8 3 16 -1 q5 -2 7 1 q-2 4 -8 4 q-8 1 -15 -1 q-6 -1 -12 2z" fill="#e8641e"/>
+ <path d="M28 25 q6 -4 10 0 q-2 4 -8 3z" fill="#f07a2a"/><circle cx="34" cy="25" r="1.2" fill="#1a0a04"/>
+ <circle cx="12" cy="29" r="1.4" fill="#ffd23c"/><circle cx="19" cy="30" r="1.6" fill="#ffd23c"/><circle cx="25" cy="28" r="1.3" fill="#ffd23c"/>
+ <path d="M10 32 l${s?-3:-1} 4 M17 33 l${s?1:-1} 4 M24 32 l${s?-1:1} 4 M29 31 l${s?1:2} 4" stroke="#b8481a" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+const SETS = {
+  'Шахтёр': MINER,
+  'Крыса': { 'бежит': [rat(0), rat(1)] },
+  'Летучая мышь': { 'летит': [bat(0), bat(1)], 'спит на потолке': [bat(0, true), bat(1, true)] },
+  'Паук': { 'ползёт': [spider(0), spider(1)] },
+  'Саламандра': { 'ползёт': [salamander(0), salamander(1)], 'прячется в лаве': [salamander(0, true), salamander(1, true)] }
+};
+// как сейчас: те же фигуры, что рисует игра
+function drawOld(ctx, who, x, y, T) {
+  ctx.save();
+  if (who === 'Шахтёр') { ctx.fillStyle='#FFD700'; ctx.fillRect(x+T*0.05,y,T*0.9,T); ctx.fillStyle='#FFA500'; ctx.fillRect(x+T*0.05,y,T*0.9,T*0.3); ctx.fillStyle='#000'; ctx.fillRect(x+T*0.6,y+T*0.4,T*0.12,T*0.12); }
+  if (who === 'Крыса') { ctx.fillStyle='#7a6f66'; ctx.fillRect(x+T*0.15,y+T*0.55,T*0.7,T*0.4); ctx.fillRect(x+T*0.7,y+T*0.45,T*0.25,T*0.3); }
+  if (who === 'Летучая мышь') { ctx.fillStyle='#4b3a5a'; ctx.fillRect(x+T*0.1,y+T*0.4,T*0.8,T*0.2); ctx.fillRect(x+T*0.35,y+T*0.3,T*0.3,T*0.4); }
+  if (who === 'Паук') { ctx.fillStyle='#1e1a18'; ctx.fillRect(x+T*0.25,y+T*0.45,T*0.5,T*0.45); ctx.strokeStyle='#9a9088'; ctx.beginPath(); for (const dx of [-0.2,1.2]) { ctx.moveTo(x+T*0.5,y+T*0.65); ctx.lineTo(x+T*dx,y+T*0.95);} ctx.stroke(); }
+  if (who === 'Саламандра') { ctx.fillStyle='#e8641e'; ctx.fillRect(x+T*0.05,y+T*0.6,T*0.9,T*0.3); }
+  ctx.restore();
+}
+const imgCache = new Map();
+function img(svg) { if (!imgCache.has(svg)) { const i = new Image(); i.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))); imgCache.set(svg, i); } return imgCache.get(svg); }
+function tiles(ctx, w, h, T, lava) {
+  for (let y = 0; y < h; y += T) for (let x = 0; x < w; x += T) {
+    const floor = y >= h - T; ctx.fillStyle = floor ? (lava ? '#d23c1e' : '#8a7a68') : '#2b2220';
+    ctx.fillRect(x, y, T, T); if (floor && !lava) { ctx.strokeStyle='#6f6152'; ctx.strokeRect(x+.5,y+.5,T-1,T-1); }
+  }
+}
+const scenes = document.getElementById('scenes'), anim = [];
+for (const [who, poses] of Object.entries(SETS)) {
+  const card = document.createElement('div'); card.className = 'card'; card.innerHTML = `<b>${who}</b>`;
+  const row = document.createElement('div'); row.className = 'frames';
+  for (const T of [0, 20, 28, 36]) {
+    const T2 = T || 20, w = T2 * 3, h = T2 * 3;
+    const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2; c.style.width = w + 'px'; c.style.height = h + 'px';
+    const d = document.createElement('div'); d.appendChild(c); d.appendChild(document.createTextNode(T ? `${T} px` : 'сейчас'));
+    row.appendChild(d);
+    const pose = Object.keys(poses)[0];
+    anim.push({ c, T: T2, old: !T, who, frames: poses[pose] });
+  }
+  card.appendChild(row); scenes.appendChild(card);
+}
+let tick = 0;
+function frame() {
+  tick++;
+  for (const a of anim) {
+    const ctx = a.c.getContext('2d'); ctx.setTransform(2,0,0,2,0,0); ctx.clearRect(0,0,a.c.width,a.c.height);
+    tiles(ctx, a.T*3, a.T*3, a.T, false);
+    if (a.old) drawOld(ctx, a.who, a.T, a.T, a.T);
+    else { const f = a.frames[Math.floor(tick / 12) % a.frames.length]; const i = img(f); if (i.complete) ctx.drawImage(i, a.T, a.T, a.T, a.T); }
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+// статичная таблица всех кадров (крупно)
+const fr = document.getElementById('frames');
+for (const [who, poses] of Object.entries(SETS)) for (const [pose, frames] of Object.entries(poses)) {
+  const card = document.createElement('div'); card.className = 'card'; card.innerHTML = `<b>${who}: ${pose}</b>`;
+  const row = document.createElement('div'); row.className = 'frames';
+  frames.forEach((f, k) => { const d = document.createElement('div'); const i = document.createElement('img'); i.src = img(f).src; i.width = 72; i.height = 72; d.appendChild(i); d.appendChild(document.createTextNode(`кадр ${k+1}`)); row.appendChild(d); });
+  card.appendChild(row); fr.appendChild(card);
+}
+</script></body></html>

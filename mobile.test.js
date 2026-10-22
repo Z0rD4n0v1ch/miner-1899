@@ -66,6 +66,7 @@ function check(name, cond) {
 }
 
 console.log('Включение');
+run('setZoom(20)');   // размеры ниже — для мелкого масштаба (как до 2.1.0); крупнее — в sprites.test.js
 check('?touch=1 включает сенсорный режим', run('touchMode') === true && body.classList.contains('touch'));
 check('на телефоне вертикально холст уже и выше: 24 блока в ширину', run('VIEWPORT_WIDTH') === 24 && run('VIEWPORT_HEIGHT') > 30);
 check('и размер холста совпадает с числом блоков', run('canvas.width') === 24 * 20 && run('canvas.height') === run('VIEWPORT_HEIGHT') * 20);
@@ -121,8 +122,8 @@ check('без касаний и ?touch на компьютере режим не
     const sb2 = Object.assign({}, sandbox, { location: { search: '' }, matchMedia: () => ({ matches: false }), document: Object.assign({}, sandbox.document, { body: { classList: classList(), appendChild() {} }, getElementById: (() => { const own = {}; return id => own[id] || (own[id] = makeEl()); })() }) });
     vm.createContext(sb2); vm.runInContext(script, sb2);
     const r = [vm.runInContext('touchMode', sb2), vm.runInContext('VIEWPORT_WIDTH', sb2)];
-    if (!(r[0] === false && r[1] === 40)) console.log('   ', r);
-    return r[0] === false && r[1] === 40;
+    if (!(r[0] === false && r[1] === 29)) console.log('   ', r);
+    return r[0] === false && r[1] === 29;      // 800 / 28 px — средний масштаб по умолчанию
 })());
 
 console.log(`\n${passed}/${passed + failed} проверок пройдено`);

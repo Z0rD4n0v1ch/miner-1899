@@ -133,7 +133,7 @@ check(`у лавы жарче: 4 с → ${run('health').toFixed(1)}`, near(run('
 room(500);
 tick(10);
 check('в Гранитных недрах жара нет', run('health') === 100);
-room(700); run('updateCamera()'); fills.length = 0; run('renderHazards()');
+room(700); run('updateCamera()'); fills.length = 0; run('renderScreenEffects()');
 check('на дне красноватая дымка', fills.some(f => f[0] === 'rgba(255, 60, 0, 0.07)'));
 room(500); run('updateCamera()'); fills.length = 0; run('renderHazards()');
 check('выше дымки нет', !fills.some(f => f[0] === 'rgba(255, 60, 0, 0.07)'));

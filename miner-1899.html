@@ -1802,6 +1802,14 @@
                 <button class="btn btn-small btn-secondary" onclick="showNotification('🔔 Так будут выглядеть уведомления')">Показать пример</button>
             </div>
             <div class="setting">
+                <div class="setting-label">Масштаб</div>
+                <div class="setting-options" id="zoomOptions">
+                    <button class="btn btn-secondary" data-zoom="20" onclick="setZoom(20)">Мелко — больше шахты</button>
+                    <button class="btn btn-secondary" data-zoom="28" onclick="setZoom(28)">Средне</button>
+                    <button class="btn btn-secondary" data-zoom="36" onclick="setZoom(36)">Крупно — видны детали</button>
+                </div>
+            </div>
+            <div class="setting">
                 <div class="setting-label">Вид радио</div>
                 <div class="setting-options two" id="radioSkinOptions">
                     <button class="btn btn-secondary" data-skin="plain" onclick="setRadioSkin('plain')">Простой</button>
@@ -1872,6 +1880,13 @@
         // перестраивается: уже и выше, чтобы видеть шахту вглубь (см. fitCanvasForDevice).
         let VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
         let VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
+        // Масштаб мира: клетка на экране 20 / 28 / 36 px («мелко / средне / крупно» в настройках).
+        // RENDER_SCALE — чёткость: на экранах с высокой плотностью пикселей холст рисуется
+        // в 1.5–2 раза подробнее. LW×LH — размер холста в «логических» пикселях.
+        const ZOOM_OPTIONS = [20, 28, 36];
+        let ZOOM = 28 / 20;
+        let RENDER_SCALE = 1;
+        let LW = canvas.width, LH = canvas.height;
 
         function fitCanvasForDevice() {
             const portrait = typeof innerHeight === 'number' && innerHeight > innerWidth;
@@ -1885,12 +1900,17 @@
                 w = tilesX * TILE_SIZE;
                 h = tilesY * TILE_SIZE;
             }
-            if (canvas.width !== w || canvas.height !== h) {
-                canvas.width = w;
-                canvas.height = h;
+            const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 0 ? devicePixelRatio : 1;
+            RENDER_SCALE = Math.min(2, Math.max(1, dpr));
+            const cw = Math.round(w * RENDER_SCALE), ch = Math.round(h * RENDER_SCALE);
+            if (canvas.width !== cw || canvas.height !== ch) {
+                canvas.width = cw;
+                canvas.height = ch;
             }
-            VIEWPORT_WIDTH = Math.floor(canvas.width / TILE_SIZE);
-            VIEWPORT_HEIGHT = Math.floor(canvas.height / TILE_SIZE);
+            LW = w; LH = h;
+            const cell = TILE_SIZE * ZOOM;
+            VIEWPORT_WIDTH = Math.min(WORLD_WIDTH, Math.ceil(w / cell));
+            VIEWPORT_HEIGHT = Math.ceil(h / cell);
             if (typeof updateCamera === 'function' && world.length) updateCamera();
         }
         const SAVE_VERSION = 10;          // 2: размеры мира; 3: рюкзак и деньги; 4: кирка; 5: лопата; 6: лестницы и верёвки; 7: лампы, пояс; 8: характеристики; 9: цель и итоги; 10: режим (хардкор)
@@ -2642,16 +2662,16 @@
 
         function renderCageWait() {
             if (!cageCall) return;
-            const scale = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+            const scale = canvas.clientWidth ? LW / canvas.clientWidth : 1;
             const size = Math.round(14 * scale);
             const text = `⬆️ Клеть: ${Math.ceil(cageCall.left)} с — не двигайся`;
             ctx.save();
             ctx.font = `bold ${size}px "Courier New", monospace`;
             ctx.textAlign = 'center';
             ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            ctx.fillRect(canvas.width / 2 - size * 11, canvas.height - size * 4, size * 22, size * 2);
+            ctx.fillRect(LW / 2 - size * 11, LH - size * 4, size * 22, size * 2);
             ctx.fillStyle = '#FFD27F';
-            ctx.fillText(text, canvas.width / 2, canvas.height - size * 2.6);
+            ctx.fillText(text, LW / 2, LH - size * 2.6);
             ctx.restore();
         }
 
@@ -3281,15 +3301,19 @@
                 }
                 ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
             }
+        }
+
+        // Эффекты на весь экран (рисуются поверх мира, без масштаба)
+        function renderScreenEffects() {
             // жар: красноватая дымка; урон: вспышка по краям
             if (inHeat()) {
                 ctx.fillStyle = 'rgba(255, 60, 0, 0.07)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, LW, LH);
             }
             if (damageFlash > 0) {
                 ctx.strokeStyle = `rgba(220, 20, 60, ${damageFlash * 0.8})`;
                 ctx.lineWidth = 16;
-                ctx.strokeRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeRect(0, 0, LW, LH);
                 ctx.lineWidth = 1;
             }
         }
@@ -3738,7 +3762,8 @@
             }
             for (const c of creatures) {
                 const sx = (c.x - camera.x) * T, sy = (c.y - camera.y) * T;
-                if (sx < -T || sy < -T || sx > canvas.width + T || sy > canvas.height + T) continue;
+                if (sx < -T || sy < -T || sx > LW + T || sy > LH + T) continue;
+                if (renderCreatureSprite(c, sx, sy, t)) continue;
                 const flash = c.hurt > 0;
                 if (c.type === 'rat') {
                     ctx.fillStyle = flash ? '#FFFFFF' : '#7A6F66';
@@ -3801,8 +3826,8 @@
                 ctx.fillStyle = '#FFD23C';
                 ctx.fillRect(sx - 3, sy - 3, 6, 6);
             }
-            // канарейка на плече
-            if (hasCanary) {
+            // канарейка на плече (простой вариант — пока нет спрайтов)
+            if (hasCanary && !spriteFrame('canary.calm', 0, Math.max(8, Math.round(0.62 * T * ZOOM * RENDER_SCALE)))) {
                 const px = (player.x - camera.x) * T, py = (player.y - camera.y) * T;
                 const jump = canaryAlarm ? (Math.sin(t * 25) > 0 ? -3 : 0) : 0;
                 ctx.fillStyle = '#FFE135';
@@ -3994,7 +4019,7 @@
             g.addColorStop(1, 'rgba(0, 0, 0, 0.94)');
             ctx.save();
             ctx.fillStyle = g;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, LW, LH);
             ctx.restore();
         }
 
@@ -4795,9 +4820,214 @@
             if (camera.y > WORLD_HEIGHT - VIEWPORT_HEIGHT) camera.y = WORLD_HEIGHT - VIEWPORT_HEIGHT;
         }
 
+        // ============ СПРАЙТЫ (SVG) ============
+        // Шахтёр и твари нарисованы в SVG (viewBox 40×40, смотрят вправо). Каждый кадр один раз
+        // растеризуется в маленький холст под текущий размер клетки на экране — так спрайты
+        // чёткие при любом масштабе и не тормозят. Пока картинки не загрузились (или в
+        // окружении без Image), рисуются прежние простые фигуры.
+        const SP = { skin:'#d4a07a', skinD:'#b8835e', shirt:'#6b5a3e', shirtD:'#54452f', strap:'#3e3022', pants:'#3b2f25', boot:'#1d1612',
+                     cap:'#5e5a45', capD:'#46432f', brass:'#c8a165', flame:'#ffd65a', wood:'#8b5a2b', iron:'#a7adb3', ironD:'#4a4f55', mous:'#3b2a1e' };
+        const svgWrap = body => `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 40 40">${body}</svg>`;
+        function minerSvg({ legA = 0, legB = 0, arm = 'rest', pick = 'shoulder', climb = false, tool = 'pickaxe' } = {}) {
+            const leg = (x, d) => `<rect x="${x}" y="30" width="6" height="7" rx="1" fill="${SP.pants}" transform="rotate(${d} ${x + 3} 30)"/>
+                <rect x="${x - 1}" y="35.5" width="8" height="3" rx="1.2" fill="${SP.boot}" transform="rotate(${d} ${x + 3} 30)"/>`;
+            const pickaxe = { shoulder: [-35, 27, 22, 26, 10, 18], up: [-80, 26, 22, 25, 8, 17], down: [20, 26, 24, 25, 10, 17] }[pick];
+            const [rot, cx, cy, hx, hy, bx] = pickaxe;
+            const pickSvg = tool === 'shovel'
+                // лопата: черенок с ручкой и штык на конце
+                ? `<g transform="rotate(${rot + (pick === 'up' ? 25 : 90)} ${cx} ${cy})"><rect x="${hx}" y="${hy - 2}" width="2.2" height="17" rx="1" fill="${SP.wood}"/>
+                   <rect x="${hx - 1.4}" y="${hy - 3.5}" width="5" height="2" rx="1" fill="${SP.wood}"/>
+                   <path d="M${hx - 2.6} ${hy + 14} h7.4 v4.5 q-3.7 4 -7.4 0z" fill="${SP.iron}" stroke="${SP.ironD}" stroke-width=".6"/></g>`
+                : `<g transform="rotate(${rot} ${cx} ${cy})"><rect x="${hx}" y="${hy}" width="2.2" height="17" rx="1" fill="${SP.wood}"/>
+                <path d="M${bx} ${hy + 1} q9 -5 18 1 l-1 2 q-8 -4 -16 0z" fill="${SP.iron}" stroke="${SP.ironD}" stroke-width=".6"/></g>`;
+            const arms = climb
+                ? `<rect x="10" y="${arm === 'a' ? 8 : 12}" width="4" height="12" rx="2" fill="${SP.shirtD}"/><rect x="26" y="${arm === 'a' ? 12 : 8}" width="4" height="12" rx="2" fill="${SP.shirtD}"/>
+                   <circle cx="12" cy="${arm === 'a' ? 8 : 12}" r="2.2" fill="${SP.skin}"/><circle cx="28" cy="${arm === 'a' ? 12 : 8}" r="2.2" fill="${SP.skin}"/>`
+                : `<rect x="24" y="${arm === 'swing' ? 16 : 20}" width="4" height="9" rx="2" fill="${SP.shirtD}" transform="rotate(${arm === 'swing' ? -60 : -20} 26 20)"/>`;
+            const face = climb
+                ? `<circle cx="20" cy="13" r="7" fill="${SP.capD}"/>`
+                : `<circle cx="21" cy="13" r="6.6" fill="${SP.skin}"/><circle cx="25.5" cy="14" r="1.3" fill="${SP.skinD}"/>
+                   <path d="M20 16.2 q4 2.5 7.5 -.3 v1.6 q-3.6 2.4 -7.5 0z" fill="${SP.mous}"/><circle cx="24" cy="12" r="1" fill="#1d1612"/>`;
+            return svgWrap(`${leg(13, legA)}${leg(20, legB)}
+                <rect x="11" y="19" width="18" height="13" rx="3" fill="${SP.shirt}"/>
+                <rect x="15" y="19" width="2.4" height="13" fill="${SP.strap}"/><rect x="22.5" y="19" width="2.4" height="13" fill="${SP.strap}"/>
+                ${face}<path d="M13 9 q8 -8 16 0 v2 h-16z" fill="${SP.cap}"/><rect x="${climb ? 13 : 15}" y="9.5" width="${climb ? 14 : 16}" height="2.4" rx="1" fill="${SP.capD}"/>
+                ${climb ? '' : `<circle cx="25.5" cy="7.3" r="2.4" fill="${SP.brass}" stroke="#5a3d16" stroke-width=".7"/><circle cx="25.5" cy="7.3" r="1.2" fill="${SP.flame}"/>`}
+                ${arms}${climb ? '' : pickSvg}`);
+        }
+        const ratSvg = s => svgWrap(`<path d="M6 32 q-4 ${s ? -2 : 1} -5 -5" stroke="#d99a9a" stroke-width="1.6" fill="none"/>
+            <ellipse cx="18" cy="30" rx="12" ry="6.5" fill="#7a6f66"/><ellipse cx="18" cy="32" rx="9" ry="3.6" fill="#968a80"/>
+            <ellipse cx="30" cy="28" rx="6.5" ry="5" fill="#7a6f66"/><circle cx="28" cy="23" r="3" fill="#7a6f66"/><circle cx="28" cy="23" r="1.6" fill="#e8a0a0"/>
+            <circle cx="32" cy="27" r="1.1" fill="#120c0a"/><circle cx="36.8" cy="29" r="1.2" fill="#e8a0a0"/>
+            <rect x="${s ? 10 : 12}" y="34.5" width="3" height="3.5" fill="#5f554d"/><rect x="${s ? 24 : 22}" y="34.5" width="3" height="3.5" fill="#5f554d"/>`);
+        const batSvg = (s, hang) => hang
+            ? svgWrap(`<path d="M20 0 v6" stroke="#3a2c46" stroke-width="2"/><path d="M14 6 q6 -3 12 0 l-1 16 q-5 5 -10 0z" fill="#4b3a5a"/>
+                <path d="M17 20 l1 4 2 -3 2 3 1 -4z" fill="#5c4870"/>
+                <circle cx="18" cy="17" r=".9" fill="#ff4040" opacity="${s ? 0 : 1}"/><circle cx="22" cy="17" r=".9" fill="#ff4040" opacity="${s ? 0 : 1}"/>`)
+            : svgWrap(`<path d="M20 19 q-6 ${s ? -12 : -4} -18 ${s ? -9 : 2} q5 3 4 8 q4 -2 6 2 q3 -3 8 -4z" fill="#4b3a5a"/>
+                <path d="M20 19 q6 ${s ? -12 : -4} 18 ${s ? -9 : 2} q-5 3 -4 8 q-4 -2 -6 2 q-3 -3 -8 -4z" fill="#4b3a5a"/>
+                <ellipse cx="20" cy="21" rx="5" ry="6" fill="#5c4870"/><path d="M16 16 l1 -4 2 3z M24 16 l-1 -4 -2 3z" fill="#5c4870"/>
+                <circle cx="18" cy="19" r="1.1" fill="#ff4040"/><circle cx="22" cy="19" r="1.1" fill="#ff4040"/>
+                <path d="M18.5 23 l.7 1.5 .7 -1.5 M20.6 23 l.7 1.5 .7 -1.5" stroke="#fff" stroke-width=".5" fill="none"/>`);
+        const spiderSvg = s => svgWrap(`<g stroke="#9a9088" stroke-width="1.6" fill="none" stroke-linecap="round">
+            <path d="M15 26 q-6 -6 -12 0 l-1 ${s ? 6 : 9}"/><path d="M15 28 q-6 -2 -11 4 l-1 ${s ? 6 : 3}"/><path d="M16 30 q-4 1 -7 ${s ? 5 : 8}"/>
+            <path d="M25 26 q6 -6 12 0 l1 ${s ? 9 : 6}"/><path d="M25 28 q6 -2 11 4 l1 ${s ? 3 : 6}"/><path d="M24 30 q4 1 7 ${s ? 8 : 5}"/></g>
+            <ellipse cx="20" cy="27" rx="7" ry="6" fill="#1e1a18" stroke="#9a9088" stroke-width=".8"/><circle cx="20" cy="21" r="4" fill="#2a2420"/>
+            <path d="M18 27 h4 l-2 4z" fill="#c03030"/><circle cx="18.5" cy="20.5" r=".9" fill="#ff5050"/><circle cx="21.5" cy="20.5" r=".9" fill="#ff5050"/>`);
+        const salamanderSvg = (s, hidden) => hidden
+            ? svgWrap(`<ellipse cx="22" cy="30" rx="7" ry="3" fill="#e8641e"/><circle cx="19" cy="29" r="1.4" fill="#ffd23c" opacity="${s ? .45 : 1}"/><circle cx="25" cy="29" r="1.4" fill="#ffd23c" opacity="${s ? .45 : 1}"/>`)
+            : svgWrap(`<path d="M3 ${s ? 27 : 31} q6 -4 12 -2 q8 3 16 -1 q5 -2 7 1 q-2 4 -8 4 q-8 1 -15 -1 q-6 -1 -12 2z" fill="#e8641e"/>
+                <path d="M28 25 q6 -4 10 0 q-2 4 -8 3z" fill="#f07a2a"/><circle cx="34" cy="25" r="1.2" fill="#1a0a04"/>
+                <circle cx="12" cy="29" r="1.4" fill="#ffd23c"/><circle cx="19" cy="30" r="1.6" fill="#ffd23c"/><circle cx="25" cy="28" r="1.3" fill="#ffd23c"/>
+                <path d="M10 32 l${s ? -3 : -1} 4 M17 33 l${s ? 1 : -1} 4 M24 32 l${s ? -1 : 1} 4 M29 31 l${s ? 1 : 2} 4" stroke="#b8481a" stroke-width="1.6" stroke-linecap="round"/>`);
+
+        function canarySvg(f) {
+            const alarm = f >= 2, up = f === 1 || f === 3;
+            const by = alarm && up ? 19 : (f === 1 ? 21.2 : 22);   // в тревоге подпрыгивает, спокойная — покачивается
+            const wing = alarm ? (up ? 'M18 ' + by + ' q-6 -7 -9 -2 q4 1 9 4z' : 'M18 ' + (by + 1) + ' q-7 2 -8 6 q4 -3 8 -3z')
+                               : 'M17 ' + (by + 1) + ' q-5 1 -6 5 q4 -1 7 -2z';
+            return svgWrap(`<path d="M20 4 v5" stroke="${SP.brass}" stroke-width="1.6"/><circle cx="20" cy="4" r="2" fill="none" stroke="${SP.brass}" stroke-width="1.2"/>
+                <path d="M8 34 v-16 q12 -14 24 0 v16" fill="rgba(40,30,20,.35)" stroke="${SP.brass}" stroke-width="1.4"/>
+                <ellipse cx="20" cy="${by + 3}" rx="6" ry="4.6" fill="#ffd93b"/><circle cx="25" cy="${by - 1.5}" r="3.3" fill="#ffe14d"/>
+                <path d="M28 ${by - 1.8} l3 1 -3 1z" fill="#e88a1a"/><circle cx="26" cy="${by - 2.3}" r=".8" fill="#1a1208"/>
+                <path d="${wing}" fill="#e8b81a"/><path d="M14 ${by + 4} l-5 2 5 0z" fill="#e8b81a"/>
+                <path d="M10 26 v8 M14 24 v10 M20 23 v11 M26 24 v10 M30 26 v8" stroke="${SP.brass}" stroke-width=".9" opacity=".85"/>
+                <rect x="6.5" y="33" width="27" height="3" rx="1" fill="${SP.wood}"/>`);
+        }
+
+        const SPRITES = {
+            'miner.idle':  [minerSvg()],
+            'miner.walk':  [minerSvg({ legA: -18, legB: 18 }), minerSvg(), minerSvg({ legA: 18, legB: -18 }), minerSvg()],
+            'miner.dig':   [minerSvg({ arm: 'swing', pick: 'up' }), minerSvg({ pick: 'down' })],
+            'miner.shovel':[minerSvg({ arm: 'swing', pick: 'up', tool: 'shovel' }), minerSvg({ pick: 'down', tool: 'shovel' })],
+            'miner.climb': [minerSvg({ climb: true, arm: 'a', legA: -10 }), minerSvg({ climb: true, arm: 'b', legB: -10 })],
+            'rat.run':     [ratSvg(0), ratSvg(1)],
+            'bat.fly':     [batSvg(0), batSvg(1)],
+            'bat.hang':    [batSvg(0, true), batSvg(1, true)],
+            'spider.crawl':[spiderSvg(0), spiderSvg(1)],
+            'salamander.crawl':  [salamanderSvg(0), salamanderSvg(1)],
+            // канарейка в клетке за плечом: сидит / тревожно бьёт крыльями / погибла
+            'canary.calm':  [canarySvg(0), canarySvg(1)],
+            'canary.alarm': [canarySvg(2), canarySvg(3)],
+            'salamander.hidden': [salamanderSvg(0, true), salamanderSvg(1, true)]
+        };
+        const spriteImg = {};          // 'miner.walk.2' → Image
+        const spriteCache = {};        // 'miner.walk.2@40' → холст нужного размера
+        function loadSprites() {
+            if (typeof Image !== 'function') return false;
+            for (const [name, frames] of Object.entries(SPRITES)) frames.forEach((svg, i) => {
+                const img = new Image();
+                img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+                spriteImg[`${name}.${i}`] = img;
+            });
+            return true;
+        }
+
+        // Готовый к рисованию кадр размером px×px (или null — тогда рисуем фигуры)
+        function spriteFrame(name, i, px) {
+            const key = `${name}.${i}`;
+            const img = spriteImg[key];
+            if (!img || !img.complete || !img.naturalWidth) return null;
+            const ck = `${key}@${px}`;
+            if (!spriteCache[ck]) {
+                const c = document.createElement('canvas');
+                c.width = c.height = px;
+                const g = c.getContext && c.getContext('2d');
+                if (!g || !g.drawImage) return null;
+                g.drawImage(img, 0, 0, px, px);
+                spriteCache[ck] = c;
+            }
+            return spriteCache[ck];
+        }
+
+        // Нарисовать кадр в клетку (x, y) мировых пикселей; flip — отразить (смотрит влево)
+        function drawSprite(name, frame, x, y, flip, alpha = 1) {
+            const frames = SPRITES[name];
+            if (!frames) return false;
+            const px = Math.max(8, Math.round(TILE_SIZE * ZOOM * RENDER_SCALE));
+            const c = spriteFrame(name, frame % frames.length, px);
+            if (!c) return false;
+            const T = TILE_SIZE;
+            ctx.save();
+            if (alpha < 1) ctx.globalAlpha = alpha;
+            if (flip) { ctx.translate(x + T, y); ctx.scale(-1, 1); ctx.drawImage(c, 0, 0, T, T); }
+            else ctx.drawImage(c, x, y, T, T);
+            ctx.restore();
+            return true;
+        }
+
+        // Поза шахтёра: лезет / копает / идёт / стоит
+        function minerPose() {
+            if (player.climbing) return ['miner.climb', Math.floor(player.y * 2) & 1];
+            if (keys['Space'] && digState.progress > 0) {
+                const t = digTarget();
+                return [toolFor(getBlock(t.x, t.y)) === 'shovel' ? 'miner.shovel' : 'miner.dig', Math.floor(hazardClock * 6) & 1];
+            }
+            if (player.onGround && Math.abs(player.vx) > 0.5) return ['miner.walk', Math.floor(player.x * 2.5) & 3];
+            return ['miner.idle', 0];
+        }
+
+        function renderPlayerSprite(sx, sy) {
+            const [name, frame] = minerPose();
+            const x = sx - (1 - PLAYER_W) * TILE_SIZE / 2;
+            if (!drawSprite(name, frame, x, sy, player.direction < 0)) return false;
+            renderCanarySprite(x, sy);
+            return true;
+        }
+
+        // Канарейка в клетке — над плечом, со стороны спины; в тревоге — «!»
+        function renderCanarySprite(x, y) {
+            if (!hasCanary) return false;
+            const T = TILE_SIZE, s = 0.62 * T;
+            const cx = player.direction > 0 ? x - s * 0.2 : x + T - s * 0.8, cy = y - s * 0.42;
+            const frame = Math.floor(hazardClock * (canaryAlarm ? 12 : 1.5)) & 1;
+            const name = canaryAlarm ? 'canary.alarm' : 'canary.calm';
+            const c = spriteFrame(name, frame, Math.max(8, Math.round(s * ZOOM * RENDER_SCALE)));
+            if (!c) return false;
+            ctx.save();
+            if (player.direction < 0) { ctx.translate(cx + s, cy); ctx.scale(-1, 1); ctx.drawImage(c, 0, 0, s, s); }
+            else ctx.drawImage(c, cx, cy, s, s);
+            ctx.restore();
+            if (canaryAlarm) {
+                ctx.fillStyle = '#FF3030';
+                ctx.font = 'bold 9px "Courier New", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('!', cx + s / 2, cy - 2);
+                ctx.textAlign = 'left';
+            }
+            return true;
+        }
+
+        // Тварь спрайтом; false — спрайта нет, рисуем по-старому
+        function renderCreatureSprite(c, sx, sy, t) {
+            const alpha = c.hurt > 0 && (Math.floor(t * 20) & 1) ? 0.35 : 1;
+            const step = Math.floor(t * 7 + c.x * 3) & 1;
+            let ok = false;
+            if (c.type === 'rat') ok = drawSprite('rat.run', step, sx, sy, c.dir < 0, alpha);
+            else if (c.type === 'bat') ok = c.state === 'sleep'
+                ? drawSprite('bat.hang', Math.floor(t / 2 + c.x) & 1, sx, sy, false, alpha)
+                : drawSprite('bat.fly', Math.sin(t * 20 + c.x) > 0 ? 1 : 0, sx, sy, false, alpha);
+            else if (c.type === 'spider') ok = drawSprite('spider.crawl', step, sx, sy, c.dir < 0, alpha);
+            else if (c.type === 'salamander') ok = c.state === 'hidden'
+                ? drawSprite('salamander.hidden', Math.floor(t * 3 + c.x) & 1, sx, sy, false, alpha)
+                : drawSprite('salamander.crawl', step, sx, sy, c.dir < 0, alpha);
+            if (ok && c.type === 'rat' && c.loot) {
+                ctx.fillStyle = BLOCK_COLORS[BLOCK_TYPES[c.loot.toUpperCase()]];
+                ctx.fillRect(sx + 7, sy + 8, 5, 5);
+            }
+            return ok;
+        }
+
+
         // Рендеринг
         function render() {
+            if (ctx.setTransform) ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // логические пиксели → пиксели холста (чёткость)
+            if (ctx.setTransform) ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
+            // мир — в масштабе клетки
+            ctx.save();
+            if (ctx.scale) ctx.scale(ZOOM, ZOOM);
 
             for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
                 for (let x = 0; x < VIEWPORT_WIDTH; x++) {
@@ -4878,14 +5108,21 @@
             renderShop();
             renderDigProgress();
             renderCreatures();
-            renderDarkness();
             renderHazards();
+            renderPlayer();
+            renderDarkness();
+            ctx.restore();
+
+            renderScreenEffects();
             if (touchMode) renderTouchHud();
             renderRadioBadge();
             renderCageWait();
+        }
 
+        function renderPlayer() {
             const playerScreenX = (player.x - camera.x) * TILE_SIZE;
             const playerScreenY = (player.y - camera.y) * TILE_SIZE;
+            if (renderPlayerSprite(playerScreenX, playerScreenY)) return;
 
             ctx.fillStyle = '#FFA500';
             ctx.fillRect(playerScreenX + 2, playerScreenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
@@ -4950,23 +5187,23 @@
             ctx.save();
             ctx.globalAlpha = alpha;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-            ctx.fillRect(0, 70, canvas.width, 88);
+            ctx.fillRect(0, 70, LW, 88);
             ctx.textAlign = 'center';
             ctx.fillStyle = '#FFA500';
             ctx.font = 'bold 26px "Courier New", monospace';
-            ctx.fillText(b.name, canvas.width / 2, 108);
+            ctx.fillText(b.name, LW / 2, 108);
             ctx.fillStyle = '#CCCCCC';
             ctx.font = '13px "Courier New", monospace';
             const oreName = ORES[BLOCK_TYPES[b.ore]].name.toLowerCase();
             ctx.fillText(b.hardness > 1
                 ? `глубина от ${b.from} м · камень твёрже ×${b.hardness} · здесь: ${oreName}`
-                : `глубина от ${b.from} м · здесь: ${oreName}`, canvas.width / 2, 128);
+                : `глубина от ${b.from} м · здесь: ${oreName}`, LW / 2, 128);
             const beast = Object.values(CREATURES).find(c => c.biome === biomeBanner.index);
             const dangers = [b.hazard, beast ? BEAST_PLURAL[beast.name] : null].filter(Boolean);
             if (dangers.length) {
                 ctx.fillStyle = '#FF6B6B';
                 ctx.font = 'bold 13px "Courier New", monospace';
-                ctx.fillText(`⚠ опасно: ${dangers.join(' · ')}`, canvas.width / 2, 148);
+                ctx.fillText(`⚠ опасно: ${dangers.join(' · ')}`, LW / 2, 148);
             }
             ctx.restore();
         }
@@ -4976,18 +5213,18 @@
             const depth = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN));
             const text = `❤ ${Math.ceil(health)}  ${depth} м  🎒 ${backpackCount()}/${backpackCapacity()}  ${stats.money}   `;
             // холст на телефоне ужат — шрифт увеличиваем, чтобы на экране было ~13 px
-            const scale = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+            const scale = canvas.clientWidth ? LW / canvas.clientWidth : 1;
             const size = Math.round(13 * scale);
             ctx.save();
             ctx.font = `bold ${size}px "Courier New", monospace`;
             const w = ctx.measureText ? ctx.measureText(text).width : 300;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-            ctx.fillRect(canvas.width / 2 - w / 2 - 8, 4, w + 16, size * 1.6);
+            ctx.fillRect(LW / 2 - w / 2 - 8, 4, w + 16, size * 1.6);
             ctx.fillStyle = health <= 30 ? '#FF6B6B' : '#FFD27F';
             ctx.textAlign = 'center';
-            ctx.fillText(text, canvas.width / 2, 4 + size * 1.15);
+            ctx.fillText(text, LW / 2, 4 + size * 1.15);
             // монета после суммы денег
-            const cx = canvas.width / 2 + w / 2 - size * 0.55, cy = 4 + size * 0.8, r = size * 0.42;
+            const cx = LW / 2 + w / 2 - size * 0.55, cy = 4 + size * 0.8, r = size * 0.42;
             ctx.beginPath();
             ctx.arc(cx, cy, r, 0, Math.PI * 2);
             ctx.fillStyle = '#F6C945';
@@ -5017,8 +5254,8 @@
             const groundY = (SURFACE_Y - camera.y) * TILE_SIZE;
             const w = SHOP_WIDTH * TILE_SIZE;
             const wallH = 2 * TILE_SIZE;
-            if (groundY < 0 || groundY - wallH - TILE_SIZE > canvas.height) return;
-            if (sx + w < 0 || sx > canvas.width) return;
+            if (groundY < 0 || groundY - wallH - TILE_SIZE > LH) return;
+            if (sx + w < 0 || sx > LW) return;
 
             // стены
             ctx.fillStyle = '#6B3E1E';
@@ -5706,7 +5943,7 @@
         const SETTINGS_KEY = 'miner_settings';
         const NOTIFY_POSITIONS = ['top-right', 'top-left', 'top-center', 'bottom-right', 'bottom-left', 'bottom-center'];
         // вид радио и видео по умолчанию простой: граммофон и телевизор игрок включает сам
-        const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false };
+        const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false, zoom: 28 };
         const RADIO_SKINS = ['plain', 'gramophone'];
         const VIDEO_SKINS = ['plain', 'tv'];
 
@@ -5716,6 +5953,7 @@
                 if (NOTIFY_POSITIONS.includes(st.notify)) settings.notify = st.notify;
                 settings.swap = st.swap === true;
                 settings.showControls = st.showControls === true;
+                if (ZOOM_OPTIONS.includes(st.zoom)) settings.zoom = st.zoom;
                 if (RADIO_SKINS.includes(st.radioSkin)) settings.radioSkin = st.radioSkin;
                 if (VIDEO_SKINS.includes(st.videoSkin)) settings.videoSkin = st.videoSkin;
             } catch (e) { /* испорченные настройки — по умолчанию */ }
@@ -5739,12 +5977,21 @@
             if (document.querySelectorAll) {
                 document.querySelectorAll('#notifyOptions [data-notify]').forEach(b =>
                     b.classList.toggle('chosen', b.dataset.notify === settings.notify));
+                document.querySelectorAll('#zoomOptions [data-zoom]').forEach(b =>
+                    b.classList.toggle('chosen', Number(b.dataset.zoom) === settings.zoom));
                 document.querySelectorAll('#radioSkinOptions [data-skin]').forEach(b =>
                     b.classList.toggle('chosen', b.dataset.skin === settings.radioSkin));
                 document.querySelectorAll('#videoSkinOptions [data-skin]').forEach(b =>
                     b.classList.toggle('chosen', b.dataset.skin === settings.videoSkin));
             }
+            const z = settings.zoom / TILE_SIZE;
+            if (z !== ZOOM) { ZOOM = z; if (typeof fitCanvasForDevice === 'function') fitCanvasForDevice(); }
             restackNotifications();
+        }
+
+        function setZoom(px) {
+            if (!ZOOM_OPTIONS.includes(px)) return false;
+            settings.zoom = px; saveSettings(); applySettings(); return true;
         }
 
         function setNotifyPosition(pos) {
@@ -6096,15 +6343,15 @@
         function renderRadioBadge() {
             const cur = radioCurrent();
             if (!radio.on || !cur) return;
-            const scale = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+            const scale = canvas.clientWidth ? LW / canvas.clientWidth : 1;
             const size = Math.round(12 * scale);
             const text = `♪ ${cur.name}${radio.status === 'connecting' ? '…' : ''}`;
             ctx.save();
             ctx.font = `${size}px "Courier New", monospace`;
             const w = ctx.measureText ? ctx.measureText(text).width : text.length * size * 0.6;
             // на телефоне правый нижний угол закрыт кнопками — значок слева сверху, под сводкой
-            const x = touchMode ? 10 : canvas.width - w - 12;
-            const y = touchMode ? Math.round(13 * scale) * 1.6 + 10 : canvas.height - size * 1.9;
+            const x = touchMode ? 10 : LW - w - 12;
+            const y = touchMode ? Math.round(13 * scale) * 1.6 + 10 : LH - size * 1.9;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
             ctx.fillRect(x - 6, y, w + 12, size * 1.5);
             ctx.fillStyle = radio.status === 'live' ? '#FFD27F' : '#aaaaaa';
@@ -6560,6 +6807,8 @@
         loadSettings();
         applySettings();
         loadAchievements();
+        loadSprites();
+        fitCanvasForDevice();      // масштаб и чёткость — сразу при запуске
 
         // Автосохранение каждые 30 секунд
         setInterval(autoSave, AUTOSAVE_INTERVAL);
