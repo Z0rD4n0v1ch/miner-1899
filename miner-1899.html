@@ -3821,6 +3821,7 @@
             }
             for (const f of fireballs) {
                 const sx = (f.x - camera.x) * T, sy = (f.y - camera.y) * T;
+                if (drawSpriteBox('fire', Math.floor(t * 14) & 1, sx - 7, sy - 7, 14, 14)) continue;
                 ctx.fillStyle = 'rgba(255, 120, 0, 0.5)';
                 ctx.fillRect(sx - 5, sy - 5, 10, 10);
                 ctx.fillStyle = '#FFD23C';
@@ -4895,6 +4896,49 @@
                 <rect x="6.5" y="33" width="27" height="3" rx="1" fill="${SP.wood}"/>`);
         }
 
+        // ---- лестницы, верёвки, переправа, паутина, огонь саламандры, лавка ----
+        const ladderSvg = () => svgWrap(`
+            <rect x="6" y="0" width="5" height="40" fill="#8b5a2b"/><rect x="29" y="0" width="5" height="40" fill="#8b5a2b"/>
+            <rect x="7" y="0" width="1.2" height="40" fill="#a8743f"/><rect x="30" y="0" width="1.2" height="40" fill="#a8743f"/>
+            <rect x="6" y="0" width="5" height="40" fill="none" stroke="#4a2c12" stroke-width=".8"/><rect x="29" y="0" width="5" height="40" fill="none" stroke="#4a2c12" stroke-width=".8"/>
+            ${[6, 19, 32].map(y => `<rect x="9" y="${y}" width="22" height="4" rx="1" fill="#a06a35" stroke="#4a2c12" stroke-width=".8"/>
+                <circle cx="8.5" cy="${y + 2}" r=".9" fill="#2a2a2a"/><circle cx="31.5" cy="${y + 2}" r=".9" fill="#2a2a2a"/>`).join('')}`);
+        const ropeSvg = knot => svgWrap(`
+            <rect x="18" y="0" width="4.5" height="40" fill="#c8a165"/>
+            ${Array.from({ length: 9 }, (_, i) => `<path d="M18 ${i * 4.6 - 1} l4.5 3" stroke="#8b6a3a" stroke-width="1.1"/>`).join('')}
+            <rect x="18" y="0" width="4.5" height="40" fill="none" stroke="#6b4e24" stroke-width=".6"/>
+            ${knot ? '<ellipse cx="20.2" cy="22" rx="4.6" ry="3.4" fill="#b8915a" stroke="#6b4e24" stroke-width=".8"/>' : ''}`);
+        const bridgeSvg = () => svgWrap(`
+            <path d="M0 4 q20 4 40 0" stroke="#c8a165" stroke-width="2.4" fill="none"/>
+            <path d="M0 26 q20 3 40 0" stroke="#c8a165" stroke-width="2.4" fill="none"/>
+            <rect x="3" y="27" width="34" height="6" rx="1.2" fill="#9a6532" stroke="#4a2c12" stroke-width=".8"/>
+            <path d="M8 29.5 h9 M21 31 h11" stroke="#6b4320" stroke-width=".7"/>
+            <path d="M6 6 v21 M34 6 v21" stroke="#c8a165" stroke-width="1.4"/>
+            <circle cx="6" cy="27" r="1.6" fill="#b8915a"/><circle cx="34" cy="27" r="1.6" fill="#b8915a"/>`);
+        const webSvg = () => svgWrap(`<g stroke="rgba(240,240,240,.8)" stroke-width=".8" fill="none">
+            <path d="M0 0 L40 40 M40 0 L0 40 M20 0 V40 M0 20 H40"/>
+            ${[5, 10, 15, 19].map(r => `<path d="M${20 - r} 20 Q${20 - r * .55} ${20 - r * .55} 20 ${20 - r} Q${20 + r * .55} ${20 - r * .55} ${20 + r} 20 Q${20 + r * .55} ${20 + r * .55} 20 ${20 + r} Q${20 - r * .55} ${20 + r * .55} ${20 - r} 20"/>`).join('')}</g>`);
+        const fireSvg = f => svgWrap(`
+            <circle cx="20" cy="20" r="${f ? 17 : 15}" fill="rgba(255,110,20,.35)"/>
+            <path d="M20 ${f ? 5 : 7} q9 9 7 17 q-2 9 -7 9 q-5 0 -7 -9 q-2 -8 7 -17z" fill="#ff7a1a"/>
+            <path d="M20 ${f ? 13 : 15} q5 5 4 10 q-1 5 -4 5 q-3 0 -4 -5 q-1 -5 4 -10z" fill="#ffd23c"/>
+            <circle cx="20" cy="26" r="2.4" fill="#fff6c2"/>`);
+        // лавка: 3×3 клетки — бревенчатый сруб, крыша из дранки, дверь, окошко со светом
+        const shopSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 60 60">
+            <path d="M-1 22 L30 4 L61 22 Z" fill="#3a2410"/>
+            ${[8, 12, 16, 20].map((y, i) => `<path d="M${30 - (y - 4) * 1.72} ${y} H${30 + (y - 4) * 1.72}" stroke="#5a3a1c" stroke-width="1"/>`).join('')}
+            <rect x="2" y="21" width="56" height="2.5" fill="#24160a"/>
+            ${[24, 29, 34, 39, 44, 49, 54].map(y => `<rect x="3" y="${y}" width="54" height="5" rx="2.3" fill="#7a4a24" stroke="#4a2c12" stroke-width=".7"/>
+                <circle cx="4.5" cy="${y + 2.5}" r="1.4" fill="#a8743f"/><circle cx="55.5" cy="${y + 2.5}" r="1.4" fill="#a8743f"/>`).join('')}
+            <rect x="24" y="38" width="12" height="22" fill="#2a1a0a" stroke="#1a0f05" stroke-width=".8"/>
+            <rect x="25.5" y="39.5" width="9" height="19" fill="#3d2610"/><circle cx="33" cy="49" r=".9" fill="#c8a165"/>
+            <rect x="8" y="31" width="10" height="8" fill="#ffd27f" stroke="#3a2410" stroke-width="1.2"/>
+            <path d="M13 31 V39 M8 35 H18" stroke="#3a2410" stroke-width=".9"/>
+            <rect x="42" y="31" width="10" height="8" fill="#ffd27f" stroke="#3a2410" stroke-width="1.2"/>
+            <path d="M47 31 V39 M42 35 H52" stroke="#3a2410" stroke-width=".9"/>
+            <rect x="40" y="52" width="10" height="7" fill="#6b4320" stroke="#3a2410" stroke-width=".7"/>
+            <path d="M40 55.5 H50" stroke="#3a2410" stroke-width=".6"/></svg>`;
+
         const SPRITES = {
             'miner.idle':  [minerSvg()],
             'miner.walk':  [minerSvg({ legA: -18, legB: 18 }), minerSvg(), minerSvg({ legA: 18, legB: -18 }), minerSvg()],
@@ -4908,6 +4952,12 @@
             'salamander.crawl':  [salamanderSvg(0), salamanderSvg(1)],
             // канарейка в клетке за плечом: сидит / тревожно бьёт крыльями / погибла
             'canary.calm':  [canarySvg(0), canarySvg(1)],
+            'tile.ladder':  [ladderSvg()],
+            'tile.rope':    [ropeSvg(false), ropeSvg(true)],
+            'tile.bridge':  [bridgeSvg()],
+            'tile.web':     [webSvg()],
+            'fire':         [fireSvg(0), fireSvg(1)],
+            'shop':         [shopSvg()],
             'canary.alarm': [canarySvg(2), canarySvg(3)],
             'salamander.hidden': [salamanderSvg(0, true), salamanderSvg(1, true)]
         };
@@ -4954,6 +5004,30 @@
             else ctx.drawImage(c, x, y, T, T);
             ctx.restore();
             return true;
+        }
+
+        // Кадр в прямоугольник w×h мировых пикселей (для лавки, огня — не одна клетка)
+        function drawSpriteBox(name, frame, x, y, w, h) {
+            const frames = SPRITES[name];
+            if (!frames) return false;
+            const px = Math.max(8, Math.round(Math.max(w, h) * ZOOM * RENDER_SCALE));
+            const c = spriteFrame(name, frame % frames.length, px);
+            if (!c) return false;
+            ctx.drawImage(c, x, y, w, h);
+            return true;
+        }
+
+        // Лестница, верёвка, переправа, паутина — спрайтом; false — рисовать по-старому
+        function drawTileSprite(block, x, y, wx, wy) {
+            if (block === BLOCK_TYPES.LADDER) return drawSprite('tile.ladder', 0, x, y, false);
+            if (block === BLOCK_TYPES.ROPE) {
+                // узелок — на нижнем конце верёвки, остальное — гладкий канат
+                const end = getBlock(wx, wy + 1) !== BLOCK_TYPES.ROPE;
+                return drawSprite('tile.rope', end ? 1 : 0, x, y, false);
+            }
+            if (block === BLOCK_TYPES.BRIDGE) return drawSprite('tile.bridge', 0, x, y, false);
+            if (block === BLOCK_TYPES.WEB) return drawSprite('tile.web', 0, x, y, false);
+            return false;
         }
 
         // Поза шахтёра: лезет / копает / идёт / стоит
@@ -5051,7 +5125,9 @@
                         ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
                         ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                     }
-                    if (block === BLOCK_TYPES.LADDER) {
+                    const tileSprited = isClimbable(block) || block === BLOCK_TYPES.WEB
+                        ? drawTileSprite(block, x * TILE_SIZE, y * TILE_SIZE, worldX, worldY) : false;
+                    if (!tileSprited && block === BLOCK_TYPES.LADDER) {
                         const px = x * TILE_SIZE, py = y * TILE_SIZE;
                         ctx.fillStyle = BLOCK_COLORS[BLOCK_TYPES.LADDER];
                         ctx.fillRect(px + 3, py, 3, TILE_SIZE);
@@ -5059,7 +5135,7 @@
                         ctx.fillRect(px + 3, py + 4, TILE_SIZE - 6, 2);
                         ctx.fillRect(px + 3, py + 14, TILE_SIZE - 6, 2);
                     }
-                    if (block === BLOCK_TYPES.WEB) {
+                    if (!tileSprited && block === BLOCK_TYPES.WEB) {
                         const px = x * TILE_SIZE, py = y * TILE_SIZE;
                         ctx.strokeStyle = 'rgba(235, 235, 235, 0.75)';
                         ctx.lineWidth = 1;
@@ -5071,7 +5147,7 @@
                         ctx.stroke();
                         ctx.strokeRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10);
                     }
-                    if (block === BLOCK_TYPES.BRIDGE) {
+                    if (!tileSprited && block === BLOCK_TYPES.BRIDGE) {
                         const px = x * TILE_SIZE, py = y * TILE_SIZE;
                         ctx.fillStyle = BLOCK_COLORS[BLOCK_TYPES.ROPE];
                         ctx.fillRect(px, py + 1, TILE_SIZE, 2);                  // верхний канат
@@ -5079,7 +5155,7 @@
                         ctx.fillStyle = '#8B5A2B';
                         ctx.fillRect(px + 2, py + TILE_SIZE - 6, TILE_SIZE - 4, 3); // дощечка
                     }
-                    if (block === BLOCK_TYPES.ROPE) {
+                    if (!tileSprited && block === BLOCK_TYPES.ROPE) {
                         const px = x * TILE_SIZE, py = y * TILE_SIZE;
                         ctx.fillStyle = BLOCK_COLORS[BLOCK_TYPES.ROPE];
                         ctx.fillRect(px + TILE_SIZE / 2 - 1, py, 3, TILE_SIZE);
@@ -5257,6 +5333,7 @@
             if (groundY < 0 || groundY - wallH - TILE_SIZE > LH) return;
             if (sx + w < 0 || sx > LW) return;
 
+            if (!drawSpriteBox('shop', 0, sx, groundY - wallH - TILE_SIZE, w, wallH + TILE_SIZE)) {
             // стены
             ctx.fillStyle = '#6B3E1E';
             ctx.fillRect(sx, groundY - wallH, w, wallH);
@@ -5271,6 +5348,7 @@
             // дверь
             ctx.fillStyle = '#2A1A0A';
             ctx.fillRect(sx + w / 2 - 6, groundY - 24, 12, 24);
+            }
             // вывеска
             // надписи с тёмной обводкой, чтобы читались на светлом небе
             ctx.font = 'bold 11px "Courier New", monospace';

@@ -40,7 +40,7 @@ check('шахтёр: стоит 1, идёт 4, копает 2, лезет 2', sp
 check('твари: крыса, мышь (летит и спит), паук, саламандра (ползёт и в лаве) — по 2 кадра',
     ['rat.run', 'bat.fly', 'bat.hang', 'spider.crawl', 'salamander.crawl', 'salamander.hidden'].every(k => sprites[k] === 2));
 const svgs = g.run('Object.values(SPRITES).flat()');
-check(`все ${svgs.length} кадров — SVG 40×40 с закрытым тегом`, svgs.every(s => s.startsWith('<svg xmlns="http://www.w3.org/2000/svg"') && s.includes('viewBox="0 0 40 40"') && s.trim().endsWith('</svg>')));
+check(`все ${svgs.length} кадров — SVG (клетка 40×40, лавка 60×60) с закрытым тегом`, svgs.every(s => s.startsWith('<svg xmlns="http://www.w3.org/2000/svg"') && /viewBox="0 0 (40 40|60 60)"/.test(s) && s.trim().endsWith('</svg>')));
 check('в SVG нет внешних ссылок — всё внутри файла игры', svgs.every(s => !/href=|url\(/.test(s)));
 check('кадры загружаются как картинки', g.run('Object.keys(spriteImg).length') === svgs.length);
 
@@ -80,6 +80,18 @@ check('есть — клетка с птицей над плечом', g.run('re
 g.run('canaryAlarm = true;');
 check('газ рядом — тревожные кадры', g.run('renderCanarySprite(100, 100)') === true && g.run("Object.keys(spriteCache).some(k => k.startsWith('canary.alarm'))"));
 check('канарейка — 2 спокойных и 2 тревожных кадра', g.run("SPRITES['canary.calm'].length") === 2 && g.run("SPRITES['canary.alarm'].length") === 2);
+
+console.log('Лестницы, верёвки, паутина, огонь, лавка');
+g.run('generateWorld(5);');
+check('спрайты есть: лестница, верёвка (2), переправа, паутина, огонь (2), лавка',
+    ['tile.ladder', 'tile.bridge', 'tile.web', 'shop'].every(k => g.run(`SPRITES['${k}'].length`) === 1) && g.run("SPRITES['tile.rope'].length") === 2 && g.run("SPRITES['fire'].length") === 2);
+check('лестница, переправа, паутина рисуются спрайтом', ['LADDER', 'BRIDGE', 'WEB'].every(b => g.run(`drawTileSprite(BLOCK_TYPES.${b}, 0, 0, 50, 100)`) === true));
+g.run('world[100][50] = BLOCK_TYPES.ROPE; world[101][50] = BLOCK_TYPES.ROPE; world[102][50] = BLOCK_TYPES.AIR;');
+g.run('drawTileSprite(BLOCK_TYPES.ROPE, 0, 0, 50, 100); drawTileSprite(BLOCK_TYPES.ROPE, 0, 0, 50, 101);');
+check('у верёвки узелок только на нижнем конце', g.run("Object.keys(spriteCache).some(k => k.startsWith('tile.rope.0'))") && g.run("Object.keys(spriteCache).some(k => k.startsWith('tile.rope.1'))"));
+check('камень — не спрайт', g.run('drawTileSprite(BLOCK_TYPES.STONE, 0, 0, 50, 100)') === false);
+check('лавка — сруб 3×3 клетки', g.run("drawSpriteBox('shop', 0, 0, 0, 60, 60)") === true && g.run("SPRITES.shop[0]").includes('viewBox="0 0 60 60"'));
+check('огонь саламандры — 2 кадра, мерцает', g.run("drawSpriteBox('fire', 1, 0, 0, 14, 14)") === true);
 
 console.log('Масштаб');
 g = boot();
