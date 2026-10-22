@@ -108,7 +108,14 @@ check('в настройках три кнопки масштаба', /data-zoom
 g.run('setZoom(28); generateWorld(5); player.x = 2; player.y = 50; updateCamera();');
 check('камера не выезжает за край мира', g.run('camera.x') === 0);
 g.run('player.x = WORLD_WIDTH - 1; updateCamera();');
-check('и за правый край', g.run('camera.x') === g.run('WORLD_WIDTH - VIEWPORT_WIDTH'));
+check('у правого края мира край виден целиком (камера между клетками)', Math.abs(g.run('(WORLD_WIDTH - camera.x) * TILE_SIZE * ZOOM') - g.run('LW')) < 1e-6);
+g.run('player.y = WORLD_HEIGHT - 2; updateCamera();');
+check('и нижний край — дно мира', Math.abs(g.run('(WORLD_HEIGHT - camera.y) * TILE_SIZE * ZOOM') - g.run('LH')) < 1e-6);
+g.run('setZoom(36); player.x = WORLD_WIDTH - 1; updateCamera();');
+check('на крупном масштабе тоже', Math.abs(g.run('(WORLD_WIDTH - camera.x) * TILE_SIZE * ZOOM') - g.run('LW')) < 1e-6);
+g.run('setZoom(20); player.x = WORLD_WIDTH - 1; updateCamera();');
+check('на мелком камера по-прежнему по целым клеткам', Number.isInteger(g.run('camera.x')));
+g.run('setZoom(28);');
 
 console.log('Чёткость');
 g = boot({ dpr: 2 });

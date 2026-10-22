@@ -4812,13 +4812,16 @@
 
         // Обновление камеры
         function updateCamera() {
-            camera.x = Math.floor(player.x - VIEWPORT_WIDTH / 2);
-            camera.y = Math.floor(player.y - VIEWPORT_HEIGHT / 2);
+            // сколько блоков на экране на самом деле (при масштабе — дробное число):
+            // у края мира камера встаёт так, чтобы край был виден целиком
+            const visW = LW / (TILE_SIZE * ZOOM), visH = LH / (TILE_SIZE * ZOOM);
+            camera.x = Math.floor(player.x - visW / 2);
+            camera.y = Math.floor(player.y - visH / 2);
 
+            if (camera.x > WORLD_WIDTH - visW) camera.x = WORLD_WIDTH - visW;
+            if (camera.y > WORLD_HEIGHT - visH) camera.y = WORLD_HEIGHT - visH;
             if (camera.x < 0) camera.x = 0;
             if (camera.y < 0) camera.y = 0;
-            if (camera.x > WORLD_WIDTH - VIEWPORT_WIDTH) camera.x = WORLD_WIDTH - VIEWPORT_WIDTH;
-            if (camera.y > WORLD_HEIGHT - VIEWPORT_HEIGHT) camera.y = WORLD_HEIGHT - VIEWPORT_HEIGHT;
         }
 
         // ============ СПРАЙТЫ (SVG) ============
@@ -5103,10 +5106,14 @@
             ctx.save();
             if (ctx.scale) ctx.scale(ZOOM, ZOOM);
 
-            for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
-                for (let x = 0; x < VIEWPORT_WIDTH; x++) {
-                    const worldX = x + camera.x;
-                    const worldY = y + camera.y;
+            // камера может стоять между клетками (у края мира) — сдвигаем сетку
+            const camX = Math.floor(camera.x), camY = Math.floor(camera.y);
+            ctx.save();
+            if (ctx.translate) ctx.translate(-(camera.x - camX) * TILE_SIZE, -(camera.y - camY) * TILE_SIZE);
+            for (let y = 0; y <= VIEWPORT_HEIGHT; y++) {
+                for (let x = 0; x <= VIEWPORT_WIDTH; x++) {
+                    const worldX = x + camX;
+                    const worldY = y + camY;
                     const block = getBlock(worldX, worldY);
 
                     if (isClimbable(block) || block === BLOCK_TYPES.WEB) {
@@ -5180,6 +5187,8 @@
                     }
                 }
             }
+
+            ctx.restore();
 
             renderShop();
             renderDigProgress();
