@@ -1802,6 +1802,13 @@
                 <button class="btn btn-small btn-secondary" onclick="showNotification('🔔 Так будут выглядеть уведомления')">Показать пример</button>
             </div>
             <div class="setting">
+                <div class="setting-label">Язык · Language</div>
+                <div class="setting-options two" id="langOptions">
+                    <button class="btn btn-secondary" data-lang="ru" onclick="setLang('ru')">Русский</button>
+                    <button class="btn btn-secondary" data-lang="en" onclick="setLang('en')">English</button>
+                </div>
+            </div>
+            <div class="setting">
                 <div class="setting-label">Масштаб</div>
                 <div class="setting-options" id="zoomOptions">
                     <button class="btn btn-secondary" data-zoom="20" onclick="setZoom(20)">Мелко — больше шахты</button>
@@ -6026,11 +6033,234 @@
         const MAX_NOTIFICATIONS = 4;
         const liveNotifications = [];
 
+        // ============ ЯЗЫК: РУССКИЙ / ENGLISH ============
+        // Язык выбирается сам по языку браузера (русский, украинский, белорусский, казахский →
+        // русский, остальные → английский) и меняется в настройках. Русский текст — исходный:
+        // EN_TEXT переводит его на английский. Статичные надписи страницы переводятся обходом
+        // DOM; надписи, которые собирает код, — через L('…') и L`…${x}…`.
+        const EN_TEXT = {
+            "Шахтёр 1899 — 2D-игра про шахтёра": "Miner 1899 — a 2D mining game",
+            "⛏️ Шахтёр 1899": "⛏️ Miner 1899",
+            "💾 Сохранить": "💾 Save",
+            "📂 Загрузить": "📂 Load",
+            "⬇️ Экспорт": "⬇️ Export",
+            "⬆️ Импорт": "⬆️ Import",
+            "🆕 Новая игра": "🆕 New game",
+            "📻 Радио (M)": "📻 Radio (M)",
+            "📺 Видео (V)": "📺 Video (V)",
+            "⚙️ Настройки": "⚙️ Settings",
+            "Видео (V)": "Video (V)",
+            "Видео нет": "No videos",
+            "Добавь ссылку в «Мои видео»": "Add a link in “My videos”",
+            "▶ Вкл": "▶ On",
+            "Мои видео": "My videos",
+            "Добавить": "Add",
+            "Подходят ссылки YouTube, RuTube, VK Видео и прямые ссылки на файлы .mp4 и .webm. Некоторые видео их авторы запрещают показывать на других сайтах — тогда в окне будет сообщение площадки.": "YouTube, RuTube and VK Video links work, as do direct links to .mp4 and .webm files. Some authors forbid showing their videos on other sites — then the window shows the platform’s message.",
+            "Подключается к площадке только когда включено. ⛶ — вынести телевизор поверх игры и сделать крупнее (угол справа внизу тянется).": "Connects to the platform only when switched on. ⛶ — pop the TV out over the game and make it bigger (drag the bottom-right corner).",
+            "Радио (M)": "Radio (M)",
+            "Станций нет": "No stations",
+            "добавь станцию в «Мои станции»": "add a station in “My stations”",
+            "Громк.": "Vol.",
+            "Мои станции": "My stations",
+            "Адрес потока обычно есть на сайте станции, в разделе «слушать в плеере» (ссылка на .mp3, .aac или поток).": "The stream address is usually on the station’s website, under “listen in a player” (a link to .mp3, .aac or a stream).",
+            "Подключается к станции только когда включено": "Connects to the station only when switched on",
+            "✕ Вернуться в игру": "✕ Back to the game",
+            "Глубина": "Depth",
+            "0м": "0m",
+            "Песчаный пласт": "Sand Layer",
+            "Здоровье": "Health",
+            "Рюкзак": "Backpack",
+            "пусто": "empty",
+            "Деньги": "Money",
+            "Очки": "Score",
+            "Время игры": "Play time",
+            "Кирка": "Pickaxe",
+            "Ржавая": "Rusty",
+            "Лопата": "Shovel",
+            "Нет": "None",
+            "Лестницы": "Ladders",
+            "Верёвки": "Ropes",
+            "Лечение (H)": "Healing (H)",
+            "Цель": "Goal",
+            "⛏️ Свободная игра": "⛏️ Free play",
+            "Персонаж (P)": "Character (P)",
+            "Сила 1 · Выносливость 1": "Strength 1 · Stamina 1",
+            "Снаряжение": "Gear",
+            "👷 Персонаж (P)": "👷 Character (P)",
+            "🎮 Управление": "🎮 Controls",
+            "🏅 Достижения": "🏅 Achievements",
+            "или": "or",
+            "- Движение": "- Move",
+            "- Бег": "- Run",
+            "Пробел": "Space",
+            "(удерживать) - Копать блок перед собой; с": "(hold) - Dig the block in front; with",
+            "— вниз, с": "— down, with",
+            "— вверх (над головой и вверх-вперёд: так вырубаются ступеньки, на них запрыгиваешь)": "— up (overhead and up-forward: this carves steps you can jump onto)",
+            ") у лавки - Купить инструменты": ") at the shop - Buy tools",
+            ") - Поставить лестницу,": ") - Place a ladder,",
+            "- лезть": "- climb",
+            ") - Спустить верёвку в колодец перед собой": ") - Lower a rope into the shaft in front",
+            ") - Зажечь погасшую лампу спичкой": ") - Light the lamp with a match",
+            ") - Натянуть верёвку-переправу через пропасть или лаву": ") - Stretch a rope bridge over a chasm or lava",
+            ") - Клеть: платный подъём наверх": ") - Cage: paid ride to the surface",
+            ") - Лечиться: бинт или аптечка": ") - Heal: bandage or first-aid kit",
+            ") - Радио: показать или скрыть панель (станции добавляешь сам)": ") - Radio: show or hide the panel (you add stations yourself)",
+            ") - Видео: маленький телевизор (YouTube, RuTube, VK, .mp4)": ") - Video: a small TV (YouTube, RuTube, VK, .mp4)",
+            ") - Персонаж: сила и выносливость; тоники — в лавке": ") - Character: strength and stamina; tonics at the shop",
+            "- Меню сохранений": "- Save menu",
+            "⚙️ «Настройки» на панели сохранений: где показывать уведомления, поменять панели местами": "⚙️ “Settings” on the save panel: where notifications appear, swap the panels",
+            "Шахтёр 1899 — свободная игра под лицензией": "Miner 1899 is a free game under the",
+            "Исходный код": "Source code",
+            ") - Режим отладки": ") - Debug mode",
+            "Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.": "Ore goes into your backpack. Sell it at the shop on the surface — just walk up to it. A full backpack drops cheap ore for valuable ore by itself. Heavy loads (gold, platinum) slow you down.",
+            "Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.": "Diamonds and emeralds yield only to an iron pickaxe, rubies and platinum — to a steel one.",
+            "Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама. Денег нет — лавка даст лопату в долг, но вернуть придётся вдвое больше.": "Dirt, sand, clay and gravel are faster to dig with a shovel — it’s picked up automatically. No money? The shop gives a shovel on credit, but you’ll pay back double.",
+            "по существу перед собой — удар киркой. В пещерах водятся крысы-воришки, летучие мыши, пауки и огненные саламандры; лампа отпугивает мышей и пауков, канарейка чует газ.": "at a creature in front — a pickaxe blow. The caves hold thieving rats, bats, spiders and fiery salamanders; a lamp scares bats and spiders, a canary smells gas.",
+            "Глубже — опаснее: в Глиняных штольнях рушится потолок, в Гранитных недрах прячется газ, на Огненном дне жарко. Если здоровье кончится — очнёшься наверху без рюкзака.": "Deeper is more dangerous: the ceiling collapses in the Clay Tunnels, gas hides in the Granite Depths, the Fiery Bottom is hot. If your health runs out, you wake up on the surface without your backpack.",
+            "Чем глубже копаешь, тем ценнее ресурсы!": "The deeper you dig, the more valuable the ore!",
+            "Земля": "Dirt",
+            "Камень": "Stone",
+            "Песок": "Sand",
+            "Глина": "Clay",
+            "Гравий": "Gravel",
+            "Золото": "Gold",
+            "Алмазы": "Diamonds",
+            "Рубины": "Rubies",
+            "Уголь": "Coal",
+            "Серебро": "Silver",
+            "Изумруды": "Emeralds",
+            "Платина": "Platinum",
+            "Лава": "Lava",
+            "💾 Сохранения": "💾 Saves",
+            "Закрыть": "Close",
+            "📂 Загрузить игру": "📂 Load game",
+            "Название сохранения": "Save name",
+            "Сохранить": "Save",
+            "Отмена": "Cancel",
+            "Бег": "Run",
+            "Перепр.": "Bridge",
+            "Радио": "Radio",
+            "Лавка": "Shop",
+            "Лестн.": "Ladder",
+            "Верёв.": "Rope",
+            "Лечить": "Heal",
+            "Клеть": "Cage",
+            "⛏️ Новая игра": "⛏️ New game",
+            "⛏️ Обычная игра": "⛏️ Normal game",
+            "смерть — потеря рюкзака, сохранения как обычно": "death — you lose the backpack, saves as usual",
+            "💀 Хардкор": "💀 Hardcore",
+            "только автосохранение, очки ×1.5": "autosave only, score ×1.5",
+            "Что будет при смерти": "What happens when you die",
+            "💀 Одна жизнь — смерть заканчивает игру": "💀 One life — death ends the game",
+            "⚖️ Суровый — сгорают очки, сила и выносливость −1": "⚖️ Harsh — points burn, strength and stamina −1",
+            "Усложнения": "Extra challenges",
+            "Без восстановления здоровья — только бинты и аптечки": "No health regeneration — only bandages and kits",
+            "Клеть не ходит": "The cage doesn’t run",
+            "Твари опаснее — кусают в 1.5 раза сильнее и чаще": "Fiercer creatures — they bite 1.5 times harder and more often",
+            "Темнота — без лампы видно лишь пару блоков": "Darkness — without a lamp you see only a couple of blocks",
+            "Начать хардкор": "Start hardcore",
+            "⛏️ Выбери цель": "⛏️ Choose a goal",
+            "Цель можно выполнить и закончить игру с итогами — или просто копать без цели.": "Complete a goal and finish the game with a summary — or just dig without one.",
+            "🏆 Цель выполнена!": "🏆 Goal complete!",
+            "Играть дальше": "Keep playing",
+            "Новая игра": "New game",
+            "Готово": "Done",
+            "👷 Персонаж": "👷 Character",
+            "Где показывать уведомления": "Where notifications appear",
+            "↗ справа сверху": "↗ top right",
+            "↖ слева сверху": "↖ top left",
+            "↑ сверху по центру": "↑ top center",
+            "↘ справа снизу": "↘ bottom right",
+            "↙ слева снизу": "↙ bottom left",
+            "↓ снизу по центру": "↓ bottom center",
+            "Показать пример": "Show an example",
+            "Масштаб": "Zoom",
+            "Мелко — больше шахты": "Small — see more of the mine",
+            "Средне": "Medium",
+            "Крупно — видны детали": "Large — see the details",
+            "Вид радио": "Radio style",
+            "Простой": "Plain",
+            "🎺 Граммофон": "🎺 Gramophone",
+            "Вид видео": "Video style",
+            "📺 Телевизор": "📺 TV set",
+            "Поменять панели местами: статистика — слева, сохранения, радио и настройки — справа": "Swap the panels: stats on the left; saves, radio and settings on the right",
+            "Для широкого экрана. На узком экране и на телефоне панели не по бокам, и эта настройка не действует.": "For wide screens. On narrow screens and phones the panels aren’t at the sides, and this setting does nothing.",
+            "⬆️ Клеть": "⬆️ Cage",
+            "🏚️ Лавка скупщика": "🏚️ Trading Post",
+            "Вынести телевизор поверх игры и увеличить": "Pop the TV out over the game and enlarge it",
+            "Вынести телевизор": "Pop out the TV",
+            "Скрыть телевизор": "Hide the TV",
+            "Предыдущее видео": "Previous video",
+            "Следующее видео": "Next video",
+            "Название (необязательно)": "Title (optional)",
+            "https://… ссылка на видео": "https://… video link",
+            "Скрыть радио": "Hide the radio",
+            "Предыдущая станция": "Previous station",
+            "Следующая станция": "Next station",
+            "Название": "Name",
+            "https://… адрес потока": "https://… stream address",
+            "монет": "coins",
+            "Моя шахта": "My mine"
+            };
+        let LANG = 'ru';
+
+        function detectLang() {
+            const list = (typeof navigator !== 'undefined' && (navigator.languages || [navigator.language])) || [];
+            const first = String(list[0] || 'ru').toLowerCase();
+            return /^(ru|uk|be|kk)/.test(first) ? 'ru' : 'en';
+        }
+
+        // Перевод строки (или шаблона с ${…}: L`Продано: ${n} шт.` ищет «Продано: {0} шт.»)
+        function L(str, ...vals) {
+            if (Array.isArray(str) && str.raw) {
+                const key = str.reduce((a, part, i) => a + part + (i < vals.length ? `{${i}}` : ''), '');
+                const tpl = LANG === 'en' && EN_TEXT[key] !== undefined ? EN_TEXT[key] : key;
+                return tpl.replace(/\{(\d+)\}/g, (m, i) => String(vals[+i]));
+            }
+            return LANG === 'en' && EN_TEXT[str] !== undefined ? EN_TEXT[str] : str;
+        }
+
+        // Статичные надписи страницы: запоминаем русский оригинал и подставляем перевод
+        const domOriginal = new WeakMap();
+        const I18N_ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
+        function translateDom() {
+            if (typeof document === 'undefined' || !document.createTreeWalker || !document.body) return false;
+            const swap = (orig) => {
+                const key = orig.replace(/\s+/g, ' ').trim();
+                if (!key) return orig;
+                const tr = L(key);
+                if (tr === key) return orig;
+                const lead = orig.match(/^\s*/)[0], tail = orig.match(/\s*$/)[0];
+                return lead + tr + tail;
+            };
+            const walker = document.createTreeWalker(document.body, 4 /* текст */);
+            for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+                const p = n.parentNode;
+                if (!p || p.nodeName === 'SCRIPT' || p.nodeName === 'STYLE') continue;
+                if (!domOriginal.has(n)) domOriginal.set(n, n.nodeValue);
+                const orig = domOriginal.get(n);
+                const want = LANG === 'en' ? swap(orig) : orig;
+                if (n.nodeValue !== want) n.nodeValue = want;
+            }
+            document.querySelectorAll('[placeholder],[title],[aria-label],[alt]').forEach(el => {
+                for (const a of I18N_ATTRS) {
+                    if (!el.hasAttribute(a)) continue;
+                    const key = 'i18n-' + a;
+                    if (!el.dataset[key.replace(/-(.)/g, (m, c) => c.toUpperCase())]) el.dataset[key.replace(/-(.)/g, (m, c) => c.toUpperCase())] = el.getAttribute(a);
+                    const orig = el.dataset[key.replace(/-(.)/g, (m, c) => c.toUpperCase())];
+                    el.setAttribute(a, LANG === 'en' ? L(orig) : orig);
+                }
+            });
+            document.title = LANG === 'en' ? 'Miner 1899 — a 2D mining game' : 'Шахтёр 1899 — 2D-игра про шахтёра';
+            if (document.documentElement) document.documentElement.lang = LANG;
+            return true;
+        }
+
         // ---- Настройки игрока (хранятся в браузере, не в сохранениях) ----
         const SETTINGS_KEY = 'miner_settings';
         const NOTIFY_POSITIONS = ['top-right', 'top-left', 'top-center', 'bottom-right', 'bottom-left', 'bottom-center'];
         // вид радио и видео по умолчанию простой: граммофон и телевизор игрок включает сам
-        const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false, zoom: 28 };
+        const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false, zoom: 28, lang: null };
         const RADIO_SKINS = ['plain', 'gramophone'];
         const VIDEO_SKINS = ['plain', 'tv'];
 
@@ -6041,6 +6271,7 @@
                 settings.swap = st.swap === true;
                 settings.showControls = st.showControls === true;
                 if (ZOOM_OPTIONS.includes(st.zoom)) settings.zoom = st.zoom;
+                if (st.lang === 'ru' || st.lang === 'en') settings.lang = st.lang;
                 if (RADIO_SKINS.includes(st.radioSkin)) settings.radioSkin = st.radioSkin;
                 if (VIDEO_SKINS.includes(st.videoSkin)) settings.videoSkin = st.videoSkin;
             } catch (e) { /* испорченные настройки — по умолчанию */ }
@@ -6071,9 +6302,17 @@
                 document.querySelectorAll('#videoSkinOptions [data-skin]').forEach(b =>
                     b.classList.toggle('chosen', b.dataset.skin === settings.videoSkin));
             }
+            const lang = settings.lang || detectLang();
+            if (lang !== LANG) { LANG = lang; translateDom(); if (typeof updateUI === 'function' && typeof player !== 'undefined') try { updateUI(); } catch (e) { /* ещё не готово */ } }
+            if (document.querySelectorAll) document.querySelectorAll('#langOptions [data-lang]').forEach(b => b.classList.toggle('chosen', b.dataset.lang === LANG));
             const z = settings.zoom / TILE_SIZE;
             if (z !== ZOOM) { ZOOM = z; if (typeof fitCanvasForDevice === 'function') fitCanvasForDevice(); }
             restackNotifications();
+        }
+
+        function setLang(lang) {
+            if (lang !== 'ru' && lang !== 'en') return false;
+            settings.lang = lang; saveSettings(); applySettings(); return true;
         }
 
         function setZoom(px) {
