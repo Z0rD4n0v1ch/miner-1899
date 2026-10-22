@@ -60,5 +60,22 @@ if (missing.length) console.log('    нет перевода:', missing.slice(0,
 g.run("setLang('en')");
 check('название по-английски — Miner 1899', g.run("L('⛏️ Шахтёр 1899')") === '⛏️ Miner 1899');
 
+console.log('Надписи, которые собирает игра');
+// все русские строки в коде обёрнуты в L(...) / L`...` (кроме ключей объектов и сравнений) и все переведены
+const code = script.replace(/\/\/[^\n]*/g, '');
+const bare = [...code.matchAll(/(^|[^L\w$])(['"`])((?:(?!\2)[^\\\n]|\\.)*[А-Яа-яЁё](?:(?!\2)[^\\\n]|\\.)*)\2/g)]
+    .filter(m => { const q = m.index + m[1].length; return code.slice(q - 2, q) !== 'L(' && !/^\s*:/.test(code.slice(m.index + m[0].length)) && !/(===|!==|==|!=)\s*$/.test(code.slice(Math.max(0, q - 6), q)); });
+if (bare.length > 5) console.log('    без L:', bare.slice(0, 8).map(m => m[3].slice(0, 40)));
+check(`каждая русская строка кода идёт через перевод (без L: ${bare.length})`, bare.length <= 5);
+g = boot({ langs: ['en-US'] });
+const enKeys = g.run('Object.keys(EN_TEXT).length');
+check(`в словаре ${enKeys} строк`, enKeys > 480);
+check('уведомление с числами: «Продано: 3 шт. за 24 ¤»', g.run('(() => { const a = 3, b = 24; return L`💰 Продано: ${a} шт. за ${b} ¤`; })()') === '💰 Sold: 3 pcs for 24 ¤');
+check('название внутри шаблона тоже переводится', g.run("(() => { const n = 'Железная'; return L`⛏️ Куплена кирка: ${n}`; })()") === '⛏️ Bought a pickaxe: Iron');
+check('и со строчной буквы: «серебро» → silver', g.run("trValue('серебро')") === 'silver');
+check('список через « · »', g.run("trValue('обвалы · летучие мыши')") === 'cave-ins · bats');
+check('числа по-английски: 15,000', g.run("(15000).toLocaleString(LOCALE())") === '15,000');
+check('по-русски — по-русски', boot({ langs: ['ru'] }).run("(() => { const a = 3, b = 24; return L`💰 Продано: ${a} шт. за ${b} ¤`; })()") === '💰 Продано: 3 шт. за 24 ¤');
+
 console.log(`\n${passed}/${passed + failed} проверок пройдено`);
 process.exit(failed ? 1 : 0);

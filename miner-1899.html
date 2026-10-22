@@ -1867,6 +1867,560 @@
     <input type="file" id="importFileInput" accept=".json">
 
     <script>
+        // ============ ЯЗЫК: РУССКИЙ / ENGLISH ============
+        // Язык выбирается сам по языку браузера (русский, украинский, белорусский, казахский →
+        // русский, остальные → английский) и меняется в настройках. Русский текст — исходный:
+        // EN_TEXT переводит его на английский. Статичные надписи страницы переводятся обходом
+        // DOM; надписи, которые собирает код, — через L('…') и L`…${x}…`.
+        const EN_TEXT = {
+            "Шахтёр 1899 — 2D-игра про шахтёра": "Miner 1899 — a 2D mining game",
+            "⛏️ Шахтёр 1899": "⛏️ Miner 1899",
+            "💾 Сохранить": "💾 Save",
+            "📂 Загрузить": "📂 Load",
+            "⬇️ Экспорт": "⬇️ Export",
+            "⬆️ Импорт": "⬆️ Import",
+            "🆕 Новая игра": "🆕 New game",
+            "📻 Радио (M)": "📻 Radio (M)",
+            "📺 Видео (V)": "📺 Video (V)",
+            "⚙️ Настройки": "⚙️ Settings",
+            "Видео (V)": "Video (V)",
+            "Видео нет": "No videos",
+            "Добавь ссылку в «Мои видео»": "Add a link in “My videos”",
+            "▶ Вкл": "▶ On",
+            "Мои видео": "My videos",
+            "Добавить": "Add",
+            "Подходят ссылки YouTube, RuTube, VK Видео и прямые ссылки на файлы .mp4 и .webm. Некоторые видео их авторы запрещают показывать на других сайтах — тогда в окне будет сообщение площадки.": "YouTube, RuTube and VK Video links work, as do direct links to .mp4 and .webm files. Some authors forbid showing their videos on other sites — then the window shows the platform’s message.",
+            "Подключается к площадке только когда включено. ⛶ — вынести телевизор поверх игры и сделать крупнее (угол справа внизу тянется).": "Connects to the platform only when switched on. ⛶ — pop the TV out over the game and make it bigger (drag the bottom-right corner).",
+            "Радио (M)": "Radio (M)",
+            "Станций нет": "No stations",
+            "добавь станцию в «Мои станции»": "add a station in “My stations”",
+            "Громк.": "Vol.",
+            "Мои станции": "My stations",
+            "Адрес потока обычно есть на сайте станции, в разделе «слушать в плеере» (ссылка на .mp3, .aac или поток).": "The stream address is usually on the station’s website, under “listen in a player” (a link to .mp3, .aac or a stream).",
+            "Подключается к станции только когда включено": "Connects to the station only when switched on",
+            "✕ Вернуться в игру": "✕ Back to the game",
+            "Глубина": "Depth",
+            "0м": "0m",
+            "Песчаный пласт": "Sand Layer",
+            "Здоровье": "Health",
+            "Рюкзак": "Backpack",
+            "пусто": "empty",
+            "Деньги": "Money",
+            "Очки": "Score",
+            "Время игры": "Play time",
+            "Кирка": "Pickaxe",
+            "Ржавая": "Rusty",
+            "Лопата": "Shovel",
+            "Нет": "None",
+            "Лестницы": "Ladders",
+            "Верёвки": "Ropes",
+            "Лечение (H)": "Healing (H)",
+            "Цель": "Goal",
+            "⛏️ Свободная игра": "⛏️ Free play",
+            "Персонаж (P)": "Character (P)",
+            "Сила 1 · Выносливость 1": "Strength 1 · Stamina 1",
+            "Снаряжение": "Gear",
+            "👷 Персонаж (P)": "👷 Character (P)",
+            "🎮 Управление": "🎮 Controls",
+            "🏅 Достижения": "🏅 Achievements",
+            "или": "or",
+            "- Движение": "- Move",
+            "- Бег": "- Run",
+            "Пробел": "Space",
+            "(удерживать) - Копать блок перед собой; с": "(hold) - Dig the block in front; with",
+            "— вниз, с": "— down, with",
+            "— вверх (над головой и вверх-вперёд: так вырубаются ступеньки, на них запрыгиваешь)": "— up (overhead and up-forward: this carves steps you can jump onto)",
+            ") у лавки - Купить инструменты": ") at the shop - Buy tools",
+            ") - Поставить лестницу,": ") - Place a ladder,",
+            "- лезть": "- climb",
+            ") - Спустить верёвку в колодец перед собой": ") - Lower a rope into the shaft in front",
+            ") - Зажечь погасшую лампу спичкой": ") - Light the lamp with a match",
+            ") - Натянуть верёвку-переправу через пропасть или лаву": ") - Stretch a rope bridge over a chasm or lava",
+            ") - Клеть: платный подъём наверх": ") - Cage: paid ride to the surface",
+            ") - Лечиться: бинт или аптечка": ") - Heal: bandage or first-aid kit",
+            ") - Радио: показать или скрыть панель (станции добавляешь сам)": ") - Radio: show or hide the panel (you add stations yourself)",
+            ") - Видео: маленький телевизор (YouTube, RuTube, VK, .mp4)": ") - Video: a small TV (YouTube, RuTube, VK, .mp4)",
+            ") - Персонаж: сила и выносливость; тоники — в лавке": ") - Character: strength and stamina; tonics at the shop",
+            "- Меню сохранений": "- Save menu",
+            "⚙️ «Настройки» на панели сохранений: где показывать уведомления, поменять панели местами": "⚙️ “Settings” on the save panel: where notifications appear, swap the panels",
+            "Шахтёр 1899 — свободная игра под лицензией": "Miner 1899 is a free game under the",
+            "Исходный код": "Source code",
+            ") - Режим отладки": ") - Debug mode",
+            "Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.": "Ore goes into your backpack. Sell it at the shop on the surface — just walk up to it. A full backpack drops cheap ore for valuable ore by itself. Heavy loads (gold, platinum) slow you down.",
+            "Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.": "Diamonds and emeralds yield only to an iron pickaxe, rubies and platinum — to a steel one.",
+            "Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама. Денег нет — лавка даст лопату в долг, но вернуть придётся вдвое больше.": "Dirt, sand, clay and gravel are faster to dig with a shovel — it’s picked up automatically. No money? The shop gives a shovel on credit, but you’ll pay back double.",
+            "по существу перед собой — удар киркой. В пещерах водятся крысы-воришки, летучие мыши, пауки и огненные саламандры; лампа отпугивает мышей и пауков, канарейка чует газ.": "at a creature in front — a pickaxe blow. The caves hold thieving rats, bats, spiders and fiery salamanders; a lamp scares bats and spiders, a canary smells gas.",
+            "Глубже — опаснее: в Глиняных штольнях рушится потолок, в Гранитных недрах прячется газ, на Огненном дне жарко. Если здоровье кончится — очнёшься наверху без рюкзака.": "Deeper is more dangerous: the ceiling collapses in the Clay Tunnels, gas hides in the Granite Depths, the Fiery Bottom is hot. If your health runs out, you wake up on the surface without your backpack.",
+            "Чем глубже копаешь, тем ценнее ресурсы!": "The deeper you dig, the more valuable the ore!",
+            "Земля": "Dirt",
+            "Камень": "Stone",
+            "Песок": "Sand",
+            "Глина": "Clay",
+            "Гравий": "Gravel",
+            "Золото": "Gold",
+            "Алмазы": "Diamonds",
+            "Рубины": "Rubies",
+            "Уголь": "Coal",
+            "Серебро": "Silver",
+            "Изумруды": "Emeralds",
+            "Платина": "Platinum",
+            "Лава": "Lava",
+            "💾 Сохранения": "💾 Saves",
+            "Закрыть": "Close",
+            "📂 Загрузить игру": "📂 Load game",
+            "Название сохранения": "Save name",
+            "Сохранить": "Save",
+            "Отмена": "Cancel",
+            "Бег": "Run",
+            "Перепр.": "Bridge",
+            "Радио": "Radio",
+            "Лавка": "Shop",
+            "Лестн.": "Ladder",
+            "Верёв.": "Rope",
+            "Лечить": "Heal",
+            "Клеть": "Cage",
+            "⛏️ Новая игра": "⛏️ New game",
+            "⛏️ Обычная игра": "⛏️ Normal game",
+            "смерть — потеря рюкзака, сохранения как обычно": "death — you lose the backpack, saves as usual",
+            "💀 Хардкор": "💀 Hardcore",
+            "только автосохранение, очки ×1.5": "autosave only, score ×1.5",
+            "Что будет при смерти": "What happens when you die",
+            "💀 Одна жизнь — смерть заканчивает игру": "💀 One life — death ends the game",
+            "⚖️ Суровый — сгорают очки, сила и выносливость −1": "⚖️ Harsh — points burn, strength and stamina −1",
+            "Усложнения": "Extra challenges",
+            "Без восстановления здоровья — только бинты и аптечки": "No health regeneration — only bandages and kits",
+            "Клеть не ходит": "The cage doesn’t run",
+            "Твари опаснее — кусают в 1.5 раза сильнее и чаще": "Fiercer creatures — they bite 1.5 times harder and more often",
+            "Темнота — без лампы видно лишь пару блоков": "Darkness — without a lamp you see only a couple of blocks",
+            "Начать хардкор": "Start hardcore",
+            "⛏️ Выбери цель": "⛏️ Choose a goal",
+            "Цель можно выполнить и закончить игру с итогами — или просто копать без цели.": "Complete a goal and finish the game with a summary — or just dig without one.",
+            "🏆 Цель выполнена!": "🏆 Goal complete!",
+            "Играть дальше": "Keep playing",
+            "Новая игра": "New game",
+            "Готово": "Done",
+            "👷 Персонаж": "👷 Character",
+            "Где показывать уведомления": "Where notifications appear",
+            "↗ справа сверху": "↗ top right",
+            "↖ слева сверху": "↖ top left",
+            "↑ сверху по центру": "↑ top center",
+            "↘ справа снизу": "↘ bottom right",
+            "↙ слева снизу": "↙ bottom left",
+            "↓ снизу по центру": "↓ bottom center",
+            "Показать пример": "Show an example",
+            "Масштаб": "Zoom",
+            "Мелко — больше шахты": "Small — see more of the mine",
+            "Средне": "Medium",
+            "Крупно — видны детали": "Large — see the details",
+            "Вид радио": "Radio style",
+            "Простой": "Plain",
+            "🎺 Граммофон": "🎺 Gramophone",
+            "Вид видео": "Video style",
+            "📺 Телевизор": "📺 TV set",
+            "Поменять панели местами: статистика — слева, сохранения, радио и настройки — справа": "Swap the panels: stats on the left; saves, radio and settings on the right",
+            "Для широкого экрана. На узком экране и на телефоне панели не по бокам, и эта настройка не действует.": "For wide screens. On narrow screens and phones the panels aren’t at the sides, and this setting does nothing.",
+            "⬆️ Клеть": "⬆️ Cage",
+            "🏚️ Лавка скупщика": "🏚️ Trading Post",
+            "Вынести телевизор поверх игры и увеличить": "Pop the TV out over the game and enlarge it",
+            "Вынести телевизор": "Pop out the TV",
+            "Скрыть телевизор": "Hide the TV",
+            "Предыдущее видео": "Previous video",
+            "Следующее видео": "Next video",
+            "Название (необязательно)": "Title (optional)",
+            "https://… ссылка на видео": "https://… video link",
+            "Скрыть радио": "Hide the radio",
+            "Предыдущая станция": "Previous station",
+            "Следующая станция": "Next station",
+            "Название": "Name",
+            "https://… адрес потока": "https://… stream address",
+            "монет": "coins",
+            "Моя шахта": "My mine",
+            "Глиняные штольни": "Clay Tunnels",
+            "обвалы": "cave-ins",
+            "Гранитные недра": "Granite Depths",
+            "рудничный газ": "firedamp",
+            "Огненное дно": "Fiery Bottom",
+            "жар": "heat",
+            "Алмаз": "Diamond",
+            "Рубин": "Ruby",
+            "Изумруд": "Emerald",
+            "Холщовый мешок": "Canvas sack",
+            "Кожаный ранец": "Leather knapsack",
+            "Шахтёрский короб": "Miner’s crate",
+            "Железная": "Iron",
+            "Стальная": "Steel",
+            "С алмазным жалом": "Diamond-tipped",
+            "Стальная лопата": "Steel shovel",
+            "🧭 Отладка: поверхность": "🧭 Debug: surface",
+            "🧭 Отладка: глубина {0} м": "🧭 Debug: depth {0} m",
+            "🛠️ В этой игре включали отладку — достижения в ней не выдаются": "🛠️ Debug mode was used in this game — no achievements here",
+            "🛠️ Режим отладки включён": "🛠️ Debug mode on",
+            "🛠️ Режим отладки выключен": "🛠️ Debug mode off",
+            "🦅 Полёт включён": "🦅 Flight on",
+            "🦅 Полёт выключен": "🦅 Flight off",
+            "FPS: {0}   худший кадр: {1} мс": "FPS: {0}   worst frame: {1} ms",
+            "отрисовка: {0} мс": "render: {0} ms",
+            "глубина: {0} м из {1} · {2} (камень ×{3})": "depth: {0} m of {1} · {2} (stone ×{3})",
+            "игрок: x {0}  y {1}": "player: x {0}  y {1}",
+            "камера: x {0}  y {1}": "camera: x {0}  y {1}",
+            "полёт: {0}   здоровье: {1}": "flight: {0}   health: {1}",
+            "вкл (бессмертие)": "on (immortal)",
+            "выкл": "off",
+            "PgUp/PgDn ±50 м · 0–9 глубина · G полёт · ` выкл": "PgUp/PgDn ±50 m · 0–9 depth · G flight · ` off",
+            "🧗 Лестниц нет — купи в лавке": "🧗 No ladders — buy some at the shop",
+            "🧗 Лестницу ставят под землёй": "🧗 Ladders go underground",
+            "🧗 Верёвок нет — купи в лавке": "🧗 No ropes — buy one at the shop",
+            "🧗 Встань на край колодца лицом к нему": "🧗 Stand at the edge of the shaft, facing it",
+            "🧗 Верёвка спущена на {0} м": "🧗 Rope lowered {0} m",
+            "🧗 Верёвка смотана": "🧗 Rope coiled up",
+            "🧗 Встань на край пропасти лицом к ней": "🧗 Stand at the edge of the chasm, facing it",
+            "🧗 Не дотянуть: до той стороны больше {0} блоков": "🧗 Too far: more than {0} blocks to the other side",
+            "🧗 Переправа натянута: {0} м": "🧗 Rope bridge stretched: {0} m",
+            "🧗 Переправа смотана": "🧗 Rope bridge coiled up",
+            "⬆️ Клеть спускается: {0} с. Стой на месте!": "⬆️ The cage is coming down: {0} s. Stand still!",
+            "⬆️ Вызов клети сорван: {0}": "⬆️ Cage call cancelled: {0}",
+            "ты сдвинулся": "you moved",
+            "тебя ранило": "you got hurt",
+            "⬆️ Клеть: {0} с — не двигайся": "⬆️ Cage: {0} s — don’t move",
+            "⬆️ До поверхности рукой подать": "⬆️ The surface is just above you",
+            "💀 В этом хардкоре клеть не ходит — только лестницы, верёвки и ступеньки": "💀 In this hardcore game the cage doesn’t run — only ladders, ropes and steps",
+            "⬆️ На Огненное дно клеть не спускается — выбирайся сам": "⬆️ The cage doesn’t go down to the Fiery Bottom — get out on your own",
+            "⬆️ Клеть уже в пути: {0} с": "⬆️ The cage is already on its way: {0} s",
+            "<button class=\"btn\" onclick=\"callCage()\">Вызвать за {0}{1}</button>": "<button class=\"btn\" onclick=\"callCage()\">Call for {0}{1}</button>",
+            "<button class=\"btn\" onclick=\"callCage()\">Вызвать в долг, вернуть {0}{1}</button>": "<button class=\"btn\" onclick=\"callCage()\">Call on credit, pay back {0}{1}</button>",
+            "<button class=\"btn\" disabled>Нужно {0}{1}</button>": "<button class=\"btn\" disabled>Need {0}{1}</button>",
+            "<p>Долг не может быть больше {0}{1} Выбраться можно и без клети: <b>W + пробел</b> копает вверх — над головой и вверх-вперёд; на получившуюся ступеньку запрыгни и копай дальше.</p>": "<p>Debt can’t exceed {0}{1} You can get out without the cage: <b>W + Space</b> digs upward — overhead and up-forward; jump onto the step and keep digging.</p>",
+            "<p>Глубина {0} м. Подъём клетью — {1}{2}</p>\n                <p>Клеть спустится за <b>{3} с</b>. Всё это время стой на месте: сдвинешься или тебя ранят — вызов сорвётся. Платишь, когда клеть пришла.</p>\n                <p>Рюкзак поднимется с тобой; наверху клеть останавливается у лавки.</p>\n                <p>У тебя: {4}{5}{6}</p>{7}\n                <div class=\"modal-buttons\">{8}\n                <button class=\"btn btn-secondary\" onclick=\"closeCage()\">Отмена</button></div>": "<p>Depth {0} m. Cage ride — {1}{2}</p>\n<p>The cage will come down in <b>{3} s</b>. Stand still all that time: if you move or get hurt, the call is cancelled. You pay when the cage arrives.</p>\n<p>Your backpack rides up with you; at the top the cage stops by the shop.</p>\n<p>You have: {4}{5}{6}</p>{7}\n<div class=\"modal-buttons\">{8}\n",
+            " · долг: {0}{1}": " · debt: {0}{1}",
+            "⬆️ Клеть подняла тебя с {0} м за {1} ¤": "⬆️ The cage lifted you from {0} m for {1} ¤",
+            "⬆️ Подъём в долг: долг теперь {0} ¤, вернёшь с выручки": "⬆️ Ride on credit: your debt is now {0} ¤, paid back from sales",
+            "💰 Не хватает {0} ¤": "💰 Not enough: {0} ¤ short",
+            "🧗 Куплено {0} лестниц": "🧗 Bought {0} ladders",
+            "🔥 Лампы нет — её продают в лавке": "🔥 No lamp — the shop sells them",
+            "🔥 Лампа и так горит": "🔥 The lamp is already lit",
+            "🔥 Спичек нет — купи коробок в лавке": "🔥 No matches — buy a box at the shop",
+            "🔥 Лампа зажжена. Спичек осталось: {0}": "🔥 Lamp lit. Matches left: {0}",
+            "🔥 Куплен коробок спичек: {0} шт.": "🔥 Bought a box of matches: {0}",
+            "🧗 Куплена верёвка": "🧗 Bought a rope",
+            "🔦 Открытая лампа погасла от падения — зажги спичкой (L)": "🔦 The open lamp went out in the fall — light it with a match (L)",
+            "🔦 Открытая лампа погасла от падения. Зажечь — спичкой (продаются в лавке) или у лавки": "🔦 The open lamp went out in the fall. Light it with a match (sold at the shop) or at the shop",
+            "Падение с высоты": "Fall from a height",
+            "💀 Суровый хардкор: очки сгорели, сила {0}, выносливость {1}": "💀 Harsh hardcore: points burned, strength {0}, stamina {1}",
+            "💀 {0}. Из короба высыпалось {1} шт., половина уцелела. −50 очков": "💀 {0}. {1} ore spilled from the crate, half survived. −50 points",
+            "💀 {0}. Рюкзак потерян ({1} шт.), −50 очков": "💀 {0}. Backpack lost ({1}), −50 points",
+            "💀 {0}. −50 очков": "💀 {0}. −50 points",
+            "⚠️ Потолок трещит!": "⚠️ The ceiling is cracking!",
+            "☣️ Рудничный газ! Отойди подальше": "☣️ Firedamp! Get away",
+            "💥 Открытая лампа подожгла рудничный газ! Лампа погасла": "💥 The open lamp ignited the firedamp! The lamp went out",
+            "Взрыв рудничного газа": "Firedamp explosion",
+            "Жар": "Heat",
+            "Рудничный газ": "Firedamp",
+            "Обвал": "Cave-in",
+            "Без пояса": "No belt",
+            "Кожаный пояс": "Leather belt",
+            "Патронташ шахтёра": "Miner’s bandolier",
+            "🩹 {0}: {1} бинтов и {2} аптечки": "🩹 {0}: {1} bandages and {2} kits",
+            "🩹 Ты и так здоров": "🩹 You’re already healthy",
+            "🩹 Нечем лечиться — бинты и аптечки продаются в лавке": "🩹 Nothing to heal with — the shop sells bandages and kits",
+            "{0}: +{1} здоровья": "{0}: +{1} health",
+            "✚ Аптечка": "✚ First-aid kit",
+            "🩹 Бинт": "🩹 Bandage",
+            "🩹 На поясе нет места — больше {0} не унести. Пояс побольше — в лавке": "🩹 No room on your belt — you can’t carry more than {0}. A bigger belt is at the shop",
+            "Крыса": "Rat",
+            "Летучая мышь": "Bat",
+            "Паук": "Spider",
+            "Саламандра": "Salamander",
+            "Открытая лампа": "Open lamp",
+            "Лампа Дэви": "Davy lamp",
+            "🐀 Крыса не смогла открыть застёжки ранца": "🐀 The rat couldn’t open the knapsack clasps",
+            "🐀 Крыса утащила: {0}! Догони её": "🐀 A rat stole: {0}! Catch it",
+            "Плевок саламандры": "Salamander spit",
+            "🐀 Крыса поймана — добыча вернулась в рюкзак": "🐀 Rat caught — the loot is back in your backpack",
+            "🐀 Крыса поймана, но в рюкзаке нет места": "🐀 Rat caught, but there’s no room in the backpack",
+            "🐤 Канарейка беспокоится — где-то рядом газ!": "🐤 The canary is uneasy — there’s gas nearby!",
+            "🐤 Канарейка погибла в газу. Новую можно купить в лавке": "🐤 The canary died in the gas. You can buy a new one at the shop",
+            "🔦 Куплена лампа Дэви: не гаснет и не поджигает газ": "🔦 Bought a Davy lamp: it doesn’t go out or ignite gas",
+            "🔦 Куплена открытая лампа: береги её от падений и газа": "🔦 Bought an open lamp: protect it from falls and gas",
+            "🐤 Куплена канарейка: она забеспокоится рядом с газом": "🐤 Bought a canary: it gets uneasy near gas",
+            "🎒 Куплен {0}: {1} мест": "🎒 Bought {0}: {1} slots",
+            "Обычная игра": "Normal game",
+            "без лечения": "no healing",
+            "без клети": "no cage",
+            "злые твари": "fierce creatures",
+            "темнота": "darkness",
+            "💀 Хардкор: {0}{1}": "💀 Hardcore: {0}{1}",
+            "одна жизнь": "one life",
+            "суровый": "harsh",
+            "💀 В хардкоре только автосохранение: сохраняться и загружаться нельзя": "💀 Hardcore allows autosave only: no saving or loading",
+            "💀 Шахта забрала тебя": "💀 The mine took you",
+            "⛏️ Шахта": "⛏️ Mine",
+            "Первая жила": "First Vein",
+            "добыть первую руду": "mine your first ore",
+            "Глина под ногами": "Clay Underfoot",
+            "спуститься в Глиняные штольни (200 м)": "go down to the Clay Tunnels (200 m)",
+            "Гранитный пояс": "Granite Belt",
+            "спуститься в Гранитные недра (400 м)": "go down to the Granite Depths (400 m)",
+            "спуститься на 600 м": "go down to 600 m",
+            "Дно мира": "Bottom of the World",
+            "спуститься до 780 м": "go down to 780 m",
+            "Ступенька за ступенькой": "Step by Step",
+            "подняться наверх с 50 м без лестниц, верёвок и клети": "climb up from 50 m without ladders, ropes or the cage",
+            "💎 Руда": "💎 Ore",
+            "Первый алмаз": "First Diamond",
+            "добыть алмаз": "mine a diamond",
+            "Изумрудный блеск": "Emerald Gleam",
+            "добыть изумруд": "mine an emerald",
+            "Платиновая жила": "Platinum Vein",
+            "добыть платину": "mine platinum",
+            "Полный короб": "Full Crate",
+            "продать за раз полный шахтёрский короб (50 штук)": "sell a full miner’s crate (50 pieces) in one go",
+            "💰 Деньги": "💰 Money",
+            "Первая тысяча": "First Thousand",
+            "заработать за игру 1 000 монет": "earn 1,000 coins in one game",
+            "Купец": "Merchant",
+            "заработать за игру 10 000 монет": "earn 10,000 coins in one game",
+            "Без долгов": "Debt-Free",
+            "вернуть долг лавке": "pay off your debt to the shop",
+            "🛠 Снаряжение": "🛠 Gear",
+            "Алмазное жало": "Diamond Tip",
+            "купить кирку с алмазным жалом": "buy the diamond-tipped pickaxe",
+            "Мастер на все руки": "Jack of All Trades",
+            "сила и выносливость 5": "strength and stamina 5",
+            "🐀 Твари": "🐀 Creatures",
+            "Крысолов": "Rat Catcher",
+            "поймать 10 крыс": "catch 10 rats",
+            "Гроза пауков": "Spider Slayer",
+            "победить 10 пауков": "defeat 10 spiders",
+            "Укротитель огня": "Fire Tamer",
+            "победить саламандру": "defeat a salamander",
+            "💀 Риск": "💀 Risk",
+            "Пережил газ": "Survived the Gas",
+            "выжить во взрыве рудничного газа": "survive a firedamp explosion",
+            "Железный шахтёр": "Iron Miner",
+            "выполнить цель в хардкоре «Одна жизнь»": "complete a goal in “One life” hardcore",
+            "🏅 Достижение: {0}": "🏅 Achievement: {0}",
+            "<div class=\"ach-total\">Получено {0} из {1}</div>": "<div class=\"ach-total\">Unlocked {0} of {1}</div>",
+            "Свободная игра": "Free play",
+            "Без цели: копай сколько хочешь": "No goal: dig as long as you like",
+            "Платина наверх": "Platinum to the Top",
+            "Добыть платину на Огненном дне и продать её в лавке": "Mine platinum on the Fiery Bottom and sell it at the shop",
+            "Дно шахты": "Bottom of the Mine",
+            "Спуститься до 780 м и живым вернуться на поверхность": "Go down to 780 m and get back to the surface alive",
+            "Состояние": "Fortune",
+            "Заработать за игру столько монет": "Earn this many coins in one game",
+            "Мастер": "Master",
+            "Поднять силу и выносливость до 10": "Raise strength and stamina to 10",
+            "{0} {1} — выполнена ✓": "{0} {1} — complete ✓",
+            "💎 Платина наверх · продано: {0}": "💎 Platinum to the Top · sold: {0}",
+            "🕳️ Дно взято — поднимись наверх!": "🕳️ Bottom reached — now get to the surface!",
+            "🕳️ Дно шахты · глубже всего: {0}/{1} м": "🕳️ Bottom of the Mine · deepest: {0}/{1} m",
+            "💰 Заработано {0} / {1} ¤": "💰 Earned {0} / {1} ¤",
+            "💪 Мастер · сила {0}/10 · выносливость {1}/10": "💪 Master · strength {0}/10 · stamina {1}/10",
+            "🕳️ Дно шахты! Теперь — живым наверх": "🕳️ Bottom of the mine! Now get up alive",
+            "Выбрать": "Choose",
+            "{0} Цель: {1}": "{0} Goal: {1}",
+            "{0} ч {1} мин": "{0} h {1} min",
+            "{0} мин {1} с": "{0} min {1} s",
+            "Причина": "Cause",
+            "Режим": "Mode",
+            "Глубже всего": "Deepest",
+            "{0} м": "{0} m",
+            "Заработано": "Earned",
+            "Смертей": "Deaths",
+            "Побеждено тварей": "Creatures defeated",
+            "Сила / выносливость": "Strength / stamina",
+            "Сила": "Strength",
+            "Тоник силы": "Strength tonic",
+            "Выносливость": "Stamina",
+            "Тоник выносливости": "Stamina tonic",
+            "{0} {1}: очков хватает на уровень {2} — купи тоник в лавке": "{0} {1}: enough points for level {2} — buy a tonic at the shop",
+            "сила {0}": "strength {0}",
+            "выносливость {0}": "stamina {0}",
+            "{0} {1} уже максимальная": "{0} {1} is already at maximum",
+            "{0} Мало очков: {1} из {2}": "{0} Not enough points: {1} of {2}",
+            "{0} {1}: {2} теперь {3}": "{0} {1}: {2} is now {3}",
+            "{0} {1} (макс.)": "{0} {1} (max)",
+            "<div class=\"char-row\">\n                    <div class=\"char-head\"><span>{0} {1}</span><b>{2}</b></div>\n                    <div class=\"backpack-bar\"><div class=\"backpack-fill\" style=\"width:{3}%\"></div></div>\n                    <div class=\"char-sub\">{4}</div>\n                    {5}\n                    <div class=\"char-sub\">{6}</div>\n                </div>": "<div class=\"char-row\">\n<div class=\"char-head\"><span>{0} {1}</span><b>{2}</b></div>\n<div class=\"backpack-bar\"><div class=\"backpack-fill\" style=\"width:{3}%\"></div></div>\n<div class=\"char-sub\">{4}</div>\n{5}\n<div class=\"char-sub\">{6}</div>\n</div>",
+            "максимальный уровень": "maximum level",
+            "очки: {0} из {1} · тоник — {2}{3} в лавке": "points: {0} of {1} · tonic — {2}{3} at the shop",
+            "<div class=\"char-sub char-ready\">очков хватит ещё на {0} ур. — тоники на них стоят {1}{2}</div>": "<div class=\"char-sub char-ready\">enough points for {0} more level(s) — tonics for them cost {1}{2}</div>",
+            "переносимый вес: {0} · удар ×{1}. Очки — за вес проданной руды": "carry weight: {0} · hit ×{1}. Points — for the weight of ore you sell",
+            "копание ×{0} · здоровье {1}. Очки — за выкопанные блоки": "digging ×{0} · health {1}. Points — for blocks you dig",
+            "<div class=\"char-sub\">Кирки требуют: железная — {0}; стальная — {1}; с алмазным жалом — {2}.</div>": "<div class=\"char-sub\">Pickaxes need: iron — {0}; steel — {1}; diamond-tipped — {2}.</div>",
+            "💰 Продано за {0} ¤, {1} ушло в долг. Осталось вернуть {2} ¤": "💰 Sold for {0} ¤, {1} went to the debt. Still owed: {2} ¤",
+            "💰 Продано за {0} ¤, {1} ушло в долг. Долг погашен!": "💰 Sold for {0} ¤, {1} went to the debt. Debt paid off!",
+            "💰 Продано: {0} шт. за {1} ¤": "💰 Sold: {0} pcs for {1} ¤",
+            "⛏️ Кирка «{0}» слишком тяжела: нужна {1}": "⛏️ The “{0}” pickaxe is too heavy: you need {1}",
+            "⛏️ Куплена кирка: {0}": "⛏️ Bought a pickaxe: {0}",
+            "🛠️ Куплена {0}": "🛠️ Bought: {0}",
+            "🛠️ {0} в долг. Вернёшь {1} ¤ с первой выручки": "🛠️ {0} on credit. You’ll pay back {1} ¤ from your first sales",
+            "🏚️ Подойди к лавке на поверхности": "🏚️ Go to the shop on the surface",
+            "У тебя: {0} ¤ · долг лавке: {1} ¤": "You have: {0} ¤ · debt to the shop: {1} ¤",
+            "У тебя: {0} ¤": "You have: {0} ¤",
+            "Лопаты": "Shovels",
+            "<button class=\"btn btn-small\" disabled>Есть</button>": "<button class=\"btn btn-small\" disabled>Owned</button>",
+            "<button class=\"btn btn-small\" onclick=\"buyShovel({0})\">Купить за {1}{2}</button>": "<button class=\"btn btn-small\" onclick=\"buyShovel({0})\">Buy for {1}{2}</button>",
+            "<button class=\"btn btn-small\" onclick=\"takeShovelOnCredit({0})\">В долг, вернуть {1}{2}</button>": "<button class=\"btn btn-small\" onclick=\"takeShovelOnCredit({0})\">On credit, pay back {1}{2}</button>",
+            "\n                    <div>\n                        <div class=\"shop-item-name\">🛠️ {0}</div>\n                        <div class=\"shop-item-info\">земля, песок, глина, гравий — в {1} раз{2} быстрее ржавой кирки</div>\n                    </div>\n                    {3}": "\n<div>\n<div class=\"shop-item-name\">🛠️ {0}</div>\n<div class=\"shop-item-info\">dirt, sand, clay, gravel — {1}× faster than the rusty pickaxe{2}</div>\n</div>\n{3}",
+            "а": "",
+            "🧗 Лестницы ×{0}": "🧗 Ladders ×{0}",
+            "ставятся клавишей Q · у тебя: {0}": "placed with Q · you have: {0}",
+            "🔥 Спички ×": "🔥 Matches ×",
+            "зажечь погасшую открытую лампу в шахте — клавиша L · у тебя: {0}": "light a blown-out open lamp in the mine — the L key · you have: {0}",
+            "🧗 Верёвка": "🧗 Rope",
+            "{0} м, спускается клавишей R · у тебя: {1}": "{0} m, lowered with the R key · you have: {1}",
+            "🔦 Открытая лампа": "🔦 Open lamp",
+            "светит на 4 блока, отпугивает мышей и пауков; гаснет при падении, поджигает газ": "lights 4 blocks, scares bats and spiders; goes out in a fall, ignites gas",
+            "🔦 Лампа Дэви": "🔦 Davy lamp",
+            "закрытая: светит на 3 блока, не гаснет и не поджигает газ": "closed: lights 3 blocks, doesn’t go out or ignite gas",
+            "🐤 Канарейка": "🐤 Canary",
+            "беспокоится рядом с газом; в газу погибает": "gets uneasy near gas; dies in gas",
+            "<button class=\"btn btn-small\" onclick=\"{0}\">Купить за {1}{2}</button>": "<button class=\"btn btn-small\" onclick=\"{0}\">Buy for {1}{2}</button>",
+            "Лечение": "Healing",
+            "+{0} здоровья · у тебя: {1} из {2}": "+{0} health · you have: {1} of {2}",
+            "<button class=\"btn btn-small\" onclick=\"buyMed('{0}')\">Купить за {1}{2}</button>": "<button class=\"btn btn-small\" onclick=\"buyMed('{0}')\">Buy for {1}{2}</button>",
+            "<button class=\"btn btn-small\" disabled>Надет</button>": "<button class=\"btn btn-small\" disabled>Worn</button>",
+            "<button class=\"btn btn-small\" disabled>Хуже твоего</button>": "<button class=\"btn btn-small\" disabled>Worse than yours</button>",
+            "<button class=\"btn btn-small\" onclick=\"buyBelt({0})\">Купить за {1}{2}</button>": "<button class=\"btn btn-small\" onclick=\"buyBelt({0})\">Buy for {1}{2}</button>",
+            "\n                    <div>\n                        <div class=\"shop-item-name\">🎽 {0}</div>\n                        <div class=\"shop-item-info\">{1} бинтов и {2} аптечки (без пояса — {3} и {4})</div>\n                    </div>\n                    {5}": "\n<div>\n<div class=\"shop-item-name\">🎽 {0}</div>\n<div class=\"shop-item-info\">{1} bandages and {2} kits (without a belt — {3} and {4})</div>\n</div>\n{5}",
+            "Рюкзаки": "Backpacks",
+            "<button class=\"btn btn-small\" disabled>На плечах</button>": "<button class=\"btn btn-small\" disabled>On your back</button>",
+            "<button class=\"btn btn-small\" disabled>Меньше твоего</button>": "<button class=\"btn btn-small\" disabled>Smaller than yours</button>",
+            "<button class=\"btn btn-small\" onclick=\"buyBackpack({0})\">Купить за {1}{2}</button>": "<button class=\"btn btn-small\" onclick=\"buyBackpack({0})\">Buy for {1}{2}</button>",
+            "\n                    <div>\n                        <div class=\"shop-item-name\">🎒 {0}</div>\n                        <div class=\"shop-item-info\">{1} мест (сейчас: {2})</div>\n                    </div>\n                    {3}": "\n<div>\n<div class=\"shop-item-name\">🎒 {0}</div>\n<div class=\"shop-item-info\">{1} slots (now: {2})</div>\n</div>\n{3}",
+            "Тоники": "Tonics",
+            "<button class=\"btn btn-small\" disabled>Максимум</button>": "<button class=\"btn btn-small\" disabled>Maximum</button>",
+            "<button class=\"btn btn-small\" disabled>Очки {0}/{1}</button>": "<button class=\"btn btn-small\" disabled>Points {0}/{1}</button>",
+            "<button class=\"btn btn-small\" onclick=\"buyTonic('{0}')\">Выпить за {1}{2}</button>": "<button class=\"btn btn-small\" onclick=\"buyTonic('{0}')\">Drink for {1}{2}</button>",
+            "\n                    <div>\n                        <div class=\"shop-item-name\">{0} {1}</div>\n                        <div class=\"shop-item-info\">{2} {3} → {4}; нужны очки и деньги</div>\n                    </div>\n                    {5}": "\n<div>\n<div class=\"shop-item-name\">{0} {1}</div>\n<div class=\"shop-item-info\">{2} {3} → {4}; needs points and money</div>\n</div>\n{5}",
+            "Кирки": "Pickaxes",
+            "камень, золото, уголь, серебро": "stone, gold, coal, silver",
+            "+ алмазы, изумруды": "+ diamonds, emeralds",
+            "+ рубины, платина": "+ rubies, platinum",
+            "всё, быстрее всех": "everything, fastest of all",
+            "<button class=\"btn btn-small\" disabled>В руках</button>": "<button class=\"btn btn-small\" disabled>In hand</button>",
+            "<button class=\"btn btn-small\" disabled>Хуже твоей</button>": "<button class=\"btn btn-small\" disabled>Worse than yours</button>",
+            "<button class=\"btn btn-small\" disabled>Нужна {0}</button>": "<button class=\"btn btn-small\" disabled>Needs {0}</button>",
+            "<button class=\"btn btn-small\" onclick=\"buyPickaxe({0})\">Купить за {1}{2}</button>": "<button class=\"btn btn-small\" onclick=\"buyPickaxe({0})\">Buy for {1}{2}</button>",
+            " · требует: {0}": " · needs: {0}",
+            "\n                    <div>\n                        <div class=\"shop-item-name\">⛏️ {0}</div>\n                        <div class=\"shop-item-info\">скорость ×{1} · {2}{3}</div>\n                    </div>\n                    {4}": "\n<div>\n<div class=\"shop-item-name\">⛏️ {0}</div>\n<div class=\"shop-item-info\">speed ×{1} · {2}{3}</div>\n</div>\n{4}",
+            "🔦 В лавке лампу зажгли снова": "🔦 The lamp was relit at the shop",
+            "⛏️ {0} не поддаётся — нужна {1} кирка": "⛏️ {0} won’t give — you need a {1} pickaxe",
+            "🎒 Рюкзак полон — неси руду в лавку": "🎒 Backpack full — take the ore to the shop",
+            "🎒 Выбросил {0} ради: {1}": "🎒 Dropped {0} for: {1}",
+            "🎒 Нет места в рюкзаке: {0} не поместился": "🎒 No room in the backpack: {0} didn’t fit",
+            "крысы-воришки": "thieving rats",
+            "летучие мыши": "bats",
+            "пауки": "spiders",
+            "саламандры": "salamanders",
+            "глубина от {0} м · камень твёрже ×{1} · здесь: {2}": "from {0} m deep · stone harder ×{1} · here: {2}",
+            "глубина от {0} м · здесь: {1}": "from {0} m deep · here: {1}",
+            "⚠ опасно: {0}": "⚠ danger: {0}",
+            "❤ {0}  {1} м  🎒 {2}/{3}  {4}   ": "❤ {0}  {1} m  🎒 {2}/{3}  {4}   ",
+            "ЛАВКА": "SHOP",
+            "«Лавка» — инструменты": "“Shop” — tools",
+            "E — инструменты": "E — tools",
+            "м": "m",
+            "вес {0} · медленнее на {1}%": "weight {0} · {1}% slower",
+            "{0} ¤ (долг {1})": "{0} ¤ (debt {1})",
+            " (погасла)": " (out)",
+            "спички {0}": "matches {0}",
+            "канарейка": "canary",
+            "бинты {0}": "bandages {0}",
+            "аптечки {0}": "kits {0}",
+            "Сохранение": "Save",
+            "⚠️ Файл сохранения повреждён — текущая игра не тронута": "⚠️ The save file is damaged — your current game is untouched",
+            "⚠️ Несовместимая версия сохранения": "⚠️ Incompatible save version",
+            "💀 Хардкор-игру можно продолжить только из автосохранения": "💀 A hardcore game can only be continued from the autosave",
+            "⚠️ Браузер не даёт сохранять игру (приватный режим или нет места). Сделай экспорт в файл": "⚠️ The browser won’t let the game save (private mode or no space). Export to a file",
+            "💾 Сохранено: {0}": "💾 Saved: {0}",
+            "⚠️ Слот пуст": "⚠️ Empty slot",
+            "📂 Загружено: {0}": "📂 Loaded: {0}",
+            "❌ Ошибка загрузки": "❌ Loading error",
+            "Удалить это сохранение?": "Delete this save?",
+            "🗑️ Сохранение удалено": "🗑️ Save deleted",
+            "Автосохранение": "Autosave",
+            "Найдено автосохранение. Продолжить?": "Autosave found. Continue?",
+            "📂 Прошлая игра сохранена как резервная копия — её можно открыть через «Загрузить»": "📂 The previous game was kept as a backup — open it from “Load”",
+            "Экспорт": "Export",
+            "⬇️ Сохранение экспортировано": "⬇️ Save exported",
+            "⬆️ Сохранение импортировано": "⬆️ Save imported",
+            "❌ Ошибка импорта": "❌ Import error",
+            "Начать новую игру? Несохранённый прогресс будет потерян.": "Start a new game? Unsaved progress will be lost.",
+            "🆕 Новая игра начата": "🆕 New game started",
+            "Шахта {0}": "Mine {0}",
+            "Без названия": "Untitled",
+            "\n                            <div class=\"save-slot-header\">\n                                <div class=\"save-slot-title\">Слот {0}: {1}</div>\n                            </div>\n                            <div class=\"save-slot-info\">\n                                💾 {2}<br>\n                                ⏱️ Время: {3} мин | 💰 Деньги: {4}{5} | ⛏️ {6} | 🏆 Очки: {7}\n                            </div>\n                            <div class=\"save-slot-actions\">\n                                <button class=\"btn btn-small\" onclick=\"openSaveNameModal({8})\">Перезаписать</button>\n                                <button class=\"btn btn-small btn-danger\" onclick=\"deleteSlot({9})\">Удалить</button>\n                            </div>\n                        ": "\n<div class=\"save-slot-header\">\n<div class=\"save-slot-title\">Slot {0}: {1}</div>\n</div>\n<div class=\"save-slot-info\">\n💾 {2}<br>\n⏱️ Time: {3} min | 💰 Money: {4}{5} | ⛏️ {6} | 🏆 Score: {7}\n</div>\n<div class=\"save-slot-actions\">\n<button class=\"btn btn-small\" onclick=\"openSaveNameModal({8})\">Overwrite</button>\n<button class=\"btn btn-small btn-danger\" onclick=\"deleteSlot({9})\">Delete</button>\n</div>\n",
+            "<div class=\"save-slot-title\">Слот {0}: Повреждён</div>": "<div class=\"save-slot-title\">Slot {0}: Damaged</div>",
+            "\n                        <div class=\"save-slot-title\">Слот {0}: Пусто</div>\n                        <div class=\"save-slot-actions\">\n                            <button class=\"btn btn-small\" onclick=\"openSaveNameModal({1})\">Сохранить</button>\n                        </div>\n                    ": "\n<div class=\"save-slot-title\">Slot {0}: Empty</div>\n<div class=\"save-slot-actions\">\n<button class=\"btn btn-small\" onclick=\"openSaveNameModal({1})\">Save</button>\n</div>\n",
+            "<div class=\"save-slot-title\">Резервная копия прошлой игры</div>\n                        <div class=\"save-slot-info\">💾 {0} | 💰 {1}{2}</div>": "<div class=\"save-slot-title\">Backup of the previous game</div>\n<div class=\"save-slot-info\">💾 {0} | 💰 {1}{2}</div>",
+            "<div class=\"save-slot-title\">Резервная копия: повреждена</div>": "<div class=\"save-slot-title\">Backup: damaged</div>",
+            "\n                            <div class=\"save-slot-header\">\n                                <div class=\"save-slot-title\">Слот {0}: {1}</div>\n                            </div>\n                            <div class=\"save-slot-info\">\n                                💾 {2}<br>\n                                ⏱️ Время: {3} мин | 💰 Деньги: {4}{5} | ⛏️ {6} | 🏆 Очки: {7}\n                            </div>\n                        ": "\n<div class=\"save-slot-header\">\n<div class=\"save-slot-title\">Slot {0}: {1}</div>\n</div>\n<div class=\"save-slot-info\">\n💾 {2}<br>\n⏱️ Time: {3} min | 💰 Money: {4}{5} | ⛏️ {6} | 🏆 Score: {7}\n</div>\n",
+            "<div class=\"save-slot-title\">Слот {0}: Пусто</div>": "<div class=\"save-slot-title\">Slot {0}: Empty</div>",
+            "<span class=\"coin\" role=\"img\" aria-label=\"монет\"></span>": "<span class=\"coin\" role=\"img\" aria-label=\"coins\"></span>",
+            "Ошибка в кадре игры:": "Error in a game frame:",
+            "⚠️ Ошибка в игре — она продолжит работу. Подробности в консоли (F12)": "⚠️ An error in the game — it will keep running. Details in the console (F12)",
+            "это не похоже на адрес": "this doesn’t look like an address",
+            "адрес должен начинаться с https://": "the address must start with https://",
+            "такая станция уже есть": "this station is already there",
+            "не больше {0} станций": "no more than {0} stations",
+            "Не добавлено: {0}": "Not added: {0}",
+            "Станция добавлена": "Station added",
+            "Пока пусто — добавь станцию ниже": "Empty for now — add a station below",
+            "<button class=\"radio-pick\" onclick=\"radioSelect({0})\" title=\"{1}\">{2}{3}</button>\n                    <button class=\"radio-del\" onclick=\"radioRemoveStation({4})\" aria-label=\"Удалить станцию\">✕</button>": "<button class=\"radio-pick\" onclick=\"radioSelect({0})\" title=\"{1}\">{2}{3}</button>\n<button class=\"radio-del\" onclick=\"radioRemoveStation({4})\" aria-label=\"Delete station\">✕</button>",
+            "выключено": "off",
+            "подключение…": "connecting…",
+            "в эфире": "on air",
+            "станция недоступна": "station unavailable",
+            "■ Выкл": "■ Off",
+            "📻 {0} сейчас недоступна — проверь адрес или выбери другую": "📻 {0} is unavailable right now — check the address or pick another",
+            "Станция": "Station",
+            "📻 Сначала добавь станцию в «Мои станции»": "📻 First add a station in “My stations”",
+            "VK Видео": "VK Video",
+            "Видеофайл": "Video file",
+            "ссылка не распознана: нужна ссылка на YouTube, RuTube, VK Видео или файл .mp4": "link not recognized: you need a YouTube, RuTube, VK Video or .mp4 link",
+            "это видео уже есть": "this video is already there",
+            "не больше {0} видео": "no more than {0} videos",
+            "Видео добавлено": "Video added",
+            "📺 Сначала добавь видео в «Мои видео»": "📺 First add a video in “My videos”",
+            "Вернуть телевизор на панель": "Put the TV back on the panel",
+            "YouTube из файла на компьютере часто не показывает видео — на сайте игры работает": "YouTube often won’t play from a file on your computer — it works on the game’s website",
+            "Пока пусто — добавь ссылку ниже": "Empty for now — add a link below",
+            "<button class=\"radio-pick\" onclick=\"videoSelect({0})\" title=\"{1}\">{2}{3}</button>\n                    <button class=\"radio-del\" onclick=\"videoRemove({4})\" aria-label=\"Удалить видео\">✕</button>": "<button class=\"radio-pick\" onclick=\"videoSelect({0})\" title=\"{1}\">{2}{3}</button>\n<button class=\"radio-del\" onclick=\"videoRemove({4})\" aria-label=\"Delete video\">✕</button>"
+            };
+        let LANG = 'ru';
+
+        function detectLang() {
+            const list = (typeof navigator !== 'undefined' && (navigator.languages || [navigator.language])) || [];
+            const first = String(list[0] || 'ru').toLowerCase();
+            return /^(ru|uk|be|kk)/.test(first) ? 'ru' : 'en';
+        }
+
+        // Перевод вставки: название как есть, со строчной буквы («серебро») или список через « · »
+        function trValue(v) {
+            if (LANG !== 'en' || !/[А-Яа-яЁё]/.test(v)) return v;
+            if (EN_TEXT[v] !== undefined) return EN_TEXT[v];
+            const cap = v.charAt(0).toUpperCase() + v.slice(1);
+            if (EN_TEXT[cap] !== undefined) return EN_TEXT[cap].toLowerCase();
+            if (v.includes(' · ')) return v.split(' · ').map(trValue).join(' · ');
+            return v;
+        }
+
+        // Числа и даты — по правилам языка
+        function LOCALE() { return LANG === 'en' ? 'en-US' : 'ru-RU'; }
+
+        // Перевод строки (или шаблона с ${…}: L`Продано: ${n} шт.` ищет «Продано: {0} шт.»)
+        function L(str, ...vals) {
+            if (Array.isArray(str) && str.raw) {
+                const key = str.reduce((a, part, i) => a + part + (i < vals.length ? `{${i}}` : ''), '');
+                const tpl = LANG === 'en' && EN_TEXT[key] !== undefined ? EN_TEXT[key] : key;
+                // вставки-строки (названия руды, кирок, биомов…) тоже переводим
+                return tpl.replace(/\{(\d+)\}/g, (m, i) => { const v = vals[+i]; return typeof v === 'string' ? trValue(v) : String(v); });
+            }
+            return LANG === 'en' && EN_TEXT[str] !== undefined ? EN_TEXT[str] : str;
+        }
+
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -1950,10 +2504,10 @@
         // ore — особая руда, которая встречается только в этом биоме,
         // hazard — опасность биома (как она работает — в разделе ОПАСНОСТИ).
         const BIOMES = [
-            { name: 'Песчаный пласт',   from: 0,   rock: '#8A7F6A', cave: '#2B2420', hardness: 1,   ore: 'COAL',     hazard: null },
-            { name: 'Глиняные штольни', from: 200, rock: '#6F7C88', cave: '#1E2630', hardness: 1.3, ore: 'SILVER',   hazard: 'обвалы' },
-            { name: 'Гранитные недра',  from: 400, rock: '#8C7473', cave: '#2A2424', hardness: 1.7, ore: 'EMERALD',  hazard: 'рудничный газ' },
-            { name: 'Огненное дно',     from: 600, rock: '#4A4440', cave: '#2E1614', hardness: 2.2, ore: 'PLATINUM', hazard: 'жар' }
+            { name: L('Песчаный пласт'),   from: 0,   rock: '#8A7F6A', cave: '#2B2420', hardness: 1,   ore: 'COAL',     hazard: null },
+            { name: L('Глиняные штольни'), from: 200, rock: '#6F7C88', cave: '#1E2630', hardness: 1.3, ore: 'SILVER',   hazard: L('обвалы') },
+            { name: L('Гранитные недра'),  from: 400, rock: '#8C7473', cave: '#2A2424', hardness: 1.7, ore: 'EMERALD',  hazard: L('рудничный газ') },
+            { name: L('Огненное дно'),     from: 600, rock: '#4A4440', cave: '#2E1614', hardness: 2.2, ore: 'PLATINUM', hazard: L('жар') }
         ];
         // Насколько метров граница биома гуляет вверх-вниз, чтобы не была ровной линией
         const BIOME_WAVE = 10;
@@ -2018,21 +2572,21 @@
         const PICK_ON_SOFT = 4;
         // Названия блоков для подсказок
         const BLOCK_NAMES = {
-            [BLOCK_TYPES.DIRT]: 'Земля', [BLOCK_TYPES.SAND]: 'Песок',
-            [BLOCK_TYPES.CLAY]: 'Глина', [BLOCK_TYPES.GRAVEL]: 'Гравий'
+            [BLOCK_TYPES.DIRT]: L('Земля'), [BLOCK_TYPES.SAND]: L('Песок'),
+            [BLOCK_TYPES.CLAY]: L('Глина'), [BLOCK_TYPES.GRAVEL]: L('Гравий')
         };
 
         // Руда: что кладётся в рюкзак и почём продаётся
         const ORES = {
             // weight — вес одной штуки: золото и платина тяжёлые, камни лёгкие
-            [BLOCK_TYPES.GOLD]:    { key: 'gold',    name: 'Золото', price: 8,   score: 10,  weight: 2 },
-            [BLOCK_TYPES.DIAMOND]: { key: 'diamond', name: 'Алмаз',  price: 30,  score: 50,  weight: 0.5 },
-            [BLOCK_TYPES.RUBY]:    { key: 'ruby',    name: 'Рубин',  price: 55,  score: 100, weight: 0.5 },
+            [BLOCK_TYPES.GOLD]:    { key: 'gold',    name: L('Золото'), price: 8,   score: 10,  weight: 2 },
+            [BLOCK_TYPES.DIAMOND]: { key: 'diamond', name: L('Алмаз'),  price: 30,  score: 50,  weight: 0.5 },
+            [BLOCK_TYPES.RUBY]:    { key: 'ruby',    name: L('Рубин'),  price: 55,  score: 100, weight: 0.5 },
             // особая руда биомов
-            [BLOCK_TYPES.COAL]:     { key: 'coal',     name: 'Уголь',   price: 4,   score: 5,   weight: 1 },
-            [BLOCK_TYPES.SILVER]:   { key: 'silver',   name: 'Серебро', price: 20,  score: 25,  weight: 1.5 },
-            [BLOCK_TYPES.EMERALD]:  { key: 'emerald',  name: 'Изумруд', price: 35,  score: 75,  weight: 0.5 },
-            [BLOCK_TYPES.PLATINUM]: { key: 'platinum', name: 'Платина', price: 80,  score: 150, weight: 3 }
+            [BLOCK_TYPES.COAL]:     { key: 'coal',     name: L('Уголь'),   price: 4,   score: 5,   weight: 1 },
+            [BLOCK_TYPES.SILVER]:   { key: 'silver',   name: L('Серебро'), price: 20,  score: 25,  weight: 1.5 },
+            [BLOCK_TYPES.EMERALD]:  { key: 'emerald',  name: L('Изумруд'), price: 35,  score: 75,  weight: 0.5 },
+            [BLOCK_TYPES.PLATINUM]: { key: 'platinum', name: L('Платина'), price: 80,  score: 150, weight: 3 }
         };
         const BACKPACK_CAPACITY = 20;    // ёмкость стартового мешка
 
@@ -2040,9 +2594,9 @@
         const BACKPACKS = [
             // ранец на застёжках — крысы не воруют; короб жёсткий — груз в нём меньше
             // замедляет, а при смерти половина руды сохраняется
-            { name: 'Холщовый мешок',   capacity: 20, price: 0,   ratProof: false, keepOnDeath: 0,   weightMult: 1 },
-            { name: 'Кожаный ранец',    capacity: 35, price: 200, ratProof: true,  keepOnDeath: 0,   weightMult: 1 },
-            { name: 'Шахтёрский короб', capacity: 50, price: 700, ratProof: true,  keepOnDeath: 0.5, weightMult: 0.7 }
+            { name: L('Холщовый мешок'),   capacity: 20, price: 0,   ratProof: false, keepOnDeath: 0,   weightMult: 1 },
+            { name: L('Кожаный ранец'),    capacity: 35, price: 200, ratProof: true,  keepOnDeath: 0,   weightMult: 1 },
+            { name: L('Шахтёрский короб'), capacity: 50, price: 700, ratProof: true,  keepOnDeath: 0.5, weightMult: 0.7 }
         ];
 
         // Вес замедляет: при полной нагрузке ходьба и лазанье −35%, прыжок −15%
@@ -2067,17 +2621,17 @@
 
         // Кирки. speed делит время копания, minTier у блока — какая кирка нужна.
         const PICKAXES = [
-            { name: 'Ржавая',            speed: 1,   price: 0 },
-            { name: 'Железная',          speed: 1.7, price: 150 },
-            { name: 'Стальная',          speed: 2.8, price: 900 },
-            { name: 'С алмазным жалом',  speed: 4.5, price: 2500 }
+            { name: L('Ржавая'),            speed: 1,   price: 0 },
+            { name: L('Железная'),          speed: 1.7, price: 150 },
+            { name: L('Стальная'),          speed: 2.8, price: 900 },
+            { name: L('С алмазным жалом'),  speed: 4.5, price: 2500 }
         ];
         // Лопаты: копают только мягкую породу. Номер 0 — лопаты нет.
         const SHOVELS = [
-            { name: 'Нет',    speed: 0, price: 0 },
-            { name: 'Лопата', speed: 1, price: 40 },
+            { name: L('Нет'),    speed: 0, price: 0 },
+            { name: L('Лопата'), speed: 1, price: 40 },
             // стальная копает мягкую породу быстрее даже лучшей кирки
-            { name: 'Стальная лопата', speed: 2.5, price: 300 }
+            { name: L('Стальная лопата'), speed: 2.5, price: 300 }
         ];
 
         // Лопату можно взять в долг, если не хватает денег. Вернуть придётся вдвое больше:
@@ -2412,7 +2966,7 @@
                 // на поверхность: встать на землю, а не вырубать в ней яму
                 player.y = SURFACE_Y - 1;
                 fallTop = null;
-                showNotification('🧭 Отладка: поверхность');
+                showNotification(L('🧭 Отладка: поверхность'));
                 return 0;
             }
             player.y = DEPTH_ORIGIN + d;
@@ -2423,7 +2977,7 @@
             for (const x of [x0, x1]) {
                 if (getBlock(x, y) !== BLOCK_TYPES.BEDROCK) setBlock(x, y, BLOCK_TYPES.AIR);
             }
-            showNotification(`🧭 Отладка: глубина ${d} м`);
+            showNotification(L`🧭 Отладка: глубина ${d} м`);
             return d;
         }
 
@@ -2436,9 +2990,9 @@
                 // игра, в которой включали отладку, достижений не даёт (телепорт, полёт…)
                 if (debug.on && !run.debugUsed) {
                     run.debugUsed = true;
-                    showNotification('🛠️ В этой игре включали отладку — достижения в ней не выдаются');
+                    showNotification(L('🛠️ В этой игре включали отладку — достижения в ней не выдаются'));
                 }
-                showNotification(debug.on ? '🛠️ Режим отладки включён' : '🛠️ Режим отладки выключен');
+                showNotification(debug.on ? L('🛠️ Режим отладки включён') : L('🛠️ Режим отладки выключен'));
                 return true;
             }
             if (!debug.on) return false;
@@ -2450,7 +3004,7 @@
             if (code === 'KeyG') {
                 debug.fly = !debug.fly;
                 player.vx = 0; player.vy = 0;
-                showNotification(debug.fly ? '🦅 Полёт включён' : '🦅 Полёт выключен');
+                showNotification(debug.fly ? L('🦅 Полёт включён') : L('🦅 Полёт выключен'));
                 return true;
             }
             return false;
@@ -2485,13 +3039,13 @@
         function drawDebugOverlay() {
             if (!debug.on) return;
             const lines = [
-                `FPS: ${debug.fps}   худший кадр: ${debug.worstShown.toFixed(1)} мс`,
-                `отрисовка: ${debug.renderMs.toFixed(2)} мс`,
-                `глубина: ${currentDepth()} м из ${MAX_DEPTH} · ${BIOMES[biomeIndexAt(currentDepth())].name} (камень ×${BIOMES[biomeIndexAt(currentDepth())].hardness})`,
-                `игрок: x ${player.x.toFixed(1)}  y ${player.y.toFixed(1)}`,
-                `камера: x ${camera.x}  y ${camera.y}`,
-                `полёт: ${debug.fly ? 'вкл (бессмертие)' : 'выкл'}   здоровье: ${Math.ceil(health)}`,
-                'PgUp/PgDn ±50 м · 0–9 глубина · G полёт · ` выкл'
+                L`FPS: ${debug.fps}   худший кадр: ${debug.worstShown.toFixed(1)} мс`,
+                L`отрисовка: ${debug.renderMs.toFixed(2)} мс`,
+                L`глубина: ${currentDepth()} м из ${MAX_DEPTH} · ${BIOMES[biomeIndexAt(currentDepth())].name} (камень ×${BIOMES[biomeIndexAt(currentDepth())].hardness})`,
+                L`игрок: x ${player.x.toFixed(1)}  y ${player.y.toFixed(1)}`,
+                L`камера: x ${camera.x}  y ${camera.y}`,
+                L`полёт: ${debug.fly ? L('вкл (бессмертие)') : L('выкл')}   здоровье: ${Math.ceil(health)}`,
+                L('PgUp/PgDn ±50 м · 0–9 глубина · G полёт · ` выкл')
             ];
             ctx.font = '12px "Courier New", monospace';
             ctx.textAlign = 'left';
@@ -2543,12 +3097,12 @@
 
         function placeLadder() {
             const cx = Math.floor(player.x + PLAYER_W / 2);
-            if (ladders <= 0) { showNotification('🧗 Лестниц нет — купи в лавке'); return false; }
+            if (ladders <= 0) { showNotification(L('🧗 Лестниц нет — купи в лавке')); return false; }
             // клетка, где середина тела; если там уже лестница — та, где ноги или голова
             const rows = [Math.floor(player.y + 0.5), Math.floor(player.y + 1 - EPS), Math.floor(player.y)];
             const cy = rows.find(r => r >= SURFACE_Y && getBlock(cx, r) === BLOCK_TYPES.AIR);
             if (cy === undefined) {
-                if (Math.floor(player.y + 0.5) < SURFACE_Y) showNotification('🧗 Лестницу ставят под землёй');
+                if (Math.floor(player.y + 0.5) < SURFACE_Y) showNotification(L('🧗 Лестницу ставят под землёй'));
                 return false;
             }
             setBlock(cx, cy, BLOCK_TYPES.LADDER);
@@ -2559,11 +3113,11 @@
 
         // Верёвка свешивается в колодец перед игроком
         function deployRope() {
-            if (ropes <= 0) { showNotification('🧗 Верёвок нет — купи в лавке'); return 0; }
+            if (ropes <= 0) { showNotification(L('🧗 Верёвок нет — купи в лавке')); return 0; }
             const fx = player.direction > 0 ? Math.floor(player.x + PLAYER_W) + 1 : Math.floor(player.x) - 1;
             const fy = Math.floor(player.y + 0.5);
             if (getBlock(fx, fy) !== BLOCK_TYPES.AIR || getBlock(fx, fy + 1) !== BLOCK_TYPES.AIR) {
-                showNotification('🧗 Встань на край колодца лицом к нему');
+                showNotification(L('🧗 Встань на край колодца лицом к нему'));
                 return 0;
             }
             let n = 0;
@@ -2572,7 +3126,7 @@
                 n++;
             }
             ropes--;
-            showNotification(`🧗 Верёвка спущена на ${n} м`);
+            showNotification(L`🧗 Верёвка спущена на ${n} м`);
             updateUI();
             return n;
         }
@@ -2584,27 +3138,27 @@
             while (getBlock(x, bottom + 1) === BLOCK_TYPES.ROPE) bottom++;
             for (let cy = top; cy <= bottom; cy++) setBlock(x, cy, BLOCK_TYPES.AIR);
             ropes = Math.min(MAX_GEAR, ropes + 1);
-            showNotification('🧗 Верёвка смотана');
+            showNotification(L('🧗 Верёвка смотана'));
         }
 
         // Переправа: верёвка натягивается горизонтально через пропасть или лаву,
         // от края, на котором стоишь, до опоры на той стороне (не дальше BRIDGE_SPAN)
         const BRIDGE_SPAN = 12;
         function deployBridge() {
-            if (ropes <= 0) { showNotification('🧗 Верёвок нет — купи в лавке'); return 0; }
+            if (ropes <= 0) { showNotification(L('🧗 Верёвок нет — купи в лавке')); return 0; }
             const row = Math.floor(player.y + 1);                 // ряд, на котором стоит игрок
             const dir = player.direction;
             let x = dir > 0 ? Math.floor(player.x + PLAYER_W) + 1 : Math.floor(player.x) - 1;
             const cells = [];
             while (cells.length < BRIDGE_SPAN && getBlock(x, row) === BLOCK_TYPES.AIR) { cells.push(x); x += dir; }
             if (cells.length === 0 || !isBlocked(x, row)) {
-                showNotification(cells.length === 0 ? '🧗 Встань на край пропасти лицом к ней'
-                                                    : `🧗 Не дотянуть: до той стороны больше ${BRIDGE_SPAN} блоков`);
+                showNotification(cells.length === 0 ? L('🧗 Встань на край пропасти лицом к ней')
+                                                    : L`🧗 Не дотянуть: до той стороны больше ${BRIDGE_SPAN} блоков`);
                 return 0;
             }
             for (const cx of cells) setBlock(cx, row, BLOCK_TYPES.BRIDGE);
             ropes--;
-            showNotification(`🧗 Переправа натянута: ${cells.length} м`);
+            showNotification(L`🧗 Переправа натянута: ${cells.length} м`);
             updateUI();
             return cells.length;
         }
@@ -2616,7 +3170,7 @@
             while (getBlock(b + 1, y) === BLOCK_TYPES.BRIDGE) b++;
             for (let cx = a; cx <= b; cx++) setBlock(cx, y, BLOCK_TYPES.AIR);
             ropes = Math.min(MAX_GEAR, ropes + 1);
-            showNotification('🧗 Переправа смотана');
+            showNotification(L('🧗 Переправа смотана'));
         }
 
         function cageCost(depthM) {
@@ -2649,20 +3203,20 @@
             if (stats.money < cost && !cageCreditOk(cost)) return false;
             cageCall = { left: cageWait(depth), x: player.x, y: player.y, damageAt: lastDamageAt };
             closeCage();
-            showNotification(`⬆️ Клеть спускается: ${cageCall.left} с. Стой на месте!`);
+            showNotification(L`⬆️ Клеть спускается: ${cageCall.left} с. Стой на месте!`);
             return true;
         }
 
         function cancelCage(reason) {
             if (!cageCall) return;
             cageCall = null;
-            showNotification(`⬆️ Вызов клети сорван: ${reason}`);
+            showNotification(L`⬆️ Вызов клети сорван: ${reason}`);
         }
 
         function updateCage(dt) {
             if (!cageCall) return;
-            if (Math.abs(player.x - cageCall.x) > 0.3 || Math.abs(player.y - cageCall.y) > 0.3) { cancelCage('ты сдвинулся'); return; }
-            if (lastDamageAt !== cageCall.damageAt) { cancelCage('тебя ранило'); return; }
+            if (Math.abs(player.x - cageCall.x) > 0.3 || Math.abs(player.y - cageCall.y) > 0.3) { cancelCage(L('ты сдвинулся')); return; }
+            if (lastDamageAt !== cageCall.damageAt) { cancelCage(L('тебя ранило')); return; }
             cageCall.left -= dt;
             if (cageCall.left <= 0) { cageCall = null; rideCage(); }
         }
@@ -2671,7 +3225,7 @@
             if (!cageCall) return;
             const scale = canvas.clientWidth ? LW / canvas.clientWidth : 1;
             const size = Math.round(14 * scale);
-            const text = `⬆️ Клеть: ${Math.ceil(cageCall.left)} с — не двигайся`;
+            const text = L`⬆️ Клеть: ${Math.ceil(cageCall.left)} с — не двигайся`;
             ctx.save();
             ctx.font = `bold ${size}px "Courier New", monospace`;
             ctx.textAlign = 'center';
@@ -2684,28 +3238,28 @@
 
         function openCage() {
             const depth = currentDepth();
-            if (depth < CAGE_MIN_DEPTH) { showNotification('⬆️ До поверхности рукой подать'); return false; }
-            if (mode.noCage) { showNotification('💀 В этом хардкоре клеть не ходит — только лестницы, верёвки и ступеньки'); return false; }
-            if (cageBlocked()) { showNotification('⬆️ На Огненное дно клеть не спускается — выбирайся сам'); return false; }
-            if (cageCall) { showNotification(`⬆️ Клеть уже в пути: ${Math.ceil(cageCall.left)} с`); return false; }
+            if (depth < CAGE_MIN_DEPTH) { showNotification(L('⬆️ До поверхности рукой подать')); return false; }
+            if (mode.noCage) { showNotification(L('💀 В этом хардкоре клеть не ходит — только лестницы, верёвки и ступеньки')); return false; }
+            if (cageBlocked()) { showNotification(L('⬆️ На Огненное дно клеть не спускается — выбирайся сам')); return false; }
+            if (cageCall) { showNotification(L`⬆️ Клеть уже в пути: ${Math.ceil(cageCall.left)} с`); return false; }
             gameState.paused = true;
             const cost = cageCost(depth);
             const wait = cageWait(depth);
             const box = document.getElementById('cageInfo');
             let action;
             if (stats.money >= cost) {
-                action = `<button class="btn" onclick="callCage()">Вызвать за ${cost}${COIN}</button>`;
+                action = L`<button class="btn" onclick="callCage()">Вызвать за ${cost}${COIN}</button>`;
             } else if (cageCreditOk(cost)) {
-                action = `<button class="btn" onclick="callCage()">Вызвать в долг, вернуть ${cost * DEBT_MULT}${COIN}</button>`;
+                action = L`<button class="btn" onclick="callCage()">Вызвать в долг, вернуть ${cost * DEBT_MULT}${COIN}</button>`;
             } else {
-                action = `<button class="btn" disabled>Нужно ${cost}${COIN}</button>`;
+                action = L`<button class="btn" disabled>Нужно ${cost}${COIN}</button>`;
             }
             const stuckHint = stats.money < cost && !cageCreditOk(cost)
-                ? `<p>Долг не может быть больше ${DEBT_LIMIT}${COIN} Выбраться можно и без клети: <b>W + пробел</b> копает вверх — над головой и вверх-вперёд; на получившуюся ступеньку запрыгни и копай дальше.</p>` : '';
-            box.innerHTML = `<p>Глубина ${depth} м. Подъём клетью — ${cost}${COIN}</p>
+                ? L`<p>Долг не может быть больше ${DEBT_LIMIT}${COIN} Выбраться можно и без клети: <b>W + пробел</b> копает вверх — над головой и вверх-вперёд; на получившуюся ступеньку запрыгни и копай дальше.</p>` : '';
+            box.innerHTML = L`<p>Глубина ${depth} м. Подъём клетью — ${cost}${COIN}</p>
                 <p>Клеть спустится за <b>${wait} с</b>. Всё это время стой на месте: сдвинешься или тебя ранят — вызов сорвётся. Платишь, когда клеть пришла.</p>
                 <p>Рюкзак поднимется с тобой; наверху клеть останавливается у лавки.</p>
-                <p>У тебя: ${stats.money}${COIN}${debt > 0 ? ` · долг: ${debt}${COIN}` : ''}</p>${stuckHint}
+                <p>У тебя: ${stats.money}${COIN}${debt > 0 ? L` · долг: ${debt}${COIN}` : ''}</p>${stuckHint}
                 <div class="modal-buttons">${action}
                 <button class="btn btn-secondary" onclick="closeCage()">Отмена</button></div>`;
             document.getElementById('cageModal').classList.add('active');
@@ -2724,10 +3278,10 @@
             const cost = cageCost(depth);
             if (stats.money >= cost) {
                 stats.money -= cost;
-                showNotification(`⬆️ Клеть подняла тебя с ${depth} м за ${cost} ¤`);
+                showNotification(L`⬆️ Клеть подняла тебя с ${depth} м за ${cost} ¤`);
             } else if (cageCreditOk(cost)) {
                 debt += cost * DEBT_MULT;
-                showNotification(`⬆️ Подъём в долг: долг теперь ${debt} ¤, вернёшь с выручки`);
+                showNotification(L`⬆️ Подъём в долг: долг теперь ${debt} ¤, вернёшь с выручки`);
             } else {
                 return false;
             }
@@ -2743,10 +3297,10 @@
         }
 
         function buyLadders() {
-            if (stats.money < LADDER_PACK.price) { showNotification(`💰 Не хватает ${LADDER_PACK.price - stats.money} ¤`); return false; }
+            if (stats.money < LADDER_PACK.price) { showNotification(L`💰 Не хватает ${LADDER_PACK.price - stats.money} ¤`); return false; }
             stats.money -= LADDER_PACK.price;
             ladders = Math.min(MAX_GEAR, ladders + LADDER_PACK.count);
-            showNotification(`🧗 Куплено ${LADDER_PACK.count} лестниц`);
+            showNotification(L`🧗 Куплено ${LADDER_PACK.count} лестниц`);
             updateUI(); renderShopList();
             return true;
         }
@@ -2757,9 +3311,9 @@
         let matches = 0;
 
         function lightLamp() {
-            if (lampTier === 0) { showNotification('🔥 Лампы нет — её продают в лавке'); return false; }
-            if (lampLit) { showNotification('🔥 Лампа и так горит'); return false; }
-            if (matches <= 0) { showNotification('🔥 Спичек нет — купи коробок в лавке'); return false; }
+            if (lampTier === 0) { showNotification(L('🔥 Лампы нет — её продают в лавке')); return false; }
+            if (lampLit) { showNotification(L('🔥 Лампа и так горит')); return false; }
+            if (matches <= 0) { showNotification(L('🔥 Спичек нет — купи коробок в лавке')); return false; }
             matches--;
             const px = player.x + PLAYER_W / 2, py = player.y + 0.5;
             const cloud = gasClouds.find(g => Math.hypot(px - g.x, py - g.y) < g.radius);
@@ -2770,25 +3324,25 @@
                 return false;
             }
             lampLit = true;
-            showNotification(`🔥 Лампа зажжена. Спичек осталось: ${matches}`);
+            showNotification(L`🔥 Лампа зажжена. Спичек осталось: ${matches}`);
             updateUI();
             return true;
         }
 
         function buyMatches() {
-            if (stats.money < MATCHES_PACK.price) { showNotification(`💰 Не хватает ${MATCHES_PACK.price - stats.money} ¤`); return false; }
+            if (stats.money < MATCHES_PACK.price) { showNotification(L`💰 Не хватает ${MATCHES_PACK.price - stats.money} ¤`); return false; }
             stats.money -= MATCHES_PACK.price;
             matches = Math.min(MAX_GEAR, matches + MATCHES_PACK.count);
-            showNotification(`🔥 Куплен коробок спичек: ${MATCHES_PACK.count} шт.`);
+            showNotification(L`🔥 Куплен коробок спичек: ${MATCHES_PACK.count} шт.`);
             updateUI(); renderShopList();
             return true;
         }
 
         function buyRope() {
-            if (stats.money < ROPE_PRICE) { showNotification(`💰 Не хватает ${ROPE_PRICE - stats.money} ¤`); return false; }
+            if (stats.money < ROPE_PRICE) { showNotification(L`💰 Не хватает ${ROPE_PRICE - stats.money} ¤`); return false; }
             stats.money -= ROPE_PRICE;
             ropes = Math.min(MAX_GEAR, ropes + 1);
-            showNotification('🧗 Куплена верёвка');
+            showNotification(L('🧗 Куплена верёвка'));
             updateUI(); renderShopList();
             return true;
         }
@@ -2806,9 +3360,9 @@
                 if (drop > SAFE_FALL) {
                     if (lampShines() && LAMPS[lampTier].open) {
                         lampLit = false;
-                        showNotification(matches > 0 ? '🔦 Открытая лампа погасла от падения — зажги спичкой (L)' : '🔦 Открытая лампа погасла от падения. Зажечь — спичкой (продаются в лавке) или у лавки');
+                        showNotification(matches > 0 ? L('🔦 Открытая лампа погасла от падения — зажги спичкой (L)') : L('🔦 Открытая лампа погасла от падения. Зажечь — спичкой (продаются в лавке) или у лавки'));
                     }
-                    damage(Math.round((drop - SAFE_FALL) * FALL_DAMAGE_PER_BLOCK), 'Падение с высоты');
+                    damage(Math.round((drop - SAFE_FALL) * FALL_DAMAGE_PER_BLOCK), L('Падение с высоты'));
                 }
             }
         }
@@ -3017,7 +3571,7 @@
             if (mode.hardcore && mode.variant === 'oneLife') { hardcoreGameOver(reason); return; }
             if (mode.hardcore && mode.variant === 'harsh') {
                 harshPenalty();
-                showNotification(`💀 Суровый хардкор: очки сгорели, сила ${hero.str}, выносливость ${hero.end}`);
+                showNotification(L`💀 Суровый хардкор: очки сгорели, сила ${hero.str}, выносливость ${hero.end}`);
             }
             const keep = BACKPACKS[backpackTier].keepOnDeath;
             const before = backpackCount();
@@ -3033,9 +3587,9 @@
             health = maxHealth();
             resetDig();
             showNotification(lost > 0
-                ? (keep > 0 ? `💀 ${reason}. Из короба высыпалось ${lost} шт., половина уцелела. −50 очков`
-                            : `💀 ${reason}. Рюкзак потерян (${lost} шт.), −50 очков`)
-                : `💀 ${reason}. −50 очков`);
+                ? (keep > 0 ? L`💀 ${reason}. Из короба высыпалось ${lost} шт., половина уцелела. −50 очков`
+                            : L`💀 ${reason}. Рюкзак потерян (${lost} шт.), −50 очков`)
+                : L`💀 ${reason}. −50 очков`);
             updateUI();
         }
 
@@ -3081,7 +3635,7 @@
             if (crumbling.some(c => c.x === x && c.y === y)) return;
             if (hazardRandom() >= CAVEIN_CHANCE) return;
             crumbling.push({ x, y, timer: CAVEIN_DELAY });
-            showNotification('⚠️ Потолок трещит!');
+            showNotification(L('⚠️ Потолок трещит!'));
         }
 
         // Выпустить газ из кармана, к которому относится клетка (x, y)
@@ -3109,7 +3663,7 @@
                 return cells.length;
             }
             gasClouds.push({ x: mx, y: my, radius, age: 0 });
-            showNotification('☣️ Рудничный газ! Отойди подальше');
+            showNotification(L('☣️ Рудничный газ! Отойди подальше'));
             return cells.length;
         }
 
@@ -3124,9 +3678,9 @@
                 }
             lampLit = false;
             damageFlash = 1;
-            showNotification('💥 Открытая лампа подожгла рудничный газ! Лампа погасла');
+            showNotification(L('💥 Открытая лампа подожгла рудничный газ! Лампа погасла'));
             const deathsBefore = run.deaths;
-            damage(GAS_BLAST_DAMAGE, 'Взрыв рудничного газа');
+            damage(GAS_BLAST_DAMAGE, L('Взрыв рудничного газа'));
             if (run.deaths === deathsBefore && !gameOver) unlock('gasSurvivor');
         }
 
@@ -3135,17 +3689,17 @@
             damageFlash = Math.max(0, damageFlash - dt * 2);
 
             // лава: мгновенная смерть
-            if (touchesLava() && !(debug.on && debug.fly)) { die('Лава'); return; }
+            if (touchesLava() && !(debug.on && debug.fly)) { die(L('Лава')); return; }
 
             // жар
             const hot = inHeat();
-            if (hot) damage((lavaNearby() ? LAVA_HEAT_DPS : HEAT_DPS) * dt, 'Жар');
+            if (hot) damage((lavaNearby() ? LAVA_HEAT_DPS : HEAT_DPS) * dt, L('Жар'));
 
             // облака газа
             for (const c of gasClouds) {
                 c.age += dt;
                 const px = player.x + PLAYER_W / 2, py = player.y + 0.5;
-                if (Math.hypot(px - c.x, py - c.y) < c.radius) damage(GAS_DPS * dt, 'Рудничный газ');
+                if (Math.hypot(px - c.x, py - c.y) < c.radius) damage(GAS_DPS * dt, L('Рудничный газ'));
             }
             gasClouds = gasClouds.filter(c => c.age < GAS_DURATION);
 
@@ -3170,7 +3724,7 @@
                 f.vy = Math.min(f.vy + GRAVITY * dt, MAX_FALL_SPEED);
                 f.y += (vy0 + f.vy) / 2 * dt;
                 if (player.x < f.x + 1 && player.x + PLAYER_W > f.x && player.y < f.y + 1 && player.y + 1 > f.y) {
-                    damage(CAVEIN_DAMAGE, 'Обвал');      // блок рассыпается о голову
+                    damage(CAVEIN_DAMAGE, L('Обвал'));      // блок рассыпается о голову
                     continue;
                 }
                 const below = getBlock(f.x, Math.floor(f.y) + 1);
@@ -3195,9 +3749,9 @@
         const MEDKIT = { heal: 60, price: 40 };
         // Лечение носят на поясе, не в рюкзаке: без пояса — 2 бинта и 1 аптечка
         const BELTS = [
-            { name: 'Без пояса',         bandages: 2, medkits: 1, price: 0 },
-            { name: 'Кожаный пояс',      bandages: 4, medkits: 2, price: 60 },
-            { name: 'Патронташ шахтёра', bandages: 6, medkits: 3, price: 200 }
+            { name: L('Без пояса'),         bandages: 2, medkits: 1, price: 0 },
+            { name: L('Кожаный пояс'),      bandages: 4, medkits: 2, price: 60 },
+            { name: L('Патронташ шахтёра'), bandages: 6, medkits: 3, price: 200 }
         ];
         let beltTier = 0;
 
@@ -3206,10 +3760,10 @@
         function buyBelt(tier) {
             const b = BELTS[tier];
             if (!b || tier <= beltTier) return false;
-            if (stats.money < b.price) { showNotification(`💰 Не хватает ${b.price - stats.money} ¤`); return false; }
+            if (stats.money < b.price) { showNotification(L`💰 Не хватает ${b.price - stats.money} ¤`); return false; }
             stats.money -= b.price;
             beltTier = tier;
-            showNotification(`🩹 ${b.name}: ${b.bandages} бинтов и ${b.medkits} аптечки`);
+            showNotification(L`🩹 ${b.name}: ${b.bandages} бинтов и ${b.medkits} аптечки`);
             updateUI(); renderShopList();
             return true;
         }
@@ -3222,19 +3776,19 @@
         // Клавиша H: берётся то, что лучше подходит — при большой потере здоровья
         // аптечка, при небольшой бинт (чтобы не тратить аптечку зря)
         function heal() {
-            if (health >= maxHealth()) { showNotification('🩹 Ты и так здоров'); return false; }
+            if (health >= maxHealth()) { showNotification(L('🩹 Ты и так здоров')); return false; }
             if (hazardClock - lastHealAt < HEAL_COOLDOWN) return false;
             const missing = maxHealth() - health;
             let item = null;
             if (medkits > 0 && (missing >= 50 || bandages === 0)) item = 'medkit';
             else if (bandages > 0) item = 'bandage';
-            if (!item) { showNotification('🩹 Нечем лечиться — бинты и аптечки продаются в лавке'); return false; }
+            if (!item) { showNotification(L('🩹 Нечем лечиться — бинты и аптечки продаются в лавке')); return false; }
             const amount = item === 'medkit' ? MEDKIT.heal : BANDAGE.heal;
             if (item === 'medkit') medkits--; else bandages--;
             const before = health;
             health = Math.min(maxHealth(), health + amount);
             lastHealAt = hazardClock;
-            showNotification(`${item === 'medkit' ? '✚ Аптечка' : '🩹 Бинт'}: +${Math.round(health - before)} здоровья`);
+            showNotification(L`${item === 'medkit' ? L('✚ Аптечка') : L('🩹 Бинт')}: +${Math.round(health - before)} здоровья`);
             updateUI();
             return item;
         }
@@ -3243,10 +3797,10 @@
             const m = kind === 'medkit' ? MEDKIT : BANDAGE;
             const have = kind === 'medkit' ? medkits : bandages;
             if (have >= medLimit(kind)) {
-                showNotification(`🩹 На поясе нет места — больше ${medLimit(kind)} не унести. Пояс побольше — в лавке`);
+                showNotification(L`🩹 На поясе нет места — больше ${medLimit(kind)} не унести. Пояс побольше — в лавке`);
                 return false;
             }
-            if (stats.money < m.price) { showNotification(`💰 Не хватает ${m.price - stats.money} ¤`); return false; }
+            if (stats.money < m.price) { showNotification(L`💰 Не хватает ${m.price - stats.money} ¤`); return false; }
             stats.money -= m.price;
             if (kind === 'medkit') medkits = Math.min(MAX_MEDS, medkits + 1);
             else bandages = Math.min(MAX_MEDS, bandages + 1);
@@ -3336,10 +3890,10 @@
         // Лампа отпугивает летучих мышей и пауков.
 
         const CREATURES = {
-            rat:        { name: 'Крыса',        hp: 2, speed: 3.5, damage: 0,  biome: 0, count: 26, scaredByLamp: false },
-            bat:        { name: 'Летучая мышь', hp: 1, speed: 5,   damage: 5,  biome: 1, count: 22, scaredByLamp: true },
-            spider:     { name: 'Паук',         hp: 4, speed: 2.5, damage: 15, biome: 2, count: 16, scaredByLamp: true },
-            salamander: { name: 'Саламандра',   hp: 3, speed: 0,   damage: 20, biome: 3, count: 12, scaredByLamp: false }
+            rat:        { name: L('Крыса'),        hp: 2, speed: 3.5, damage: 0,  biome: 0, count: 26, scaredByLamp: false },
+            bat:        { name: L('Летучая мышь'), hp: 1, speed: 5,   damage: 5,  biome: 1, count: 22, scaredByLamp: true },
+            spider:     { name: L('Паук'),         hp: 4, speed: 2.5, damage: 15, biome: 2, count: 16, scaredByLamp: true },
+            salamander: { name: L('Саламандра'),   hp: 3, speed: 0,   damage: 20, biome: 3, count: 12, scaredByLamp: false }
         };
         const CREATURE_ACTIVE_RADIUS = 40;   // дальше от игрока существа «спят»
         const NOTICE_RADIUS = { rat: 6, bat: 5, spider: 4, salamander: 7 };
@@ -3350,9 +3904,9 @@
         // Лампы как в 1899 году: открытая светит ярче, но гаснет при падении и поджигает
         // рудничный газ; закрытая лампа Дэви (пламя за сеткой) не гаснет и газ не поджигает
         const LAMPS = [
-            { name: 'Нет',            price: 0,   radius: 0 },
-            { name: 'Открытая лампа', price: 60,  radius: 4, open: true },
-            { name: 'Лампа Дэви',     price: 180, radius: 3, open: false }
+            { name: L('Нет'),            price: 0,   radius: 0 },
+            { name: L('Открытая лампа'), price: 60,  radius: 4, open: true },
+            { name: L('Лампа Дэви'),     price: 180, radius: 3, open: false }
         ];
         const GAS_BLAST_DAMAGE = 40;
         const GAS_BLAST_RADIUS = 2;
@@ -3516,7 +4070,7 @@
 
         function stealOre(rat) {
             if (BACKPACKS[backpackTier].ratProof) {
-                if (!rat.foiled) { rat.foiled = true; showNotification('🐀 Крыса не смогла открыть застёжки ранца'); }
+                if (!rat.foiled) { rat.foiled = true; showNotification(L('🐀 Крыса не смогла открыть застёжки ранца')); }
                 rat.state = 'flee'; rat.timer = 3;
                 return;
             }
@@ -3529,7 +4083,7 @@
             rat.timer = 6;
             rat.dir = rat.x < player.x ? -1 : 1;
             const ore = Object.values(ORES).find(o => o.key === k);
-            showNotification(`🐀 Крыса утащила: ${ore.name.toLowerCase()}! Догони её`);
+            showNotification(L`🐀 Крыса утащила: ${ore.name.toLowerCase()}! Догони её`);
             updateUI();
         }
 
@@ -3615,7 +4169,7 @@
                 f.y += f.vy * dt;
                 if (f.life <= 0 || isBlocked(f.x, f.y)) continue;
                 if (f.x > player.x && f.x < player.x + PLAYER_W && f.y > player.y && f.y < player.y + 1) {
-                    damage(CREATURES.salamander.damage * (mode.fierce ? HC_FIERCE_MULT : 1), 'Плевок саламандры');
+                    damage(CREATURES.salamander.damage * (mode.fierce ? HC_FIERCE_MULT : 1), L('Плевок саламандры'));
                     continue;
                 }
                 keep.push(f);
@@ -3660,9 +4214,9 @@
             if (c.type === 'salamander') unlock('salamander');
             if (c.loot) {
                 if (addToBackpack(BLOCK_TYPES[c.loot.toUpperCase()]) !== 'full') {
-                    showNotification('🐀 Крыса поймана — добыча вернулась в рюкзак');
+                    showNotification(L('🐀 Крыса поймана — добыча вернулась в рюкзак'));
                 } else {
-                    showNotification('🐀 Крыса поймана, но в рюкзаке нет места');
+                    showNotification(L('🐀 Крыса поймана, но в рюкзаке нет места'));
                 }
                 c.loot = null;
             }
@@ -3678,13 +4232,13 @@
             for (let dy = -CANARY_RADIUS; dy <= CANARY_RADIUS && !canaryAlarm; dy++)
                 for (let dx = -CANARY_RADIUS; dx <= CANARY_RADIUS; dx++)
                     if (getBlock(cx + dx, cy + dy) === BLOCK_TYPES.GAS) { canaryAlarm = true; break; }
-            if (canaryAlarm && !was) showNotification('🐤 Канарейка беспокоится — где-то рядом газ!');
+            if (canaryAlarm && !was) showNotification(L('🐤 Канарейка беспокоится — где-то рядом газ!'));
             // в облаке газа канарейка гибнет — настоящая шахтёрская примета
             for (const g of gasClouds) {
                 if (Math.hypot(player.x + PLAYER_W / 2 - g.x, player.y + 0.5 - g.y) < g.radius) {
                     hasCanary = false;
                     canaryAlarm = false;
-                    showNotification('🐤 Канарейка погибла в газу. Новую можно купить в лавке');
+                    showNotification(L('🐤 Канарейка погибла в газу. Новую можно купить в лавке'));
                     updateUI();
                     return;
                 }
@@ -3734,21 +4288,21 @@
         function buyLamp(tier = 1) {
             const l = LAMPS[tier];
             if (!l || tier <= lampTier) return false;
-            if (stats.money < l.price) { showNotification(`💰 Не хватает ${l.price - stats.money} ¤`); return false; }
+            if (stats.money < l.price) { showNotification(L`💰 Не хватает ${l.price - stats.money} ¤`); return false; }
             stats.money -= l.price;
             lampTier = tier;
             lampLit = true;
-            showNotification(tier === 2 ? '🔦 Куплена лампа Дэви: не гаснет и не поджигает газ' : '🔦 Куплена открытая лампа: береги её от падений и газа');
+            showNotification(tier === 2 ? L('🔦 Куплена лампа Дэви: не гаснет и не поджигает газ') : L('🔦 Куплена открытая лампа: береги её от падений и газа'));
             updateUI(); renderShopList();
             return true;
         }
 
         function buyCanary() {
             if (hasCanary) return false;
-            if (stats.money < CANARY_PRICE) { showNotification(`💰 Не хватает ${CANARY_PRICE - stats.money} ¤`); return false; }
+            if (stats.money < CANARY_PRICE) { showNotification(L`💰 Не хватает ${CANARY_PRICE - stats.money} ¤`); return false; }
             stats.money -= CANARY_PRICE;
             hasCanary = true;
-            showNotification('🐤 Куплена канарейка: она забеспокоится рядом с газом');
+            showNotification(L('🐤 Куплена канарейка: она забеспокоится рядом с газом'));
             updateUI(); renderShopList();
             return true;
         }
@@ -3923,10 +4477,10 @@
         function buyBackpack(tier) {
             const b = BACKPACKS[tier];
             if (!b || tier <= backpackTier) return false;
-            if (stats.money < b.price) { showNotification(`💰 Не хватает ${b.price - stats.money} ¤`); return false; }
+            if (stats.money < b.price) { showNotification(L`💰 Не хватает ${b.price - stats.money} ¤`); return false; }
             stats.money -= b.price;
             backpackTier = tier;
-            showNotification(`🎒 Куплен ${b.name.toLowerCase()}: ${b.capacity} мест`);
+            showNotification(L`🎒 Куплен ${b.name.toLowerCase()}: ${b.capacity} мест`);
             updateUI(); renderShopList();
             return true;
         }
@@ -3955,9 +4509,9 @@
         function addScore(n) { stats.score += Math.round(n * scoreMult()); }
 
         function modeTitle() {
-            if (!mode.hardcore) return 'Обычная игра';
-            const extra = [mode.noRegen && 'без лечения', mode.noCage && 'без клети', mode.fierce && 'злые твари', mode.dark && 'темнота'].filter(Boolean);
-            return `💀 Хардкор: ${mode.variant === 'oneLife' ? 'одна жизнь' : 'суровый'}${extra.length ? ' · ' + extra.join(', ') : ''}`;
+            if (!mode.hardcore) return L('Обычная игра');
+            const extra = [mode.noRegen && L('без лечения'), mode.noCage && L('без клети'), mode.fierce && L('злые твари'), mode.dark && L('темнота')].filter(Boolean);
+            return L`💀 Хардкор: ${mode.variant === 'oneLife' ? L('одна жизнь') : L('суровый')}${extra.length ? ' · ' + extra.join(', ') : ''}`;
         }
 
         function openModePicker() {
@@ -3996,7 +4550,7 @@
         // В хардкоре сохраняться и загружаться нельзя — только автосохранение
         function hardcoreBlocksSaves() {
             if (!mode.hardcore) return false;
-            showNotification('💀 В хардкоре только автосохранение: сохраняться и загружаться нельзя');
+            showNotification(L('💀 В хардкоре только автосохранение: сохраняться и загружаться нельзя'));
             return true;
         }
 
@@ -4005,7 +4559,7 @@
             gameOver = true;
             gameState.paused = true;
             try { localStorage.removeItem('miner_autosave'); } catch (e) { /* хранилище недоступно */ }
-            showFinal(`💀 Шахта забрала тебя`, reason);
+            showFinal(L`💀 Шахта забрала тебя`, reason);
         }
 
         // «Суровый»: потери при смерти
@@ -4036,26 +4590,26 @@
         // при новой игре. Награда — значок. Счётчики (крысы, пауки) тоже общие.
         const ACH_KEY = 'miner_achievements';
         const ACHIEVEMENTS = [
-            { id: 'firstOre',    group: '⛏️ Шахта',     name: 'Первая жила',             text: 'добыть первую руду' },
-            { id: 'clay',        group: '⛏️ Шахта',     name: 'Глина под ногами',        text: 'спуститься в Глиняные штольни (200 м)' },
-            { id: 'granite',     group: '⛏️ Шахта',     name: 'Гранитный пояс',          text: 'спуститься в Гранитные недра (400 м)' },
-            { id: 'fire',        group: '⛏️ Шахта',     name: 'Огненное дно',            text: 'спуститься на 600 м' },
-            { id: 'bottom',      group: '⛏️ Шахта',     name: 'Дно мира',                text: 'спуститься до 780 м' },
-            { id: 'stairs',      group: '⛏️ Шахта',     name: 'Ступенька за ступенькой', text: 'подняться наверх с 50 м без лестниц, верёвок и клети' },
-            { id: 'diamond',     group: '💎 Руда',      name: 'Первый алмаз',            text: 'добыть алмаз' },
-            { id: 'emerald',     group: '💎 Руда',      name: 'Изумрудный блеск',        text: 'добыть изумруд' },
-            { id: 'platinum',    group: '💎 Руда',      name: 'Платиновая жила',         text: 'добыть платину' },
-            { id: 'fullKorob',   group: '💎 Руда',      name: 'Полный короб',            text: 'продать за раз полный шахтёрский короб (50 штук)' },
-            { id: 'earn1000',    group: '💰 Деньги',    name: 'Первая тысяча',           text: 'заработать за игру 1 000 монет' },
-            { id: 'earn10000',   group: '💰 Деньги',    name: 'Купец',                   text: 'заработать за игру 10 000 монет' },
-            { id: 'debtFree',    group: '💰 Деньги',    name: 'Без долгов',              text: 'вернуть долг лавке' },
-            { id: 'diamondPick', group: '🛠 Снаряжение', name: 'Алмазное жало',           text: 'купить кирку с алмазным жалом' },
-            { id: 'allRounder',  group: '🛠 Снаряжение', name: 'Мастер на все руки',      text: 'сила и выносливость 5' },
-            { id: 'rats',        group: '🐀 Твари',     name: 'Крысолов',                text: 'поймать 10 крыс', counter: 'rat', need: 10 },
-            { id: 'spiders',     group: '🐀 Твари',     name: 'Гроза пауков',            text: 'победить 10 пауков', counter: 'spider', need: 10 },
-            { id: 'salamander',  group: '🐀 Твари',     name: 'Укротитель огня',         text: 'победить саламандру' },
-            { id: 'gasSurvivor', group: '💀 Риск',      name: 'Пережил газ',             text: 'выжить во взрыве рудничного газа' },
-            { id: 'ironMiner',   group: '💀 Риск',      name: 'Железный шахтёр',         text: 'выполнить цель в хардкоре «Одна жизнь»' }
+            { id: 'firstOre',    group: L('⛏️ Шахта'),     name: L('Первая жила'),             text: L('добыть первую руду') },
+            { id: 'clay',        group: L('⛏️ Шахта'),     name: L('Глина под ногами'),        text: L('спуститься в Глиняные штольни (200 м)') },
+            { id: 'granite',     group: L('⛏️ Шахта'),     name: L('Гранитный пояс'),          text: L('спуститься в Гранитные недра (400 м)') },
+            { id: 'fire',        group: L('⛏️ Шахта'),     name: L('Огненное дно'),            text: L('спуститься на 600 м') },
+            { id: 'bottom',      group: L('⛏️ Шахта'),     name: L('Дно мира'),                text: L('спуститься до 780 м') },
+            { id: 'stairs',      group: L('⛏️ Шахта'),     name: L('Ступенька за ступенькой'), text: L('подняться наверх с 50 м без лестниц, верёвок и клети') },
+            { id: 'diamond',     group: L('💎 Руда'),      name: L('Первый алмаз'),            text: L('добыть алмаз') },
+            { id: 'emerald',     group: L('💎 Руда'),      name: L('Изумрудный блеск'),        text: L('добыть изумруд') },
+            { id: 'platinum',    group: L('💎 Руда'),      name: L('Платиновая жила'),         text: L('добыть платину') },
+            { id: 'fullKorob',   group: L('💎 Руда'),      name: L('Полный короб'),            text: L('продать за раз полный шахтёрский короб (50 штук)') },
+            { id: 'earn1000',    group: L('💰 Деньги'),    name: L('Первая тысяча'),           text: L('заработать за игру 1 000 монет') },
+            { id: 'earn10000',   group: L('💰 Деньги'),    name: L('Купец'),                   text: L('заработать за игру 10 000 монет') },
+            { id: 'debtFree',    group: L('💰 Деньги'),    name: L('Без долгов'),              text: L('вернуть долг лавке') },
+            { id: 'diamondPick', group: L('🛠 Снаряжение'), name: L('Алмазное жало'),           text: L('купить кирку с алмазным жалом') },
+            { id: 'allRounder',  group: L('🛠 Снаряжение'), name: L('Мастер на все руки'),      text: L('сила и выносливость 5') },
+            { id: 'rats',        group: L('🐀 Твари'),     name: L('Крысолов'),                text: L('поймать 10 крыс'), counter: 'rat', need: 10 },
+            { id: 'spiders',     group: L('🐀 Твари'),     name: L('Гроза пауков'),            text: L('победить 10 пауков'), counter: 'spider', need: 10 },
+            { id: 'salamander',  group: L('🐀 Твари'),     name: L('Укротитель огня'),         text: L('победить саламандру') },
+            { id: 'gasSurvivor', group: L('💀 Риск'),      name: L('Пережил газ'),             text: L('выжить во взрыве рудничного газа') },
+            { id: 'ironMiner',   group: L('💀 Риск'),      name: L('Железный шахтёр'),         text: L('выполнить цель в хардкоре «Одна жизнь»') }
         ];
         const ach = { got: {}, counters: {} };     // got: id → дата получения (мс)
         // для «Ступенька за ступенькой»: самая большая глубина и было ли снаряжение в этом походе
@@ -4080,7 +4634,7 @@
             if (!a || ach.got[id]) return false;
             ach.got[id] = Date.now();
             saveAchievements();
-            showNotification(`🏅 Достижение: ${a.name}`);
+            showNotification(L`🏅 Достижение: ${a.name}`);
             renderAchievements();
             return true;
         }
@@ -4124,14 +4678,14 @@
             const box = document.getElementById('achievementsInfo');
             if (!box) return;
             const got = ACHIEVEMENTS.filter(a => ach.got[a.id]).length;
-            let html = `<div class="ach-total">Получено ${got} из ${ACHIEVEMENTS.length}</div>`;
+            let html = L`<div class="ach-total">Получено ${got} из ${ACHIEVEMENTS.length}</div>`;
             let group = '';
             for (const a of ACHIEVEMENTS) {
-                if (a.group !== group) { group = a.group; html += `<div class="shop-section">${group}</div>`; }
+                if (a.group !== group) { group = a.group; html += `<div class="shop-section">${L(group)}</div>`; }
                 const when = ach.got[a.id];
                 const progress = a.counter && !when ? ` (${Math.min(a.need, ach.counters[a.counter] || 0)}/${a.need})` : '';
                 html += `<div class="ach-row${when ? ' got' : ''}"><span class="ach-icon">${when ? '🏅' : '🔒'}</span>
-                    <div><div class="ach-name">${a.name}</div><div class="ach-text">${a.text}${progress}${when ? ' · ' + new Date(when).toLocaleDateString('ru-RU') : ''}</div></div></div>`;
+                    <div><div class="ach-name">${L(a.name)}</div><div class="ach-text">${L(a.text)}${progress}${when ? ' · ' + new Date(when).toLocaleDateString(LOCALE()) : ''}</div></div></div>`;
             }
             box.innerHTML = html;
         }
@@ -4153,11 +4707,11 @@
         const BOTTOM_DEPTH = 780;                     // м — считается «дном шахты»
         const WEALTH_OPTIONS = [10000, 15000, 25000];
         const GOALS = {
-            free:     { name: 'Свободная игра', emoji: '⛏️', text: 'Без цели: копай сколько хочешь' },
-            platinum: { name: 'Платина наверх', emoji: '💎', text: 'Добыть платину на Огненном дне и продать её в лавке' },
-            bottom:   { name: 'Дно шахты',      emoji: '🕳️', text: 'Спуститься до 780 м и живым вернуться на поверхность' },
-            wealth:   { name: 'Состояние',      emoji: '💰', text: 'Заработать за игру столько монет' },
-            master:   { name: 'Мастер',         emoji: '💪', text: 'Поднять силу и выносливость до 10' }
+            free:     { name: L('Свободная игра'), emoji: '⛏️', text: L('Без цели: копай сколько хочешь') },
+            platinum: { name: L('Платина наверх'), emoji: '💎', text: L('Добыть платину на Огненном дне и продать её в лавке') },
+            bottom:   { name: L('Дно шахты'),      emoji: '🕳️', text: L('Спуститься до 780 м и живым вернуться на поверхность') },
+            wealth:   { name: L('Состояние'),      emoji: '💰', text: L('Заработать за игру столько монет') },
+            master:   { name: L('Мастер'),         emoji: '💪', text: L('Поднять силу и выносливость до 10') }
         };
         const goal = { id: 'free', amount: 0, done: false };
         // итоги текущей игры
@@ -4167,18 +4721,18 @@
 
         function goalTitle() {
             const g = GOALS[goal.id];
-            return goal.id === 'wealth' ? `${g.name}: ${goal.amount.toLocaleString('ru-RU')} ¤` : g.name;
+            return goal.id === 'wealth' ? `${L(g.name)}: ${goal.amount.toLocaleString(LOCALE())} ¤` : L(g.name);
         }
 
         // Строка прогресса для панели
         function goalProgress() {
-            if (goal.done) return `${GOALS[goal.id].emoji} ${goalTitle()} — выполнена ✓`;
+            if (goal.done) return L`${GOALS[goal.id].emoji} ${goalTitle()} — выполнена ✓`;
             switch (goal.id) {
-                case 'platinum': return `💎 Платина наверх · продано: ${run.platinumSold}`;
-                case 'bottom': return run.reachedBottom ? '🕳️ Дно взято — поднимись наверх!' : `🕳️ Дно шахты · глубже всего: ${run.maxDepth}/${BOTTOM_DEPTH} м`;
-                case 'wealth': return `💰 Заработано ${run.earned.toLocaleString('ru-RU')} / ${goal.amount.toLocaleString('ru-RU')} ¤`;
-                case 'master': return `💪 Мастер · сила ${hero.str}/10 · выносливость ${hero.end}/10`;
-                default: return '⛏️ Свободная игра';
+                case 'platinum': return L`💎 Платина наверх · продано: ${run.platinumSold}`;
+                case 'bottom': return run.reachedBottom ? L('🕳️ Дно взято — поднимись наверх!') : L`🕳️ Дно шахты · глубже всего: ${run.maxDepth}/${BOTTOM_DEPTH} м`;
+                case 'wealth': return L`💰 Заработано ${run.earned.toLocaleString(LOCALE())} / ${goal.amount.toLocaleString(LOCALE())} ¤`;
+                case 'master': return L`💪 Мастер · сила ${hero.str}/10 · выносливость ${hero.end}/10`;
+                default: return L('⛏️ Свободная игра');
             }
         }
 
@@ -4198,7 +4752,7 @@
             if (d > run.maxDepth) run.maxDepth = d;
             if (d >= BOTTOM_DEPTH && !run.reachedBottom) {
                 run.reachedBottom = true;
-                if (goal.id === 'bottom' && !goal.done) showNotification('🕳️ Дно шахты! Теперь — живым наверх');
+                if (goal.id === 'bottom' && !goal.done) showNotification(L('🕳️ Дно шахты! Теперь — живым наверх'));
             }
             if (!goal.done && goalReached()) {
                 goal.done = true;
@@ -4215,9 +4769,9 @@
             const row = id => {
                 const g = GOALS[id];
                 const buttons = id === 'wealth'
-                    ? WEALTH_OPTIONS.map(n => btn(id, `${n.toLocaleString('ru-RU')} ¤`, `, ${n}`)).join('')
-                    : btn(id, 'Выбрать');
-                return `<div class="goal-row"><div><div class="goal-name">${g.emoji} ${g.name}</div><div class="goal-text">${g.text}</div></div><div class="goal-buttons">${buttons}</div></div>`;
+                    ? WEALTH_OPTIONS.map(n => btn(id, `${n.toLocaleString(LOCALE())} ¤`, `, ${n}`)).join('')
+                    : btn(id, L('Выбрать'));
+                return `<div class="goal-row"><div><div class="goal-name">${g.emoji} ${L(g.name)}</div><div class="goal-text">${L(g.text)}</div></div><div class="goal-buttons">${buttons}</div></div>`;
             };
             box.innerHTML = ['platinum', 'bottom', 'wealth', 'master', 'free'].map(row).join('').replace(/¤/g, COIN);
             document.getElementById('goalModal').classList.add('active');
@@ -4230,34 +4784,34 @@
             goal.done = false;
             document.getElementById('goalModal').classList.remove('active');
             gameState.paused = false;
-            showNotification(`${GOALS[id].emoji} Цель: ${goalTitle()}`);
+            showNotification(L`${GOALS[id].emoji} Цель: ${goalTitle()}`);
             updateUI();
             return true;
         }
 
         function formatTime(sec) {
             const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s2 = Math.floor(sec % 60);
-            return h ? `${h} ч ${m} мин` : `${m} мин ${s2} с`;
+            return h ? L`${h} ч ${m} мин` : L`${m} мин ${s2} с`;
         }
 
         // Финальный экран
         function showFinal(title, reason) {
             gameState.paused = true;
-            document.getElementById('finalTitle').textContent = title || '🏆 Цель выполнена!';
+            document.getElementById('finalTitle').textContent = title || L('🏆 Цель выполнена!');
             const cont = document.getElementById('finalContinue');
             if (cont && cont.style) cont.style.display = gameOver ? 'none' : '';
             const rows = [
-                ...(reason ? [['Причина', reason]] : []),
-                ['Режим', modeTitle()],
-                ['Цель', goalTitle() + (goal.done && gameOver ? ' ✓' : '')],
-                ['Время игры', formatTime(stats.playtime)],
-                ['Глубже всего', `${run.maxDepth} м`],
-                ['Заработано', `${run.earned.toLocaleString('ru-RU')} ¤`],
-                ['Очки', stats.score.toLocaleString('ru-RU')],
-                ['Смертей', run.deaths],
-                ['Побеждено тварей', run.kills],
-                ['Кирка', PICKAXES[pickaxeTier].name],
-                ['Сила / выносливость', `${hero.str} / ${hero.end}`]
+                ...(reason ? [[L('Причина'), reason]] : []),
+                [L('Режим'), modeTitle()],
+                [L('Цель'), goalTitle() + (goal.done && gameOver ? ' ✓' : '')],
+                [L('Время игры'), formatTime(stats.playtime)],
+                [L('Глубже всего'), L`${run.maxDepth} м`],
+                [L('Заработано'), `${run.earned.toLocaleString(LOCALE())} ¤`],
+                [L('Очки'), stats.score.toLocaleString(LOCALE())],
+                [L('Смертей'), run.deaths],
+                [L('Побеждено тварей'), run.kills],
+                [L('Кирка'), L(PICKAXES[pickaxeTier].name)],
+                [L('Сила / выносливость'), `${hero.str} / ${hero.end}`]
             ];
             document.getElementById('finalInfo').innerHTML = rows.map(([k, v]) =>
                 `<div class="final-row"><span>${k}</span><b>${withCoins(String(v))}</b></div>`).join('');
@@ -4283,8 +4837,8 @@
         // и в лавке куплен тоник. При смерти ничего не теряется.
         const STAT_MAX = 10;
         const STAT_INFO = {
-            str: { name: 'Сила',         tonic: 'Тоник силы',         pointsPerLevel: 40,  emoji: '💪' },
-            end: { name: 'Выносливость', tonic: 'Тоник выносливости', pointsPerLevel: 100, emoji: '🏃' }
+            str: { name: L('Сила'),         tonic: L('Тоник силы'),         pointsPerLevel: 40,  emoji: '💪' },
+            end: { name: L('Выносливость'), tonic: L('Тоник выносливости'), pointsPerLevel: 100, emoji: '🏃' }
         };
         const TONIC_PRICE_PER_LEVEL = 120;
         // Требования кирок: [сила, выносливость]
@@ -4308,7 +4862,7 @@
             hero[key] = Math.round((hero[key] + n) * 10) / 10;
             // подсказать один раз, когда очков стало хватать на следующий уровень
             if (hero[stat] < STAT_MAX && before < pointsToNext(stat) && hero[key] >= pointsToNext(stat)) {
-                showNotification(`${STAT_INFO[stat].emoji} ${STAT_INFO[stat].name}: очков хватает на уровень ${hero[stat] + 1} — купи тоник в лавке`);
+                showNotification(L`${STAT_INFO[stat].emoji} ${STAT_INFO[stat].name}: очков хватает на уровень ${hero[stat] + 1} — купи тоник в лавке`);
             }
         }
 
@@ -4320,8 +4874,8 @@
         function pickReqText(tier) {
             const [s, e] = PICK_REQ[tier];
             const parts = [];
-            if (s > 1) parts.push(`сила ${s}`);
-            if (e > 1) parts.push(`выносливость ${e}`);
+            if (s > 1) parts.push(L`сила ${s}`);
+            if (e > 1) parts.push(L`выносливость ${e}`);
             return parts.join(', ');
         }
 
@@ -4329,16 +4883,16 @@
         function buyTonic(stat) {
             const info = STAT_INFO[stat];
             if (!info) return false;
-            if (hero[stat] >= STAT_MAX) { showNotification(`${info.emoji} ${info.name} уже максимальная`); return false; }
+            if (hero[stat] >= STAT_MAX) { showNotification(L`${info.emoji} ${info.name} уже максимальная`); return false; }
             const need = pointsToNext(stat), have = hero[stat + 'Pts'];
-            if (have < need) { showNotification(`${info.emoji} Мало очков: ${Math.floor(have)} из ${need}`); return false; }
+            if (have < need) { showNotification(L`${info.emoji} Мало очков: ${Math.floor(have)} из ${need}`); return false; }
             const price = tonicPrice(stat);
-            if (stats.money < price) { showNotification(`💰 Не хватает ${price - stats.money} ¤`); return false; }
+            if (stats.money < price) { showNotification(L`💰 Не хватает ${price - stats.money} ¤`); return false; }
             stats.money -= price;
             hero[stat + 'Pts'] = Math.round((have - need) * 10) / 10;
             hero[stat]++;
             if (stat === 'end') health = Math.min(maxHealth(), health + 10);
-            showNotification(`${info.emoji} ${info.tonic}: ${info.name.toLowerCase()} теперь ${hero[stat]}`);
+            showNotification(L`${info.emoji} ${info.tonic}: ${info.name.toLowerCase()} теперь ${hero[stat]}`);
             updateUI(); renderShopList(); renderCharacter();
             return true;
         }
@@ -4359,9 +4913,9 @@
 
         function statLine(stat) {
             const info = STAT_INFO[stat];
-            if (hero[stat] >= STAT_MAX) return `${info.name} ${hero[stat]} (макс.)`;
+            if (hero[stat] >= STAT_MAX) return L`${info.name} ${hero[stat]} (макс.)`;
             const n = levelsAvailable(stat);
-            return `${info.name} ${hero[stat]} · ${Math.floor(hero[stat + 'Pts'])}/${pointsToNext(stat)}${n ? ` ↑${n}` : ''}`;
+            return `${L(info.name)} ${hero[stat]} · ${Math.floor(hero[stat + 'Pts'])}/${pointsToNext(stat)}${n ? ` ↑${n}` : ''}`;
         }
 
         function renderCharacter() {
@@ -4371,18 +4925,18 @@
                 const info = STAT_INFO[stat];
                 const max = hero[stat] >= STAT_MAX;
                 const pct = max ? 100 : Math.min(100, hero[stat + 'Pts'] / pointsToNext(stat) * 100);
-                return `<div class="char-row">
+                return L`<div class="char-row">
                     <div class="char-head"><span>${info.emoji} ${info.name}</span><b>${hero[stat]}</b></div>
                     <div class="backpack-bar"><div class="backpack-fill" style="width:${pct}%"></div></div>
-                    <div class="char-sub">${max ? 'максимальный уровень' : `очки: ${Math.floor(hero[stat + 'Pts'])} из ${pointsToNext(stat)} · тоник — ${tonicPrice(stat)}${COIN} в лавке`}</div>
-                    ${levelsAvailable(stat) ? `<div class="char-sub char-ready">очков хватит ещё на ${levelsAvailable(stat)} ур. — тоники на них стоят ${tonicsCost(stat)}${COIN}</div>` : ''}
+                    <div class="char-sub">${max ? L('максимальный уровень') : L`очки: ${Math.floor(hero[stat + 'Pts'])} из ${pointsToNext(stat)} · тоник — ${tonicPrice(stat)}${COIN} в лавке`}</div>
+                    ${levelsAvailable(stat) ? L`<div class="char-sub char-ready">очков хватит ещё на ${levelsAvailable(stat)} ур. — тоники на них стоят ${tonicsCost(stat)}${COIN}</div>` : ''}
                     <div class="char-sub">${gives}</div>
                 </div>`;
             };
             box.innerHTML =
-                row('str', `переносимый вес: ${weightCap()} · удар ×${hitMult().toFixed(1)}. Очки — за вес проданной руды`) +
-                row('end', `копание ×${digMult().toFixed(2)} · здоровье ${maxHealth()}. Очки — за выкопанные блоки`) +
-                `<div class="char-sub">Кирки требуют: железная — ${pickReqText(1)}; стальная — ${pickReqText(2)}; с алмазным жалом — ${pickReqText(3)}.</div>`;
+                row('str', L`переносимый вес: ${weightCap()} · удар ×${hitMult().toFixed(1)}. Очки — за вес проданной руды`) +
+                row('end', L`копание ×${digMult().toFixed(2)} · здоровье ${maxHealth()}. Очки — за выкопанные блоки`) +
+                L`<div class="char-sub">Кирки требуют: железная — ${pickReqText(1)}; стальная — ${pickReqText(2)}; с алмазным жалом — ${pickReqText(3)}.</div>`;
         }
 
         function openCharacter() {
@@ -4411,10 +4965,10 @@
             backpack = emptyBackpack();
             if (repaid > 0) {
                 showNotification(debt > 0
-                    ? `💰 Продано за ${earned} ¤, ${repaid} ушло в долг. Осталось вернуть ${debt} ¤`
-                    : `💰 Продано за ${earned} ¤, ${repaid} ушло в долг. Долг погашен!`);
+                    ? L`💰 Продано за ${earned} ¤, ${repaid} ушло в долг. Осталось вернуть ${debt} ¤`
+                    : L`💰 Продано за ${earned} ¤, ${repaid} ушло в долг. Долг погашен!`);
             } else {
-                showNotification(`💰 Продано: ${count} шт. за ${earned} ¤`);
+                showNotification(L`💰 Продано: ${count} шт. за ${earned} ¤`);
             }
             updateUI();
             return earned;
@@ -4425,18 +4979,18 @@
             const p = PICKAXES[tier];
             if (!p || tier <= pickaxeTier) return false;
             if (!pickReqMet(tier)) {
-                showNotification(`⛏️ Кирка «${p.name}» слишком тяжела: нужна ${pickReqText(tier)}`);
+                showNotification(L`⛏️ Кирка «${p.name}» слишком тяжела: нужна ${pickReqText(tier)}`);
                 return false;
             }
             if (stats.money < p.price) {
-                showNotification(`💰 Не хватает ${p.price - stats.money} ¤`);
+                showNotification(L`💰 Не хватает ${p.price - stats.money} ¤`);
                 return false;
             }
             stats.money -= p.price;
             pickaxeTier = tier;
             if (tier === 3) unlock('diamondPick');
             resetDig();
-            showNotification(`⛏️ Куплена кирка: ${p.name}`);
+            showNotification(L`⛏️ Куплена кирка: ${p.name}`);
             updateUI();
             renderShopList();
             return true;
@@ -4447,13 +5001,13 @@
             const sh = SHOVELS[tier];
             if (!sh || tier <= shovelTier) return false;
             if (stats.money < sh.price) {
-                showNotification(`💰 Не хватает ${sh.price - stats.money} ¤`);
+                showNotification(L`💰 Не хватает ${sh.price - stats.money} ¤`);
                 return false;
             }
             stats.money -= sh.price;
             shovelTier = tier;
             resetDig();
-            showNotification(`🛠️ Куплена ${sh.name.toLowerCase()}`);
+            showNotification(L`🛠️ Куплена ${sh.name.toLowerCase()}`);
             updateUI();
             renderShopList();
             return true;
@@ -4467,7 +5021,7 @@
             shovelTier = tier;
             debt = sh.price * DEBT_MULT;
             resetDig();
-            showNotification(`🛠️ ${sh.name} в долг. Вернёшь ${debt} ¤ с первой выручки`);
+            showNotification(L`🛠️ ${sh.name} в долг. Вернёшь ${debt} ¤ с первой выручки`);
             updateUI();
             renderShopList();
             return true;
@@ -4475,7 +5029,7 @@
 
         function openShop() {
             if (!isAtShop()) {
-                showNotification('🏚️ Подойди к лавке на поверхности');
+                showNotification(L('🏚️ Подойди к лавке на поверхности'));
                 return;
             }
             gameState.paused = true;
@@ -4490,8 +5044,8 @@
 
         function renderShopList() {
             setCoinText(document.getElementById('shopMoney'), debt > 0
-                ? `У тебя: ${stats.money} ¤ · долг лавке: ${debt} ¤`
-                : `У тебя: ${stats.money} ¤`);
+                ? L`У тебя: ${stats.money} ¤ · долг лавке: ${debt} ¤`
+                : L`У тебя: ${stats.money} ¤`);
             const list = document.getElementById('shopList');
             list.innerHTML = '';
             const section = title => {
@@ -4500,7 +5054,7 @@
                 h.textContent = title;
                 list.appendChild(h);
             };
-            section('Лопаты');
+            section(L('Лопаты'));
 
             // лопаты (кроме «нет лопаты»)
             SHOVELS.forEach((sh, tier) => {
@@ -4509,36 +5063,36 @@
                 const owned = tier <= shovelTier;
                 item.className = 'shop-item' + (owned ? ' owned' : '');
                 let action;
-                if (owned) action = '<button class="btn btn-small" disabled>Есть</button>';
-                else if (stats.money >= sh.price) action = `<button class="btn btn-small" onclick="buyShovel(${tier})">Купить за ${sh.price}${COIN}</button>`;
-                else if (debt === 0 && tier === 1) action = `<button class="btn btn-small" onclick="takeShovelOnCredit(${tier})">В долг, вернуть ${sh.price * DEBT_MULT}${COIN}</button>`;
+                if (owned) action = L('<button class="btn btn-small" disabled>Есть</button>');
+                else if (stats.money >= sh.price) action = L`<button class="btn btn-small" onclick="buyShovel(${tier})">Купить за ${sh.price}${COIN}</button>`;
+                else if (debt === 0 && tier === 1) action = L`<button class="btn btn-small" onclick="takeShovelOnCredit(${tier})">В долг, вернуть ${sh.price * DEBT_MULT}${COIN}</button>`;
                 else action = `<button class="btn btn-small" disabled>${sh.price}${COIN}</button>`;
-                item.innerHTML = `
+                item.innerHTML = L`
                     <div>
                         <div class="shop-item-name">🛠️ ${sh.name}</div>
-                        <div class="shop-item-info">земля, песок, глина, гравий — в ${PICK_ON_SOFT * sh.speed} раз${PICK_ON_SOFT * sh.speed < 5 ? 'а' : ''} быстрее ржавой кирки</div>
+                        <div class="shop-item-info">земля, песок, глина, гравий — в ${PICK_ON_SOFT * sh.speed} раз${PICK_ON_SOFT * sh.speed < 5 ? L('а') : ''} быстрее ржавой кирки</div>
                     </div>
                     ${action}`;
                 list.appendChild(item);
             });
 
-            section('Снаряжение');
+            section(L('Снаряжение'));
             // снаряжение для подъёма: покупается сколько угодно раз
             const gear = [
-                { name: `🧗 Лестницы ×${LADDER_PACK.count}`, info: `ставятся клавишей Q · у тебя: ${ladders}`, price: LADDER_PACK.price, fn: 'buyLadders()' },
-                { name: '🔥 Спички ×' + MATCHES_PACK.count, info: `зажечь погасшую открытую лампу в шахте — клавиша L · у тебя: ${matches}`, price: MATCHES_PACK.price, fn: 'buyMatches()' },
-                { name: '🧗 Верёвка', info: `${ROPE_LENGTH} м, спускается клавишей R · у тебя: ${ropes}`, price: ROPE_PRICE, fn: 'buyRope()' },
-                { name: '🔦 Открытая лампа', info: 'светит на 4 блока, отпугивает мышей и пауков; гаснет при падении, поджигает газ', price: LAMPS[1].price, fn: 'buyLamp(1)', owned: lampTier >= 1 },
-                { name: '🔦 Лампа Дэви', info: 'закрытая: светит на 3 блока, не гаснет и не поджигает газ', price: LAMPS[2].price, fn: 'buyLamp(2)', owned: lampTier >= 2 },
-                { name: '🐤 Канарейка', info: 'беспокоится рядом с газом; в газу погибает', price: CANARY_PRICE, fn: 'buyCanary()', owned: hasCanary }
+                { name: L`🧗 Лестницы ×${LADDER_PACK.count}`, info: L`ставятся клавишей Q · у тебя: ${ladders}`, price: LADDER_PACK.price, fn: 'buyLadders()' },
+                { name: L('🔥 Спички ×') + MATCHES_PACK.count, info: L`зажечь погасшую открытую лампу в шахте — клавиша L · у тебя: ${matches}`, price: MATCHES_PACK.price, fn: 'buyMatches()' },
+                { name: L('🧗 Верёвка'), info: L`${ROPE_LENGTH} м, спускается клавишей R · у тебя: ${ropes}`, price: ROPE_PRICE, fn: 'buyRope()' },
+                { name: L('🔦 Открытая лампа'), info: L('светит на 4 блока, отпугивает мышей и пауков; гаснет при падении, поджигает газ'), price: LAMPS[1].price, fn: 'buyLamp(1)', owned: lampTier >= 1 },
+                { name: L('🔦 Лампа Дэви'), info: L('закрытая: светит на 3 блока, не гаснет и не поджигает газ'), price: LAMPS[2].price, fn: 'buyLamp(2)', owned: lampTier >= 2 },
+                { name: L('🐤 Канарейка'), info: L('беспокоится рядом с газом; в газу погибает'), price: CANARY_PRICE, fn: 'buyCanary()', owned: hasCanary }
             ];
             for (const g of gear) {
                 const item = document.createElement('div');
                 item.className = 'shop-item';
                 const action = g.owned
-                    ? '<button class="btn btn-small" disabled>Есть</button>'
+                    ? L('<button class="btn btn-small" disabled>Есть</button>')
                     : stats.money >= g.price
-                    ? `<button class="btn btn-small" onclick="${g.fn}">Купить за ${g.price}${COIN}</button>`
+                    ? L`<button class="btn btn-small" onclick="${g.fn}">Купить за ${g.price}${COIN}</button>`
                     : `<button class="btn btn-small" disabled>${g.price}${COIN}</button>`;
                 item.innerHTML = `
                     <div>
@@ -4549,15 +5103,15 @@
                 list.appendChild(item);
             }
 
-            section('Лечение');
+            section(L('Лечение'));
             for (const m of [
-                { kind: 'bandage', name: '🩹 Бинт', info: `+${BANDAGE.heal} здоровья · у тебя: ${bandages} из ${medLimit('bandage')}`, price: BANDAGE.price },
-                { kind: 'medkit', name: '✚ Аптечка', info: `+${MEDKIT.heal} здоровья · у тебя: ${medkits} из ${medLimit('medkit')}`, price: MEDKIT.price }
+                { kind: 'bandage', name: L('🩹 Бинт'), info: L`+${BANDAGE.heal} здоровья · у тебя: ${bandages} из ${medLimit('bandage')}`, price: BANDAGE.price },
+                { kind: 'medkit', name: L('✚ Аптечка'), info: L`+${MEDKIT.heal} здоровья · у тебя: ${medkits} из ${medLimit('medkit')}`, price: MEDKIT.price }
             ]) {
                 const item = document.createElement('div');
                 item.className = 'shop-item';
                 const action = stats.money >= m.price
-                    ? `<button class="btn btn-small" onclick="buyMed('${m.kind}')">Купить за ${m.price}${COIN}</button>`
+                    ? L`<button class="btn btn-small" onclick="buyMed('${m.kind}')">Купить за ${m.price}${COIN}</button>`
                     : `<button class="btn btn-small" disabled>${m.price}${COIN}</button>`;
                 item.innerHTML = `
                     <div>
@@ -4574,11 +5128,11 @@
                 const item = document.createElement('div');
                 item.className = 'shop-item' + (tier === beltTier ? ' owned' : tier < beltTier ? ' below' : '');
                 let action;
-                if (tier === beltTier) action = '<button class="btn btn-small" disabled>Надет</button>';
-                else if (tier < beltTier) action = '<button class="btn btn-small" disabled>Хуже твоего</button>';
+                if (tier === beltTier) action = L('<button class="btn btn-small" disabled>Надет</button>');
+                else if (tier < beltTier) action = L('<button class="btn btn-small" disabled>Хуже твоего</button>');
                 else if (stats.money < b.price) action = `<button class="btn btn-small" disabled>${b.price}${COIN}</button>`;
-                else action = `<button class="btn btn-small" onclick="buyBelt(${tier})">Купить за ${b.price}${COIN}</button>`;
-                item.innerHTML = `
+                else action = L`<button class="btn btn-small" onclick="buyBelt(${tier})">Купить за ${b.price}${COIN}</button>`;
+                item.innerHTML = L`
                     <div>
                         <div class="shop-item-name">🎽 ${b.name}</div>
                         <div class="shop-item-info">${b.bandages} бинтов и ${b.medkits} аптечки (без пояса — ${BELTS[0].bandages} и ${BELTS[0].medkits})</div>
@@ -4587,17 +5141,17 @@
                 list.appendChild(item);
             });
 
-            section('Рюкзаки');
+            section(L('Рюкзаки'));
             BACKPACKS.forEach((b, tier) => {
                 if (tier === 0) return;
                 const item = document.createElement('div');
                 item.className = 'shop-item' + (tier === backpackTier ? ' owned' : tier < backpackTier ? ' below' : '');
                 let action;
-                if (tier === backpackTier) action = '<button class="btn btn-small" disabled>На плечах</button>';
-                else if (tier < backpackTier) action = '<button class="btn btn-small" disabled>Меньше твоего</button>';
+                if (tier === backpackTier) action = L('<button class="btn btn-small" disabled>На плечах</button>');
+                else if (tier < backpackTier) action = L('<button class="btn btn-small" disabled>Меньше твоего</button>');
                 else if (stats.money < b.price) action = `<button class="btn btn-small" disabled>${b.price}${COIN}</button>`;
-                else action = `<button class="btn btn-small" onclick="buyBackpack(${tier})">Купить за ${b.price}${COIN}</button>`;
-                item.innerHTML = `
+                else action = L`<button class="btn btn-small" onclick="buyBackpack(${tier})">Купить за ${b.price}${COIN}</button>`;
+                item.innerHTML = L`
                     <div>
                         <div class="shop-item-name">🎒 ${b.name}</div>
                         <div class="shop-item-info">${b.capacity} мест (сейчас: ${backpackCapacity()})</div>
@@ -4606,17 +5160,17 @@
                 list.appendChild(item);
             });
 
-            section('Тоники');
+            section(L('Тоники'));
             for (const stat of ['str', 'end']) {
                 const info = STAT_INFO[stat];
                 const item = document.createElement('div');
                 item.className = 'shop-item';
                 let action;
-                if (hero[stat] >= STAT_MAX) action = '<button class="btn btn-small" disabled>Максимум</button>';
-                else if (hero[stat + 'Pts'] < pointsToNext(stat)) action = `<button class="btn btn-small" disabled>Очки ${Math.floor(hero[stat + 'Pts'])}/${pointsToNext(stat)}</button>`;
+                if (hero[stat] >= STAT_MAX) action = L('<button class="btn btn-small" disabled>Максимум</button>');
+                else if (hero[stat + 'Pts'] < pointsToNext(stat)) action = L`<button class="btn btn-small" disabled>Очки ${Math.floor(hero[stat + 'Pts'])}/${pointsToNext(stat)}</button>`;
                 else if (stats.money < tonicPrice(stat)) action = `<button class="btn btn-small" disabled>${tonicPrice(stat)}${COIN}</button>`;
-                else action = `<button class="btn btn-small" onclick="buyTonic('${stat}')">Выпить за ${tonicPrice(stat)}${COIN}</button>`;
-                item.innerHTML = `
+                else action = L`<button class="btn btn-small" onclick="buyTonic('${stat}')">Выпить за ${tonicPrice(stat)}${COIN}</button>`;
+                item.innerHTML = L`
                     <div>
                         <div class="shop-item-name">${info.emoji} ${info.tonic}</div>
                         <div class="shop-item-info">${info.name.toLowerCase()} ${hero[stat]} → ${Math.min(STAT_MAX, hero[stat] + 1)}; нужны очки и деньги</div>
@@ -4625,19 +5179,19 @@
                 list.appendChild(item);
             }
 
-            section('Кирки');
-            const opens = ['камень, золото, уголь, серебро', '+ алмазы, изумруды', '+ рубины, платина', 'всё, быстрее всех'];
+            section(L('Кирки'));
+            const opens = [L('камень, золото, уголь, серебро'), L('+ алмазы, изумруды'), L('+ рубины, платина'), L('всё, быстрее всех')];
             PICKAXES.forEach((p, tier) => {
                 const item = document.createElement('div');
                 item.className = 'shop-item' + (tier === pickaxeTier ? ' owned' : tier < pickaxeTier ? ' below' : '');
                 let action;
-                if (tier === pickaxeTier) action = '<button class="btn btn-small" disabled>В руках</button>';
-                else if (tier < pickaxeTier) action = '<button class="btn btn-small" disabled>Хуже твоей</button>';
-                else if (!pickReqMet(tier)) action = `<button class="btn btn-small" disabled>Нужна ${pickReqText(tier)}</button>`;
+                if (tier === pickaxeTier) action = L('<button class="btn btn-small" disabled>В руках</button>');
+                else if (tier < pickaxeTier) action = L('<button class="btn btn-small" disabled>Хуже твоей</button>');
+                else if (!pickReqMet(tier)) action = L`<button class="btn btn-small" disabled>Нужна ${pickReqText(tier)}</button>`;
                 else if (stats.money < p.price) action = `<button class="btn btn-small" disabled>${p.price}${COIN}</button>`;
-                else action = `<button class="btn btn-small" onclick="buyPickaxe(${tier})">Купить за ${p.price}${COIN}</button>`;
-                const req = tier > 0 ? ` · требует: ${pickReqText(tier)}` : '';
-                item.innerHTML = `
+                else action = L`<button class="btn btn-small" onclick="buyPickaxe(${tier})">Купить за ${p.price}${COIN}</button>`;
+                const req = tier > 0 ? L` · требует: ${pickReqText(tier)}` : '';
+                item.innerHTML = L`
                     <div>
                         <div class="shop-item-name">⛏️ ${p.name}</div>
                         <div class="shop-item-info">скорость ×${p.speed} · ${opens[tier]}${req}</div>
@@ -4651,7 +5205,7 @@
         function checkShop() {
             if (isAtShop() && lampTier > 0 && !lampLit) {
                 lampLit = true;
-                showNotification('🔦 В лавке лампу зажгли снова');
+                showNotification(L('🔦 В лавке лампу зажгли снова'));
                 updateUI();
             }
             if (isAtShop() && backpackCount() > 0) {
@@ -4750,7 +5304,7 @@
                 // лаву копать нельзя вовсе, тут просто ничего не происходит
                 if (!digState.warned && MIN_TIER[block] !== undefined && ORES[block]) {
                     const need = PICKAXES[MIN_TIER[block]].name.toLowerCase();
-                    showNotification(`⛏️ ${ORES[block].name} не поддаётся — нужна ${need} кирка`);
+                    showNotification(L`⛏️ ${ORES[block].name} не поддаётся — нужна ${need} кирка`);
                     digState.warned = true;
                 }
                 return;
@@ -4797,14 +5351,14 @@
                 if (result === 'added') {
                     addScore(ORES[block].score);
                     if (backpackCount() === backpackCapacity()) {
-                        showNotification('🎒 Рюкзак полон — неси руду в лавку');
+                        showNotification(L('🎒 Рюкзак полон — неси руду в лавку'));
                     }
                 } else if (result === 'swapped') {
                     addScore(ORES[block].score);
-                    showNotification(`🎒 Выбросил ${oreByKey(lastDropped).name.toLowerCase()} ради: ${ORES[block].name.toLowerCase()}`);
+                    showNotification(L`🎒 Выбросил ${oreByKey(lastDropped).name.toLowerCase()} ради: ${ORES[block].name.toLowerCase()}`);
                 } else if (result === 'full') {
                     // блок всё равно выкапывается, но руда пропадает
-                    showNotification(`🎒 Нет места в рюкзаке: ${ORES[block].name.toLowerCase()} не поместился`);
+                    showNotification(L`🎒 Нет места в рюкзаке: ${ORES[block].name.toLowerCase()} не поместился`);
                 } else if (SOFT[block] !== undefined) {
                     stats.score += 1;
                 } else if (block === BLOCK_TYPES.STONE || block === BLOCK_TYPES.GAS) {
@@ -5258,7 +5812,7 @@
 
         // Табличка с названием биома при входе в него
         const BIOME_BANNER_MS = 3000;
-        const BEAST_PLURAL = { 'Крыса': 'крысы-воришки', 'Летучая мышь': 'летучие мыши', 'Паук': 'пауки', 'Саламандра': 'саламандры' };
+        const BEAST_PLURAL = { 'Крыса': L('крысы-воришки'), 'Летучая мышь': L('летучие мыши'), 'Паук': L('пауки'), 'Саламандра': L('саламандры') };
         let currentBiome = 0;
         let biomeBanner = { index: 0, shownAt: -Infinity };
 
@@ -5283,19 +5837,19 @@
             ctx.textAlign = 'center';
             ctx.fillStyle = '#FFA500';
             ctx.font = 'bold 26px "Courier New", monospace';
-            ctx.fillText(b.name, LW / 2, 108);
+            ctx.fillText(L(b.name), LW / 2, 108);
             ctx.fillStyle = '#CCCCCC';
             ctx.font = '13px "Courier New", monospace';
             const oreName = ORES[BLOCK_TYPES[b.ore]].name.toLowerCase();
             ctx.fillText(b.hardness > 1
-                ? `глубина от ${b.from} м · камень твёрже ×${b.hardness} · здесь: ${oreName}`
-                : `глубина от ${b.from} м · здесь: ${oreName}`, LW / 2, 128);
+                ? L`глубина от ${b.from} м · камень твёрже ×${b.hardness} · здесь: ${oreName}`
+                : L`глубина от ${b.from} м · здесь: ${oreName}`, LW / 2, 128);
             const beast = Object.values(CREATURES).find(c => c.biome === biomeBanner.index);
             const dangers = [b.hazard, beast ? BEAST_PLURAL[beast.name] : null].filter(Boolean);
             if (dangers.length) {
                 ctx.fillStyle = '#FF6B6B';
                 ctx.font = 'bold 13px "Courier New", monospace';
-                ctx.fillText(`⚠ опасно: ${dangers.join(' · ')}`, LW / 2, 148);
+                ctx.fillText(L`⚠ опасно: ${dangers.join(' · ')}`, LW / 2, 148);
             }
             ctx.restore();
         }
@@ -5303,7 +5857,7 @@
         // Краткая сводка поверх игры на телефоне (полная панель — по кнопке «☰»)
         function renderTouchHud() {
             const depth = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN));
-            const text = `❤ ${Math.ceil(health)}  ${depth} м  🎒 ${backpackCount()}/${backpackCapacity()}  ${stats.money}   `;
+            const text = L`❤ ${Math.ceil(health)}  ${depth} м  🎒 ${backpackCount()}/${backpackCapacity()}  ${stats.money}   `;
             // холст на телефоне ужат — шрифт увеличиваем, чтобы на экране было ~13 px
             const scale = canvas.clientWidth ? LW / canvas.clientWidth : 1;
             const size = Math.round(13 * scale);
@@ -5372,11 +5926,11 @@
             ctx.lineWidth = 3;
             ctx.strokeStyle = '#3A2410';
             ctx.fillStyle = '#FFD700';
-            ctx.strokeText('ЛАВКА', sx + w / 2, groundY - wallH - TILE_SIZE - 4);
-            ctx.fillText('ЛАВКА', sx + w / 2, groundY - wallH - TILE_SIZE - 4);
+            ctx.strokeText(L('ЛАВКА'), sx + w / 2, groundY - wallH - TILE_SIZE - 4);
+            ctx.fillText(L('ЛАВКА'), sx + w / 2, groundY - wallH - TILE_SIZE - 4);
             if (isAtShop()) {
                 ctx.fillStyle = '#FFFFFF';
-                const hint = touchMode ? '«Лавка» — инструменты' : 'E — инструменты';
+                const hint = touchMode ? L('«Лавка» — инструменты') : L('E — инструменты');
                 ctx.strokeText(hint, sx + w / 2, groundY - wallH - TILE_SIZE - 18);
                 ctx.fillText(hint, sx + w / 2, groundY - wallH - TILE_SIZE - 18);
             }
@@ -5396,8 +5950,8 @@
 
         // Обновление UI
         function updateUI() {
-            document.getElementById('depth').textContent = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN)) + 'м';
-            document.getElementById('biome').textContent = BIOMES[biomeIndexAt(Math.max(0, player.y - DEPTH_ORIGIN))].name;
+            document.getElementById('depth').textContent = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN)) + L('м');
+            document.getElementById('biome').textContent = L(BIOMES[biomeIndexAt(Math.max(0, player.y - DEPTH_ORIGIN))].name);
             const count = backpackCount();
             const cap = backpackCapacity();
             const full = count >= cap;
@@ -5410,12 +5964,12 @@
             // что в рюкзаке и сколько стоит; от дорогой руды к дешёвой
             const parts = Object.keys(backpack).filter(k => backpack[k] > 0)
                 .sort((a, b) => oreByKey(b).price - oreByKey(a).price)
-                .map(k => `${oreByKey(k).name.toLowerCase()} ${backpack[k]}`);
+                .map(k => `${L(oreByKey(k).name).toLowerCase()} ${backpack[k]}`);
             setCoinText(document.getElementById('backpackList'), parts.length
-                ? `${parts.join(' · ')} ≈ ${backpackValue()} ¤` : 'пусто');
+                ? `${parts.join(' · ')} ≈ ${backpackValue()} ¤` : L('пусто'));
             const slow = Math.round((1 - walkFactor()) * 100);
             document.getElementById('backpackWeight').textContent = slow > 0
-                ? `вес ${backpackWeight()} · медленнее на ${slow}%` : '';
+                ? L`вес ${backpackWeight()} · медленнее на ${slow}%` : '';
 
             const hp = Math.max(0, Math.ceil(health));
             const hpEl = document.getElementById('health');
@@ -5426,19 +5980,19 @@
             hpFill.classList.toggle('full', hp <= 30);
 
             const moneyEl = document.getElementById('money');
-            setCoinText(moneyEl, debt > 0 ? `${stats.money} ¤ (долг ${debt})` : `${stats.money} ¤`);
+            setCoinText(moneyEl, debt > 0 ? L`${stats.money} ¤ (долг ${debt})` : `${stats.money} ¤`);
             moneyEl.classList.toggle('full', debt > 0);
-            document.getElementById('pickaxe').textContent = PICKAXES[pickaxeTier].name;
-            document.getElementById('shovel').textContent = SHOVELS[shovelTier].name;
+            document.getElementById('pickaxe').textContent = L(PICKAXES[pickaxeTier].name);
+            document.getElementById('shovel').textContent = L(SHOVELS[shovelTier].name);
             document.getElementById('ladders').textContent = ladders;
             document.getElementById('ropes').textContent = ropes;
             document.getElementById('heroStats').textContent = `${statLine('str')}   ${statLine('end')}`;
             setCoinText(document.getElementById('goalStat'), (mode.hardcore ? '💀 ' : '') + goalProgress());
-            const gearList = [lampTier ? LAMPS[lampTier].name.toLowerCase() + (lampLit ? '' : ' (погасла)') : null,
-                              matches ? `спички ${matches}` : null,
-                              beltTier ? BELTS[beltTier].name.toLowerCase() : null, hasCanary ? 'канарейка' : null].filter(Boolean);
+            const gearList = [lampTier ? L(LAMPS[lampTier].name).toLowerCase() + (lampLit ? '' : L(' (погасла)')) : null,
+                              matches ? L`спички ${matches}` : null,
+                              beltTier ? L(BELTS[beltTier].name).toLowerCase() : null, hasCanary ? L('канарейка') : null].filter(Boolean);
             document.getElementById('gear').textContent = gearList.length ? gearList.join(', ') : '—';
-            const meds = [bandages ? `бинты ${bandages}` : null, medkits ? `аптечки ${medkits}` : null].filter(Boolean);
+            const meds = [bandages ? L`бинты ${bandages}` : null, medkits ? L`аптечки ${medkits}` : null].filter(Boolean);
             document.getElementById('meds').textContent = meds.length ? meds.join(' · ') : '—';
             document.getElementById('score').textContent = stats.score;
             
@@ -5499,7 +6053,7 @@
         }
 
         // Создание объекта сохранения
-        function createSaveData(label = 'Сохранение') {
+        function createSaveData(label = L('Сохранение')) {
             return {
                 version: SAVE_VERSION,
                 label: label,
@@ -5611,20 +6165,20 @@
 
         function loadSaveData(saveData, fromAutosave) {
             if (!saveData || typeof saveData !== 'object') {
-                showNotification('⚠️ Файл сохранения повреждён — текущая игра не тронута');
+                showNotification(L('⚠️ Файл сохранения повреждён — текущая игра не тронута'));
                 return false;
             }
             saveData = migrateSave(saveData);
             if (saveData.version !== SAVE_VERSION) {
-                showNotification('⚠️ Несовместимая версия сохранения');
+                showNotification(L('⚠️ Несовместимая версия сохранения'));
                 return false;
             }
             if (!validateSave(saveData)) {
-                showNotification('⚠️ Файл сохранения повреждён — текущая игра не тронута');
+                showNotification(L('⚠️ Файл сохранения повреждён — текущая игра не тронута'));
                 return false;
             }
             if (saveData.mode && saveData.mode.hardcore === true && fromAutosave !== true) {
-                showNotification('💀 Хардкор-игру можно продолжить только из автосохранения');
+                showNotification(L('💀 Хардкор-игру можно продолжить только из автосохранения'));
                 return false;
             }
 
@@ -5714,7 +6268,7 @@
         function warnStorage() {
             if (storageWarned) return;
             storageWarned = true;
-            showNotification('⚠️ Браузер не даёт сохранять игру (приватный режим или нет места). Сделай экспорт в файл');
+            showNotification(L('⚠️ Браузер не даёт сохранять игру (приватный режим или нет места). Сделай экспорт в файл'));
         }
 
         function saveToSlot(slotId, label) {
@@ -5724,7 +6278,7 @@
                 warnStorage();
                 return false;
             }
-            showNotification(`💾 Сохранено: ${label}`);
+            showNotification(L`💾 Сохранено: ${label}`);
             return true;
         }
 
@@ -5732,19 +6286,19 @@
         function loadFromSlot(slotId) {
             const data = localStorage.getItem(`miner_save_${slotId}`);
             if (!data) {
-                showNotification('⚠️ Слот пуст');
+                showNotification(L('⚠️ Слот пуст'));
                 return false;
             }
 
             try {
                 const saveData = JSON.parse(data);
                 if (loadSaveData(saveData)) {
-                    showNotification(`📂 Загружено: ${saveData.label}`);
+                    showNotification(L`📂 Загружено: ${saveData.label}`);
                     closeLoadModal();
                     return true;
                 }
             } catch (e) {
-                showNotification('❌ Ошибка загрузки');
+                showNotification(L('❌ Ошибка загрузки'));
                 console.error(e);
             }
             return false;
@@ -5752,9 +6306,9 @@
 
         // Удаление слота
         function deleteSlot(slotId) {
-            if (confirm('Удалить это сохранение?')) {
+            if (confirm(L('Удалить это сохранение?'))) {
                 localStorage.removeItem(`miner_save_${slotId}`);
-                showNotification('🗑️ Сохранение удалено');
+                showNotification(L('🗑️ Сохранение удалено'));
                 updateSaveSlotsList();
                 updateLoadSlotsList();
             }
@@ -5764,7 +6318,7 @@
         function autoSave() {
             if (gameOver) return;               // «одна жизнь» закончилась — сохранять нечего
             if (!world.length) return;
-            const saveData = createSaveData('Автосохранение');
+            const saveData = createSaveData(L('Автосохранение'));
             if (!safeSetItem('miner_autosave', JSON.stringify(saveData))) warnStorage();
         }
 
@@ -5775,13 +6329,13 @@
             if (!data) return false;
             let saveData;
             try { saveData = JSON.parse(data); } catch (e) { return false; }
-            if (confirm('Найдено автосохранение. Продолжить?')) {
+            if (confirm(L('Найдено автосохранение. Продолжить?'))) {
                 // несовместимое или повреждённое — начинаем новую игру, а не остаёмся без мира
                 return loadSaveData(saveData, true) === true;
             }
             // отказались — прошлая игра не пропадает: она в «Загрузить» как резервная копия
             if (safeSetItem('miner_save_backup', data)) {
-                setTimeout(() => showNotification('📂 Прошлая игра сохранена как резервная копия — её можно открыть через «Загрузить»'), 500);
+                setTimeout(() => showNotification(L('📂 Прошлая игра сохранена как резервная копия — её можно открыть через «Загрузить»')), 500);
             }
             return false;
         }
@@ -5789,7 +6343,7 @@
         // Экспорт в файл
         function exportSave() {
             if (hardcoreBlocksSaves()) return;
-            const saveData = createSaveData('Экспорт');
+            const saveData = createSaveData(L('Экспорт'));
             const json = JSON.stringify(saveData, null, 2);
             const blob = new Blob([json], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -5798,7 +6352,7 @@
             a.download = `miner_save_${Date.now()}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            showNotification('⬇️ Сохранение экспортировано');
+            showNotification(L('⬇️ Сохранение экспортировано'));
         }
 
         // Импорт из файла
@@ -5814,10 +6368,10 @@
                     try {
                         const saveData = JSON.parse(event.target.result);
                         if (loadSaveData(saveData)) {
-                            showNotification('⬆️ Сохранение импортировано');
+                            showNotification(L('⬆️ Сохранение импортировано'));
                         }
                     } catch (err) {
-                        showNotification('❌ Ошибка импорта');
+                        showNotification(L('❌ Ошибка импорта'));
                         console.error(err);
                     }
                 };
@@ -5828,7 +6382,7 @@
 
         // Новая игра
         function newGame(noConfirm) {
-            if (noConfirm === true || confirm('Начать новую игру? Несохранённый прогресс будет потерян.')) {
+            if (noConfirm === true || confirm(L('Начать новую игру? Несохранённый прогресс будет потерян.'))) {
                 worldSeed = Date.now();
                 generateWorld(worldSeed);
                 player.x = WORLD_WIDTH / 2;
@@ -5862,7 +6416,7 @@
                 resetRun();
                 Object.assign(goal, { id: 'free', amount: 0, done: false });
                 updateUI();
-                showNotification('🆕 Новая игра начата');
+                showNotification(L('🆕 Новая игра начата'));
                 gameOver = false;
                 Object.assign(mode, { hardcore: false, variant: 'oneLife', noRegen: false, noCage: false, fierce: false, dark: false });
                 setTimeout(openModePicker, 0);     // режим и цель — сразу после начала
@@ -5897,7 +6451,7 @@
         function openSaveNameModal(slotId) {
             pendingSaveSlot = slotId;
             document.getElementById('saveNameModal').classList.add('active');
-            document.getElementById('saveNameInput').value = `Шахта ${slotId}`;
+            document.getElementById('saveNameInput').value = L`Шахта ${slotId}`;
             document.getElementById('saveNameInput').focus();
         }
 
@@ -5907,7 +6461,7 @@
         }
 
         function confirmSaveName() {
-            const label = document.getElementById('saveNameInput').value.trim() || 'Без названия';
+            const label = document.getElementById('saveNameInput').value.trim() || L('Без названия');
             if (pendingSaveSlot !== null) {
                 saveToSlot(pendingSaveSlot, label);
                 closeSaveNameModal();
@@ -5927,10 +6481,10 @@
                 if (data) {
                     try {
                         const save = JSON.parse(data);
-                        const date = new Date(save.savedAt).toLocaleString('ru-RU');
+                        const date = new Date(save.savedAt).toLocaleString(LOCALE());
                         const playtime = Math.floor(save.playtime / 60);
                         
-                        slot.innerHTML = `
+                        slot.innerHTML = L`
                             <div class="save-slot-header">
                                 <div class="save-slot-title">Слот ${i}: ${escapeHtml(save.label)}</div>
                             </div>
@@ -5944,11 +6498,11 @@
                             </div>
                         `;
                     } catch (e) {
-                        slot.innerHTML = `<div class="save-slot-title">Слот ${i}: Повреждён</div>`;
+                        slot.innerHTML = L`<div class="save-slot-title">Слот ${i}: Повреждён</div>`;
                     }
                 } else {
                     slot.classList.add('save-slot-empty');
-                    slot.innerHTML = `
+                    slot.innerHTML = L`
                         <div class="save-slot-title">Слот ${i}: Пусто</div>
                         <div class="save-slot-actions">
                             <button class="btn btn-small" onclick="openSaveNameModal(${i})">Сохранить</button>
@@ -5971,12 +6525,12 @@
                 slot.className = 'save-slot';
                 try {
                     const save = JSON.parse(backup);
-                    const date = new Date(save.savedAt).toLocaleString('ru-RU');
-                    slot.innerHTML = `<div class="save-slot-title">Резервная копия прошлой игры</div>
+                    const date = new Date(save.savedAt).toLocaleString(LOCALE());
+                    slot.innerHTML = L`<div class="save-slot-title">Резервная копия прошлой игры</div>
                         <div class="save-slot-info">💾 ${date} | 💰 ${Number(save.stats && save.stats.money) || 0}${COIN}</div>`;
                     slot.onclick = () => loadFromSlot('backup');
                 } catch (e) {
-                    slot.innerHTML = '<div class="save-slot-title">Резервная копия: повреждена</div>';
+                    slot.innerHTML = L('<div class="save-slot-title">Резервная копия: повреждена</div>');
                 }
                 container.appendChild(slot);
             }
@@ -5989,10 +6543,10 @@
                 if (data) {
                     try {
                         const save = JSON.parse(data);
-                        const date = new Date(save.savedAt).toLocaleString('ru-RU');
+                        const date = new Date(save.savedAt).toLocaleString(LOCALE());
                         const playtime = Math.floor(save.playtime / 60);
                         
-                        slot.innerHTML = `
+                        slot.innerHTML = L`
                             <div class="save-slot-header">
                                 <div class="save-slot-title">Слот ${i}: ${escapeHtml(save.label)}</div>
                             </div>
@@ -6003,11 +6557,11 @@
                         `;
                         slot.onclick = () => loadFromSlot(i);
                     } catch (e) {
-                        slot.innerHTML = `<div class="save-slot-title">Слот ${i}: Повреждён</div>`;
+                        slot.innerHTML = L`<div class="save-slot-title">Слот ${i}: Повреждён</div>`;
                     }
                 } else {
                     slot.classList.add('save-slot-empty');
-                    slot.innerHTML = `<div class="save-slot-title">Слот ${i}: Пусто</div>`;
+                    slot.innerHTML = L`<div class="save-slot-title">Слот ${i}: Пусто</div>`;
                 }
 
                 container.appendChild(slot);
@@ -6015,7 +6569,7 @@
         }
 
         // Деньги — монеты. В тексте отмечаются знаком ¤, в разметке он заменяется значком монеты
-        const COIN = '<span class="coin" role="img" aria-label="монет"></span>';
+        const COIN = L('<span class="coin" role="img" aria-label="монет"></span>');
         function withCoins(text) { return escapeHtml(text).replace(/¤/g, COIN); }
         // Записать текст с деньгами: в разметке ¤ станет монетой
         function setCoinText(el, text) {
@@ -6032,193 +6586,6 @@
         // Уведомления складываются стопкой сверху справа; больше четырёх сразу не бывает
         const MAX_NOTIFICATIONS = 4;
         const liveNotifications = [];
-
-        // ============ ЯЗЫК: РУССКИЙ / ENGLISH ============
-        // Язык выбирается сам по языку браузера (русский, украинский, белорусский, казахский →
-        // русский, остальные → английский) и меняется в настройках. Русский текст — исходный:
-        // EN_TEXT переводит его на английский. Статичные надписи страницы переводятся обходом
-        // DOM; надписи, которые собирает код, — через L('…') и L`…${x}…`.
-        const EN_TEXT = {
-            "Шахтёр 1899 — 2D-игра про шахтёра": "Miner 1899 — a 2D mining game",
-            "⛏️ Шахтёр 1899": "⛏️ Miner 1899",
-            "💾 Сохранить": "💾 Save",
-            "📂 Загрузить": "📂 Load",
-            "⬇️ Экспорт": "⬇️ Export",
-            "⬆️ Импорт": "⬆️ Import",
-            "🆕 Новая игра": "🆕 New game",
-            "📻 Радио (M)": "📻 Radio (M)",
-            "📺 Видео (V)": "📺 Video (V)",
-            "⚙️ Настройки": "⚙️ Settings",
-            "Видео (V)": "Video (V)",
-            "Видео нет": "No videos",
-            "Добавь ссылку в «Мои видео»": "Add a link in “My videos”",
-            "▶ Вкл": "▶ On",
-            "Мои видео": "My videos",
-            "Добавить": "Add",
-            "Подходят ссылки YouTube, RuTube, VK Видео и прямые ссылки на файлы .mp4 и .webm. Некоторые видео их авторы запрещают показывать на других сайтах — тогда в окне будет сообщение площадки.": "YouTube, RuTube and VK Video links work, as do direct links to .mp4 and .webm files. Some authors forbid showing their videos on other sites — then the window shows the platform’s message.",
-            "Подключается к площадке только когда включено. ⛶ — вынести телевизор поверх игры и сделать крупнее (угол справа внизу тянется).": "Connects to the platform only when switched on. ⛶ — pop the TV out over the game and make it bigger (drag the bottom-right corner).",
-            "Радио (M)": "Radio (M)",
-            "Станций нет": "No stations",
-            "добавь станцию в «Мои станции»": "add a station in “My stations”",
-            "Громк.": "Vol.",
-            "Мои станции": "My stations",
-            "Адрес потока обычно есть на сайте станции, в разделе «слушать в плеере» (ссылка на .mp3, .aac или поток).": "The stream address is usually on the station’s website, under “listen in a player” (a link to .mp3, .aac or a stream).",
-            "Подключается к станции только когда включено": "Connects to the station only when switched on",
-            "✕ Вернуться в игру": "✕ Back to the game",
-            "Глубина": "Depth",
-            "0м": "0m",
-            "Песчаный пласт": "Sand Layer",
-            "Здоровье": "Health",
-            "Рюкзак": "Backpack",
-            "пусто": "empty",
-            "Деньги": "Money",
-            "Очки": "Score",
-            "Время игры": "Play time",
-            "Кирка": "Pickaxe",
-            "Ржавая": "Rusty",
-            "Лопата": "Shovel",
-            "Нет": "None",
-            "Лестницы": "Ladders",
-            "Верёвки": "Ropes",
-            "Лечение (H)": "Healing (H)",
-            "Цель": "Goal",
-            "⛏️ Свободная игра": "⛏️ Free play",
-            "Персонаж (P)": "Character (P)",
-            "Сила 1 · Выносливость 1": "Strength 1 · Stamina 1",
-            "Снаряжение": "Gear",
-            "👷 Персонаж (P)": "👷 Character (P)",
-            "🎮 Управление": "🎮 Controls",
-            "🏅 Достижения": "🏅 Achievements",
-            "или": "or",
-            "- Движение": "- Move",
-            "- Бег": "- Run",
-            "Пробел": "Space",
-            "(удерживать) - Копать блок перед собой; с": "(hold) - Dig the block in front; with",
-            "— вниз, с": "— down, with",
-            "— вверх (над головой и вверх-вперёд: так вырубаются ступеньки, на них запрыгиваешь)": "— up (overhead and up-forward: this carves steps you can jump onto)",
-            ") у лавки - Купить инструменты": ") at the shop - Buy tools",
-            ") - Поставить лестницу,": ") - Place a ladder,",
-            "- лезть": "- climb",
-            ") - Спустить верёвку в колодец перед собой": ") - Lower a rope into the shaft in front",
-            ") - Зажечь погасшую лампу спичкой": ") - Light the lamp with a match",
-            ") - Натянуть верёвку-переправу через пропасть или лаву": ") - Stretch a rope bridge over a chasm or lava",
-            ") - Клеть: платный подъём наверх": ") - Cage: paid ride to the surface",
-            ") - Лечиться: бинт или аптечка": ") - Heal: bandage or first-aid kit",
-            ") - Радио: показать или скрыть панель (станции добавляешь сам)": ") - Radio: show or hide the panel (you add stations yourself)",
-            ") - Видео: маленький телевизор (YouTube, RuTube, VK, .mp4)": ") - Video: a small TV (YouTube, RuTube, VK, .mp4)",
-            ") - Персонаж: сила и выносливость; тоники — в лавке": ") - Character: strength and stamina; tonics at the shop",
-            "- Меню сохранений": "- Save menu",
-            "⚙️ «Настройки» на панели сохранений: где показывать уведомления, поменять панели местами": "⚙️ “Settings” on the save panel: where notifications appear, swap the panels",
-            "Шахтёр 1899 — свободная игра под лицензией": "Miner 1899 is a free game under the",
-            "Исходный код": "Source code",
-            ") - Режим отладки": ") - Debug mode",
-            "Руда складывается в рюкзак. Продать её можно в лавке на поверхности — просто подойди к ней. Полный рюкзак сам выбросит дешёвую руду ради дорогой. Тяжёлый груз (золото, платина) замедляет.": "Ore goes into your backpack. Sell it at the shop on the surface — just walk up to it. A full backpack drops cheap ore for valuable ore by itself. Heavy loads (gold, platinum) slow you down.",
-            "Алмазы и изумруды поддаются только железной кирке, рубины и платина — стальной.": "Diamonds and emeralds yield only to an iron pickaxe, rubies and platinum — to a steel one.",
-            "Землю, песок, глину и гравий быстрее копать лопатой — она берётся сама. Денег нет — лавка даст лопату в долг, но вернуть придётся вдвое больше.": "Dirt, sand, clay and gravel are faster to dig with a shovel — it’s picked up automatically. No money? The shop gives a shovel on credit, but you’ll pay back double.",
-            "по существу перед собой — удар киркой. В пещерах водятся крысы-воришки, летучие мыши, пауки и огненные саламандры; лампа отпугивает мышей и пауков, канарейка чует газ.": "at a creature in front — a pickaxe blow. The caves hold thieving rats, bats, spiders and fiery salamanders; a lamp scares bats and spiders, a canary smells gas.",
-            "Глубже — опаснее: в Глиняных штольнях рушится потолок, в Гранитных недрах прячется газ, на Огненном дне жарко. Если здоровье кончится — очнёшься наверху без рюкзака.": "Deeper is more dangerous: the ceiling collapses in the Clay Tunnels, gas hides in the Granite Depths, the Fiery Bottom is hot. If your health runs out, you wake up on the surface without your backpack.",
-            "Чем глубже копаешь, тем ценнее ресурсы!": "The deeper you dig, the more valuable the ore!",
-            "Земля": "Dirt",
-            "Камень": "Stone",
-            "Песок": "Sand",
-            "Глина": "Clay",
-            "Гравий": "Gravel",
-            "Золото": "Gold",
-            "Алмазы": "Diamonds",
-            "Рубины": "Rubies",
-            "Уголь": "Coal",
-            "Серебро": "Silver",
-            "Изумруды": "Emeralds",
-            "Платина": "Platinum",
-            "Лава": "Lava",
-            "💾 Сохранения": "💾 Saves",
-            "Закрыть": "Close",
-            "📂 Загрузить игру": "📂 Load game",
-            "Название сохранения": "Save name",
-            "Сохранить": "Save",
-            "Отмена": "Cancel",
-            "Бег": "Run",
-            "Перепр.": "Bridge",
-            "Радио": "Radio",
-            "Лавка": "Shop",
-            "Лестн.": "Ladder",
-            "Верёв.": "Rope",
-            "Лечить": "Heal",
-            "Клеть": "Cage",
-            "⛏️ Новая игра": "⛏️ New game",
-            "⛏️ Обычная игра": "⛏️ Normal game",
-            "смерть — потеря рюкзака, сохранения как обычно": "death — you lose the backpack, saves as usual",
-            "💀 Хардкор": "💀 Hardcore",
-            "только автосохранение, очки ×1.5": "autosave only, score ×1.5",
-            "Что будет при смерти": "What happens when you die",
-            "💀 Одна жизнь — смерть заканчивает игру": "💀 One life — death ends the game",
-            "⚖️ Суровый — сгорают очки, сила и выносливость −1": "⚖️ Harsh — points burn, strength and stamina −1",
-            "Усложнения": "Extra challenges",
-            "Без восстановления здоровья — только бинты и аптечки": "No health regeneration — only bandages and kits",
-            "Клеть не ходит": "The cage doesn’t run",
-            "Твари опаснее — кусают в 1.5 раза сильнее и чаще": "Fiercer creatures — they bite 1.5 times harder and more often",
-            "Темнота — без лампы видно лишь пару блоков": "Darkness — without a lamp you see only a couple of blocks",
-            "Начать хардкор": "Start hardcore",
-            "⛏️ Выбери цель": "⛏️ Choose a goal",
-            "Цель можно выполнить и закончить игру с итогами — или просто копать без цели.": "Complete a goal and finish the game with a summary — or just dig without one.",
-            "🏆 Цель выполнена!": "🏆 Goal complete!",
-            "Играть дальше": "Keep playing",
-            "Новая игра": "New game",
-            "Готово": "Done",
-            "👷 Персонаж": "👷 Character",
-            "Где показывать уведомления": "Where notifications appear",
-            "↗ справа сверху": "↗ top right",
-            "↖ слева сверху": "↖ top left",
-            "↑ сверху по центру": "↑ top center",
-            "↘ справа снизу": "↘ bottom right",
-            "↙ слева снизу": "↙ bottom left",
-            "↓ снизу по центру": "↓ bottom center",
-            "Показать пример": "Show an example",
-            "Масштаб": "Zoom",
-            "Мелко — больше шахты": "Small — see more of the mine",
-            "Средне": "Medium",
-            "Крупно — видны детали": "Large — see the details",
-            "Вид радио": "Radio style",
-            "Простой": "Plain",
-            "🎺 Граммофон": "🎺 Gramophone",
-            "Вид видео": "Video style",
-            "📺 Телевизор": "📺 TV set",
-            "Поменять панели местами: статистика — слева, сохранения, радио и настройки — справа": "Swap the panels: stats on the left; saves, radio and settings on the right",
-            "Для широкого экрана. На узком экране и на телефоне панели не по бокам, и эта настройка не действует.": "For wide screens. On narrow screens and phones the panels aren’t at the sides, and this setting does nothing.",
-            "⬆️ Клеть": "⬆️ Cage",
-            "🏚️ Лавка скупщика": "🏚️ Trading Post",
-            "Вынести телевизор поверх игры и увеличить": "Pop the TV out over the game and enlarge it",
-            "Вынести телевизор": "Pop out the TV",
-            "Скрыть телевизор": "Hide the TV",
-            "Предыдущее видео": "Previous video",
-            "Следующее видео": "Next video",
-            "Название (необязательно)": "Title (optional)",
-            "https://… ссылка на видео": "https://… video link",
-            "Скрыть радио": "Hide the radio",
-            "Предыдущая станция": "Previous station",
-            "Следующая станция": "Next station",
-            "Название": "Name",
-            "https://… адрес потока": "https://… stream address",
-            "монет": "coins",
-            "Моя шахта": "My mine"
-            };
-        let LANG = 'ru';
-
-        function detectLang() {
-            const list = (typeof navigator !== 'undefined' && (navigator.languages || [navigator.language])) || [];
-            const first = String(list[0] || 'ru').toLowerCase();
-            return /^(ru|uk|be|kk)/.test(first) ? 'ru' : 'en';
-        }
-
-        // Перевод строки (или шаблона с ${…}: L`Продано: ${n} шт.` ищет «Продано: {0} шт.»)
-        function L(str, ...vals) {
-            if (Array.isArray(str) && str.raw) {
-                const key = str.reduce((a, part, i) => a + part + (i < vals.length ? `{${i}}` : ''), '');
-                const tpl = LANG === 'en' && EN_TEXT[key] !== undefined ? EN_TEXT[key] : key;
-                return tpl.replace(/\{(\d+)\}/g, (m, i) => String(vals[+i]));
-            }
-            return LANG === 'en' && EN_TEXT[str] !== undefined ? EN_TEXT[str] : str;
-        }
 
         // Статичные надписи страницы: запоминаем русский оригинал и подставляем перевод
         const domOriginal = new WeakMap();
@@ -6251,7 +6618,7 @@
                     el.setAttribute(a, LANG === 'en' ? L(orig) : orig);
                 }
             });
-            document.title = LANG === 'en' ? 'Miner 1899 — a 2D mining game' : 'Шахтёр 1899 — 2D-игра про шахтёра';
+            document.title = LANG === 'en' ? 'Miner 1899 — a 2D mining game' : L('Шахтёр 1899 — 2D-игра про шахтёра');
             if (document.documentElement) document.documentElement.lang = LANG;
             return true;
         }
@@ -6424,10 +6791,10 @@
             try {
                 gameFrame(currentTime);
             } catch (err) {
-                console.error('Ошибка в кадре игры:', err);
+                console.error(L('Ошибка в кадре игры:'), err);
                 if (!loopErrorShown) {
                     loopErrorShown = true;
-                    showNotification('⚠️ Ошибка в игре — она продолжит работу. Подробности в консоли (F12)');
+                    showNotification(L('⚠️ Ошибка в игре — она продолжит работу. Подробности в консоли (F12)'));
                 }
             }
             requestAnimationFrame(gameLoop);
@@ -6496,8 +6863,8 @@
         // null — адрес годится, иначе текст ошибки
         function radioCheckUrl(url) {
             let u;
-            try { u = new URL(url); } catch (e) { return 'это не похоже на адрес'; }
-            if (u.protocol !== 'https:' && u.protocol !== 'http:') return 'адрес должен начинаться с https://';
+            try { u = new URL(url); } catch (e) { return L('это не похоже на адрес'); }
+            if (u.protocol !== 'https:' && u.protocol !== 'http:') return L('адрес должен начинаться с https://');
             return null;
         }
 
@@ -6507,8 +6874,8 @@
             name = String(name || '').trim();
             const err = radioCheckUrl(url);
             if (err) return err;
-            if (radio.stations.some(s => s.url === url)) return 'такая станция уже есть';
-            if (radio.stations.length >= RADIO_MAX_STATIONS) return `не больше ${RADIO_MAX_STATIONS} станций`;
+            if (radio.stations.some(s => s.url === url)) return L('такая станция уже есть');
+            if (radio.stations.length >= RADIO_MAX_STATIONS) return L`не больше ${RADIO_MAX_STATIONS} станций`;
             if (!name) name = new URL(url).hostname;
             radio.stations.push({ name: name.slice(0, 40), url });
             if (radio.stations.length === 1) radio.index = 0;
@@ -6545,11 +6912,11 @@
             const err = radioAddStation(nameEl.value, urlEl.value);
             const msg = document.getElementById('radioFormMsg');
             if (err) {
-                msg.textContent = `Не добавлено: ${err}`;
+                msg.textContent = L`Не добавлено: ${err}`;
                 msg.className = 'radio-note error';
                 return false;
             }
-            msg.textContent = 'Станция добавлена';
+            msg.textContent = L('Станция добавлена');
             msg.className = 'radio-note';
             nameEl.value = '';
             urlEl.value = '';
@@ -6563,14 +6930,14 @@
             if (!radio.stations.length) {
                 const li = document.createElement('li');
                 li.className = 'radio-empty';
-                li.textContent = 'Пока пусто — добавь станцию ниже';
+                li.textContent = L('Пока пусто — добавь станцию ниже');
                 list.appendChild(li);
                 return;
             }
             radio.stations.forEach((s, i) => {
                 const li = document.createElement('li');
                 li.className = i === radio.index ? 'current' : '';
-                li.innerHTML = `<button class="radio-pick" onclick="radioSelect(${i})" title="${escapeHtml(s.url)}">${i === radio.index ? '♪ ' : ''}${escapeHtml(s.name)}</button>
+                li.innerHTML = L`<button class="radio-pick" onclick="radioSelect(${i})" title="${escapeHtml(s.url)}">${i === radio.index ? '♪ ' : ''}${escapeHtml(s.name)}</button>
                     <button class="radio-del" onclick="radioRemoveStation(${i})" aria-label="Удалить станцию">✕</button>`;
                 list.appendChild(li);
             });
@@ -6578,16 +6945,16 @@
 
         function radioSetStatus(status) {
             radio.status = status;
-            const text = { off: 'выключено', connecting: 'подключение…', live: 'в эфире', error: 'станция недоступна' }[status];
+            const text = { off: L('выключено'), connecting: L('подключение…'), live: L('в эфире'), error: L('станция недоступна') }[status];
             const st = document.getElementById('radioStatus');
-            st.textContent = radio.stations.length ? text : 'добавь станцию в «Мои станции»';
+            st.textContent = radio.stations.length ? text : L('добавь станцию в «Мои станции»');
             st.classList.toggle('live', status === 'live');
             st.classList.toggle('error', status === 'error');
             const panel = document.getElementById('radioPanel');
             if (panel && panel.classList) panel.classList.toggle('playing', status === 'live' && radio.on);
             const cur = radioCurrent();
-            document.getElementById('radioStation').textContent = cur ? cur.name : 'Станций нет';
-            document.getElementById('radioToggle').textContent = radio.on ? '■ Выкл' : '▶ Вкл';
+            document.getElementById('radioStation').textContent = cur ? cur.name : L('Станций нет');
+            document.getElementById('radioToggle').textContent = radio.on ? L('■ Выкл') : L('▶ Вкл');
             const tb = document.getElementById('tRadio');
             if (tb && tb.classList) tb.classList.toggle('on', radio.on);
         }
@@ -6603,7 +6970,7 @@
                 const cur = radioCurrent();
                 radioStop(false);
                 radioSetStatus('error');
-                showNotification(`📻 ${cur ? cur.name : 'Станция'} сейчас недоступна — проверь адрес или выбери другую`);
+                showNotification(L`📻 ${cur ? cur.name : L('Станция')} сейчас недоступна — проверь адрес или выбери другую`);
             });
             radio.audio = a;
             return a;
@@ -6613,7 +6980,7 @@
             const cur = radioCurrent();
             if (!cur) {
                 radioPanelToggle(true);
-                showNotification('📻 Сначала добавь станцию в «Мои станции»');
+                showNotification(L('📻 Сначала добавь станцию в «Мои станции»'));
                 return;
             }
             const a = radioEnsureAudio();
@@ -6720,13 +7087,13 @@
             if (host === 'vk.com' || host === 'vkvideo.ru' || host === 'vk.ru') {
                 const src = u.pathname + ' ' + (u.searchParams.get('z') || '');
                 const m = src.match(/video(-?\d+)_(\d+)/);
-                if (m) return { kind: 'vk', label: 'VK Видео', embed: `https://vk.com/video_ext.php?oid=${m[1]}&id=${m[2]}&hd=2&autoplay=1` };
+                if (m) return { kind: 'vk', label: L('VK Видео'), embed: `https://vk.com/video_ext.php?oid=${m[1]}&id=${m[2]}&hd=2&autoplay=1` };
                 if (u.pathname === '/video_ext.php' && u.searchParams.get('oid') && u.searchParams.get('id')) {
-                    return { kind: 'vk', label: 'VK Видео', embed: u.href };
+                    return { kind: 'vk', label: L('VK Видео'), embed: u.href };
                 }
                 return null;
             }
-            if (/\.(mp4|webm|ogv|ogg|m4v)$/i.test(u.pathname)) return { kind: 'file', label: 'Видеофайл', embed: u.href };
+            if (/\.(mp4|webm|ogv|ogg|m4v)$/i.test(u.pathname)) return { kind: 'file', label: L('Видеофайл'), embed: u.href };
             return null;
         }
 
@@ -6751,9 +7118,9 @@
             url = String(url || '').trim();
             title = String(title || '').trim();
             const parsed = parseVideoUrl(url);
-            if (!parsed) return 'ссылка не распознана: нужна ссылка на YouTube, RuTube, VK Видео или файл .mp4';
-            if (video.items.some(v => v.url === url)) return 'это видео уже есть';
-            if (video.items.length >= VIDEO_MAX) return `не больше ${VIDEO_MAX} видео`;
+            if (!parsed) return L('ссылка не распознана: нужна ссылка на YouTube, RuTube, VK Видео или файл .mp4');
+            if (video.items.some(v => v.url === url)) return L('это видео уже есть');
+            if (video.items.length >= VIDEO_MAX) return L`не больше ${VIDEO_MAX} видео`;
             video.items.push({ title: (title || `${parsed.label} ${video.items.length + 1}`).slice(0, 40), url });
             if (video.items.length === 1) video.index = 0;
             videoSavePrefs();
@@ -6788,8 +7155,8 @@
             const t = document.getElementById('videoTitle'), u = document.getElementById('videoUrl');
             const err = videoAdd(t.value, u.value);
             const msg = document.getElementById('videoFormMsg');
-            if (err) { msg.textContent = `Не добавлено: ${err}`; msg.className = 'radio-note error'; return false; }
-            msg.textContent = 'Видео добавлено';
+            if (err) { msg.textContent = L`Не добавлено: ${err}`; msg.className = 'radio-note error'; return false; }
+            msg.textContent = L('Видео добавлено');
             msg.className = 'radio-note';
             t.value = ''; u.value = '';
             return true;
@@ -6798,7 +7165,7 @@
         // Включить: создать плеер в «кинескопе»
         function videoPlay() {
             const cur = videoCurrent();
-            if (!cur) { showNotification('📺 Сначала добавь видео в «Мои видео»'); return false; }
+            if (!cur) { showNotification(L('📺 Сначала добавь видео в «Мои видео»')); return false; }
             const parsed = parseVideoUrl(cur.url);
             const screen = document.getElementById('videoScreen');
             screen.innerHTML = '';
@@ -6860,7 +7227,7 @@
                 panel.style.left = panel.style.top = panel.style.width = panel.style.height = '';
             }
             const btn = document.getElementById('videoDetachBtn');
-            if (btn) { btn.textContent = detach ? '⤓' : '⛶'; btn.title = detach ? 'Вернуть телевизор на панель' : 'Вынести телевизор поверх игры и увеличить'; }
+            if (btn) { btn.textContent = detach ? '⤓' : '⛶'; btn.title = detach ? L('Вернуть телевизор на панель') : L('Вынести телевизор поверх игры и увеличить'); }
             return detach;
         }
 
@@ -6893,15 +7260,15 @@
 
         function videoRender() {
             const cur = videoCurrent();
-            document.getElementById('videoTitleNow').textContent = cur ? cur.title : 'Видео нет';
-            document.getElementById('videoToggle').textContent = video.on ? '■ Выкл' : '▶ Вкл';
+            document.getElementById('videoTitleNow').textContent = cur ? cur.title : L('Видео нет');
+            document.getElementById('videoToggle').textContent = video.on ? L('■ Выкл') : L('▶ Вкл');
             const off = document.getElementById('videoOff');
             if (off) off.style.display = video.on ? 'none' : '';
             const note = document.getElementById('videoNote');
             const fromFile = typeof location !== 'undefined' && location.protocol === 'file:';
-            note.textContent = !cur ? 'Добавь ссылку в «Мои видео»'
+            note.textContent = !cur ? L('Добавь ссылку в «Мои видео»')
                 : (fromFile && parseVideoUrl(cur.url).kind === 'youtube')
-                    ? 'YouTube из файла на компьютере часто не показывает видео — на сайте игры работает'
+                    ? L('YouTube из файла на компьютере часто не показывает видео — на сайте игры работает')
                     : parseVideoUrl(cur.url).label;
             const list = document.getElementById('videoList');
             if (!list || typeof list.appendChild !== 'function') return;
@@ -6909,14 +7276,14 @@
             if (!video.items.length) {
                 const li = document.createElement('li');
                 li.className = 'radio-empty';
-                li.textContent = 'Пока пусто — добавь ссылку ниже';
+                li.textContent = L('Пока пусто — добавь ссылку ниже');
                 list.appendChild(li);
                 return;
             }
             video.items.forEach((v, i) => {
                 const li = document.createElement('li');
                 li.className = i === video.index ? 'current' : '';
-                li.innerHTML = `<button class="radio-pick" onclick="videoSelect(${i})" title="${escapeHtml(v.url)}">${i === video.index ? '▶ ' : ''}${escapeHtml(v.title)}</button>
+                li.innerHTML = L`<button class="radio-pick" onclick="videoSelect(${i})" title="${escapeHtml(v.url)}">${i === video.index ? '▶ ' : ''}${escapeHtml(v.title)}</button>
                     <button class="radio-del" onclick="videoRemove(${i})" aria-label="Удалить видео">✕</button>`;
                 list.appendChild(li);
             });
