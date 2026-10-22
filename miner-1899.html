@@ -6639,6 +6639,9 @@
                 settings.showControls = st.showControls === true;
                 if (ZOOM_OPTIONS.includes(st.zoom)) settings.zoom = st.zoom;
                 if (st.lang === 'ru' || st.lang === 'en') settings.lang = st.lang;
+                // ссылка с сайта: play/?lang=en — язык страницы сайта становится языком игры
+                const q = typeof location !== 'undefined' ? String(location.search || '').match(/[?&]lang=(ru|en)\b/) : null;
+                if (q && settings.lang !== q[1]) { settings.lang = q[1]; saveSettings(); }
                 if (RADIO_SKINS.includes(st.radioSkin)) settings.radioSkin = st.radioSkin;
                 if (VIDEO_SKINS.includes(st.videoSkin)) settings.videoSkin = st.videoSkin;
             } catch (e) { /* испорченные настройки — по умолчанию */ }

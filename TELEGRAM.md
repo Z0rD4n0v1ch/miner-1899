@@ -67,3 +67,33 @@ https://t.me/ИМЯ_БОТА?startapp
 - **Сохранения** хранятся в памяти Telegram на этом устройстве — отдельно от браузера и от сайта товарища. С телефона на компьютер они сами не переедут; перенести можно через «Экспорт» и «Импорт».
 - **Обновление игры** в Telegram происходит само: бот открывает сайт, а сайт обновляется при каждом выпуске (`update-all.sh`). В @BotFather ничего менять не нужно.
 - Если Telegram показывает старую версию — закрой мини-приложение и открой снова (иногда он держит страницу в памяти).
+
+## Описание бота на английском
+
+Telegram показывает описание бота на языке пользователя, если для этого языка оно задано. В @BotFather задаётся только описание по умолчанию (русское), а английское ставится один раз через Bot API — достаточно открыть эти ссылки в браузере. Вместо `TOKEN` подставь токен бота: @BotFather → `/mybots` → бот → **API Token**. Текст в ссылках уже закодирован.
+
+**Описание** (видно в пустом чате до «Старт»):
+
+```
+https://api.telegram.org/botTOKEN/setMyDescription?language_code=en&description=%E2%9B%8F%20Miner%201899%20%E2%80%94%20a%202D%20mining%20game%20right%20in%20Telegram.%0A%0ADig%20788%20meters%20down%2C%20mine%20gold%2C%20silver%2C%20emeralds%20and%20platinum%2C%20sell%20ore%20at%20the%20trading%20post%20and%20buy%20pickaxes%2C%20lamps%20and%20gear.%20Train%20your%20strength%20and%20stamina.%0A%0AFour%20layers%2C%20cave-ins%2C%20firedamp%2C%20lava%20and%20underground%20creatures%20%E2%80%94%20the%20deeper%2C%20the%20richer%20and%20more%20dangerous.%0A%0APress%20%E2%80%9CPlay%E2%80%9D%20%E2%80%94%20and%20down%20the%20mine%21
+```
+
+Текст: *⛏ Miner 1899 — a 2D mining game right in Telegram. Dig 788 meters down, mine gold, silver, emeralds and platinum, sell ore at the trading post and buy pickaxes, lamps and gear. Train your strength and stamina. Four layers, cave-ins, firedamp, lava and underground creatures — the deeper, the richer and more dangerous. Press “Play” — and down the mine!*
+
+**«О боте»** (видно в профиле, до 120 знаков):
+
+```
+https://api.telegram.org/botTOKEN/setMyShortDescription?language_code=en&short_description=A%202D%20miner%3A%20dig%20deep%2C%20mine%20ore%2C%20get%20stronger.%20Press%20%E2%80%9CPlay%E2%80%9D%20%E2%9B%8F
+```
+
+Текст: *A 2D miner: dig deep, mine ore, get stronger. Press “Play” ⛏*
+
+**Имя бота по-английски** (по желанию): `https://api.telegram.org/botTOKEN/setMyName?language_code=en&name=Miner%201899`
+
+Ответ `{"ok":true,"result":true}` — значит, получилось. Для всех остальных языков остаётся русское описание.
+
+Кнопку меню «Играть» тоже можно подписать по-английски для англоязычных пользователей — но проще оставить как есть: сама игра откроется на языке пользователя.
+
+⚠️ **Токен — это пароль от бота.** Никому его не показывай и не клади в репозиторий; после этих ссылок можно очистить историю браузера.
+
+Аватарка у бота одна на все языки — остаётся логотип «Шахтёр 1899».

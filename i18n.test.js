@@ -13,7 +13,7 @@ function makeEl() {
         appendChild(c) { this.children.push(c); }, remove() {}, focus() {}, click() {},
         getContext: () => new Proxy({}, { get: (t, k) => k in t ? t[k] : () => ({ addColorStop() {} }), set: (t, k, v) => (t[k] = v, true) }), width: 800, height: 600 };
 }
-function boot({ langs, store = {} } = {}) {
+function boot({ langs, store = {}, search } = {}) {
     const els = {};
     const sb = {
         document: { getElementById: id => els[id] || (els[id] = makeEl()), createElement: () => makeEl(), body: { appendChild() {}, classList: makeEl().classList }, querySelectorAll: () => [] },
@@ -22,6 +22,7 @@ function boot({ langs, store = {} } = {}) {
         console, Date, Math, JSON, Object, Proxy, Number, Set, Map, URL, WeakMap
     };
     if (langs) sb.navigator = { languages: langs, language: langs[0] };
+    if (search) sb.location = { search, hash: '', protocol: 'https:' };
     vm.createContext(sb); vm.runInContext(script, sb);
     return { run: c => vm.runInContext(c, sb), store };
 }
@@ -39,6 +40,8 @@ check('выбрал в настройках — запоминается и ва
 check('неизвестный язык — нет', g.run("setLang('fr')") === false);
 check('в настройках кнопки «Русский» и «English»', /data-lang="ru"[^>]*>Русский<[\s\S]*data-lang="en"[^>]*>English</.test(html));
 
+check('ссылка с сайта ?lang=en — английский и запоминается', (() => { const st = {}; const b = boot({ langs: ['ru-RU'], store: st, search: '?lang=en' }); return b.run('LANG') === 'en' && boot({ langs: ['ru-RU'], store: st }).run('LANG') === 'en'; })());
+check('?lang=ru в английском браузере — русский', boot({ langs: ['en-US'], search: '?lang=ru' }).run('LANG') === 'ru');
 console.log('Перевод');
 g = boot({ langs: ['en-US'] });
 check('строка: «Сохранить» → Save', g.run("L('Сохранить')") === 'Save');
