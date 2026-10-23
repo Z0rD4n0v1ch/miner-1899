@@ -96,7 +96,7 @@ g.handlers.keydown({ code: 'KeyV', preventDefault() {} });
 check('V — скрыть; скрытый телевизор выключается', !g.el('videoPanel').classList.contains('open') && g.run('video.on') === false && g.el('videoScreen').children.length === 0);
 g.handlers.keydown({ code: 'KeyV', preventDefault() {}, target: { tagName: 'INPUT' } });
 check('буква М в поле ввода телевизор не трогает', !g.el('videoPanel').classList.contains('open'));
-check('кнопка «Видео (V)» на панели под «Радио»', /radioPanelToggle\(\)">📻 Радио \(M\)<\/button>\s*<button class="btn btn-secondary" onclick="openVideoFromMenu\(\)">📺 Видео \(V\)<\/button>/.test(html));
+check('кнопка «Видео (V)» на панели под «Радио»', /radioPanelToggle\(\)">📻 Радио <span class="kbd-hint">\(M\)<\/span><\/button>\s*<button class="btn btn-secondary" onclick="openVideoFromMenu\(\)">📺 Видео <span class="kbd-hint">\(V\)<\/span><\/button>/.test(html));
 check('телевизор в левой панели, под кнопками', html.indexOf('id="savePanel"') < html.indexOf('id="videoPanel"') && html.indexOf('id="videoPanel"') < html.indexOf('</aside>'));
 check('на телефоне — поверх игры, как радио', /body\.touch #videoPanel\.open \{[^}]*position: fixed/.test(html));
 

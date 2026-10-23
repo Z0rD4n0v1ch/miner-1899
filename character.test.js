@@ -117,7 +117,7 @@ handlers.keydown({ code: 'Escape', preventDefault() {} });
 check('ESC закрывает', !el('characterModal').classList.contains('active') && !run('gameState.paused'));
 run('hero.strPts = 13; updateUI();');
 check('в панели «Сила 1 · 13/40»', el('heroStats').textContent.includes('Сила 1 · 13/40'));
-check('кнопка «Персонаж (P)» — под статистикой, а не на панели сохранений', /<div id="sideButtons">\s*<button[^>]*onclick="openCharacter\(\)">👷 Персонаж \(P\)/.test(html) && !/<div id="savePanel">[\s\S]*?openCharacter[\s\S]*?<\/div>/.test(html.split('<div id="radioPanel">')[0].split('<div id="savePanel">')[1] ? '<div id="savePanel">' + html.split('<div id="savePanel">')[1].split('</div>')[0] + '</div>' : ''));
+check('кнопка «Персонаж (P)» — под статистикой, а не на панели сохранений', /<div id="sideButtons">\s*<button[^>]*onclick="openCharacter\(\)">👷 Персонаж/.test(html) && !/<div id="savePanel">[^]*?openCharacter[^]*?<\/div>/.test(html.split('<div id="radioPanel">')[0].split('<aside id="leftPanel">')[1] || ''));
 
 console.log('Смерть и сохранения');
 fresh(); run('hero.str = 3; hero.end = 4; hero.strPts = 22; hero.endPts = 77; die("тест");');

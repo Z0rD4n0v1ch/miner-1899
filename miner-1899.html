@@ -1348,6 +1348,68 @@
             align-self: center;
         }
 
+        /* меню на телефоне: компактная сетка в два столбца, отступ от кнопок Telegram сверху,
+           подсказки клавиш и «Управление» (клавиатура) не нужны */
+        body.touch .kbd-hint,
+        body.touch #controlsToggle,
+        body.touch #controls {
+            display: none !important;
+        }
+
+        body.touch.menu-open #sidebar {
+            gap: 10px;
+            padding-top: calc(10px + env(safe-area-inset-top, 0px) + var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+            padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+        }
+
+        body.touch.menu-open #menuClose {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        body.touch.menu-open #ui {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 8px;
+            margin-top: 0;
+        }
+
+        body.touch.menu-open #ui .stat {
+            margin: 0;
+            padding: 6px 8px;
+        }
+
+        body.touch.menu-open #ui .stat.wide {
+            grid-column: 1 / -1;
+        }
+
+        body.touch.menu-open #ui .stat-value {
+            font-size: 16px;
+        }
+
+        body.touch.menu-open #savePanel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 8px;
+        }
+
+        body.touch.menu-open #savePanel .btn {
+            margin: 0;
+            width: 100%;
+            padding: 10px 6px;
+        }
+
+        body.touch.menu-open #sideButtons {
+            margin-top: 0;
+        }
+
+        body.touch.menu-open #sideButtons .ach-btn {
+            grid-column: auto;
+        }
+
         body.touch #touchControls {
             display: block;
         }
@@ -1428,15 +1490,15 @@
         <button class="btn btn-secondary" onclick="exportSave()">⬇️ Экспорт</button>
         <button class="btn btn-secondary" onclick="importSave()">⬆️ Импорт</button>
         <button class="btn btn-danger" onclick="newGame()">🆕 Новая игра</button>
-        <button class="btn btn-secondary radio-open-btn" onclick="radioPanelToggle()">📻 Радио (M)</button>
-        <button class="btn btn-secondary" onclick="openVideoFromMenu()">📺 Видео (V)</button>
+        <button class="btn btn-secondary radio-open-btn" onclick="radioPanelToggle()">📻 Радио <span class="kbd-hint">(M)</span></button>
+        <button class="btn btn-secondary" onclick="openVideoFromMenu()">📺 Видео <span class="kbd-hint">(V)</span></button>
         <button class="btn btn-secondary" onclick="openSettings()">⚙️ Настройки</button>
     </div>
 
     <!-- Маленький телевизор: открывается клавишей V (М) -->
     <div id="videoPanel">
         <div class="radio-head">
-            <span class="stat-label">Видео (V)</span>
+            <span class="stat-label">Видео <span class="kbd-hint">(V)</span></span>
             <span>
                 <button class="radio-x" id="videoDetachBtn" onclick="videoDetachToggle()" title="Вынести телевизор поверх игры и увеличить" aria-label="Вынести телевизор">⛶</button>
                 <button class="radio-x" onclick="videoPanelToggle(false)" aria-label="Скрыть телевизор">✕</button>
@@ -1468,7 +1530,7 @@
 
     <div id="radioPanel">
         <div class="radio-head">
-            <span class="stat-label">Радио (M)</span>
+            <span class="stat-label">Радио <span class="kbd-hint">(M)</span></span>
             <button class="radio-x" onclick="radioPanelToggle(false)" aria-label="Скрыть радио">✕</button>
         </div>
         <!-- эскиз «граммофон» (включается в настройках); пластинка крутится, пока играет -->
@@ -1553,7 +1615,7 @@
             <div class="stat-value" id="ropes">0</div>
         </div>
         <div class="stat">
-            <div class="stat-label">Лечение (H)</div>
+            <div class="stat-label">Лечение <span class="kbd-hint">(H)</span></div>
             <div class="stat-value" id="meds" style="font-size: 14px;">—</div>
         </div>
         <div class="stat wide">
@@ -1561,7 +1623,7 @@
             <div class="stat-value" id="goalStat" style="font-size: 13px;">⛏️ Свободная игра</div>
         </div>
         <div class="stat wide">
-            <div class="stat-label">Персонаж (P)</div>
+            <div class="stat-label">Персонаж <span class="kbd-hint">(P)</span></div>
             <div class="stat-value" id="heroStats" style="font-size: 13px;">Сила 1 · Выносливость 1</div>
         </div>
         <div class="stat wide">
@@ -1572,7 +1634,7 @@
 
     <!-- под статистикой: персонаж и подсказки по управлению -->
     <div id="sideButtons">
-        <button class="btn btn-secondary" onclick="openCharacter()">👷 Персонаж (P)</button>
+        <button class="btn btn-secondary" onclick="openCharacter()">👷 Персонаж <span class="kbd-hint">(P)</span></button>
         <button class="btn btn-secondary" id="controlsToggle" onclick="toggleControls()">🎮 Управление</button>
         <button class="btn btn-secondary ach-btn" onclick="openAchievements()">🏅 Достижения</button>
     </div>
@@ -2386,7 +2448,12 @@
             "Вернуть телевизор на панель": "Put the TV back on the panel",
             "YouTube из файла на компьютере часто не показывает видео — на сайте игры работает": "YouTube often won’t play from a file on your computer — it works on the game’s website",
             "Пока пусто — добавь ссылку ниже": "Empty for now — add a link below",
-            "<button class=\"radio-pick\" onclick=\"videoSelect({0})\" title=\"{1}\">{2}{3}</button>\n                    <button class=\"radio-del\" onclick=\"videoRemove({4})\" aria-label=\"Удалить видео\">✕</button>": "<button class=\"radio-pick\" onclick=\"videoSelect({0})\" title=\"{1}\">{2}{3}</button>\n<button class=\"radio-del\" onclick=\"videoRemove({4})\" aria-label=\"Delete video\">✕</button>"
+            "<button class=\"radio-pick\" onclick=\"videoSelect({0})\" title=\"{1}\">{2}{3}</button>\n                    <button class=\"radio-del\" onclick=\"videoRemove({4})\" aria-label=\"Удалить видео\">✕</button>": "<button class=\"radio-pick\" onclick=\"videoSelect({0})\" title=\"{1}\">{2}{3}</button>\n<button class=\"radio-del\" onclick=\"videoRemove({4})\" aria-label=\"Delete video\">✕</button>",
+            "📻 Радио": "📻 Radio",
+            "📺 Видео": "📺 Video",
+            "Видео": "Video",
+            "Персонаж": "Character",
+            "(M)": "(M)"
             };
         let LANG = 'ru';
 
