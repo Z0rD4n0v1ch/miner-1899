@@ -1465,6 +1465,17 @@
             color: #000;
         }
 
+        /* настройки кнопок на телефоне: размер, прозрачность, сторона (для левшей) */
+        body.touch.tp-small { --tb: clamp(36px, calc((100vw - 56px) / 7.8), 52px); }
+        body.touch.tp-large { --tb: clamp(42px, calc((100vw - 64px) / 6), 74px); }   /* обе панели помещаются рядом */
+        body.tp-faint .tbtn { background: rgba(30, 30, 30, 0.18); border-color: rgba(255, 165, 0, 0.35); color: rgba(255, 210, 127, 0.75); }
+        body.tp-solid .tbtn { background: rgba(30, 30, 30, 0.88); border-color: rgba(255, 165, 0, 0.85); }
+        body.tp-faint .tbtn.down, body.tp-faint .tbtn.on { background: rgba(255, 165, 0, 0.45); color: #000; }
+        body.tp-swap #touchLeft { left: auto; right: calc(10px + env(safe-area-inset-right, 0px)); }
+        body.tp-swap #touchRight { right: auto; left: calc(10px + env(safe-area-inset-left, 0px)); }
+        .touch-only { display: none; }
+        body.touch .touch-only { display: block; }
+
         #tUp    { grid-column: 2; grid-row: 1; }
         #tLeft  { grid-column: 1; grid-row: 2; }
         #tRight { grid-column: 3; grid-row: 2; }
@@ -1869,6 +1880,23 @@
                     <button class="btn btn-secondary" data-lang="ru" onclick="setLang('ru')">Русский</button>
                     <button class="btn btn-secondary" data-lang="en" onclick="setLang('en')">English</button>
                 </div>
+            </div>
+            <div class="setting touch-only">
+                <div class="setting-label">Кнопки на телефоне</div>
+                <div class="setting-options" id="tpSizeOptions">
+                    <button class="btn btn-secondary" data-tp-size="small" onclick="setTouchPad('size', 'small')">Мелкие</button>
+                    <button class="btn btn-secondary" data-tp-size="medium" onclick="setTouchPad('size', 'medium')">Средние</button>
+                    <button class="btn btn-secondary" data-tp-size="large" onclick="setTouchPad('size', 'large')">Крупные</button>
+                </div>
+                <div class="setting-options" id="tpOpacityOptions">
+                    <button class="btn btn-secondary" data-tp-opacity="faint" onclick="setTouchPad('opacity', 'faint')">Почти прозрачные</button>
+                    <button class="btn btn-secondary" data-tp-opacity="half" onclick="setTouchPad('opacity', 'half')">Полупрозрачные</button>
+                    <button class="btn btn-secondary" data-tp-opacity="solid" onclick="setTouchPad('opacity', 'solid')">Плотные</button>
+                </div>
+                <label class="setting-check">
+                    <input type="checkbox" id="tpSwap" onchange="setTouchPad('swap', this.checked)">
+                    Для левой руки: крестовина справа, кирка слева
+                </label>
             </div>
             <div class="setting">
                 <div class="setting-label">Масштаб</div>
@@ -2453,7 +2481,15 @@
             "📺 Видео": "📺 Video",
             "Видео": "Video",
             "Персонаж": "Character",
-            "(M)": "(M)"
+            "(M)": "(M)",
+            "Кнопки на телефоне": "Phone buttons",
+            "Мелкие": "Small",
+            "Средние": "Medium",
+            "Крупные": "Large",
+            "Почти прозрачные": "Nearly transparent",
+            "Полупрозрачные": "Semi-transparent",
+            "Плотные": "Solid",
+            "Для левой руки: крестовина справа, кирка слева": "Left-handed: D-pad on the right, pickaxe on the left"
             };
         let LANG = 'ru';
 
@@ -6694,7 +6730,8 @@
         const SETTINGS_KEY = 'miner_settings';
         const NOTIFY_POSITIONS = ['top-right', 'top-left', 'top-center', 'bottom-right', 'bottom-left', 'bottom-center'];
         // вид радио и видео по умолчанию простой: граммофон и телевизор игрок включает сам
-        const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false, zoom: 28, lang: null };
+        const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false, zoom: 28, lang: null,
+            tpSize: 'medium', tpOpacity: 'half', tpSwap: false };
         const RADIO_SKINS = ['plain', 'gramophone'];
         const VIDEO_SKINS = ['plain', 'tv'];
 
@@ -6705,6 +6742,9 @@
                 settings.swap = st.swap === true;
                 settings.showControls = st.showControls === true;
                 if (ZOOM_OPTIONS.includes(st.zoom)) settings.zoom = st.zoom;
+                if (['small', 'medium', 'large'].includes(st.tpSize)) settings.tpSize = st.tpSize;
+                if (['faint', 'half', 'solid'].includes(st.tpOpacity)) settings.tpOpacity = st.tpOpacity;
+                settings.tpSwap = st.tpSwap === true;
                 if (st.lang === 'ru' || st.lang === 'en') settings.lang = st.lang;
                 // ссылка с сайта: play/?lang=en — язык страницы сайта становится языком игры
                 const q = typeof location !== 'undefined' ? String(location.search || '').match(/[?&]lang=(ru|en)\b/) : null;
@@ -6722,6 +6762,11 @@
             if (document.body && document.body.classList) {
                 document.body.classList.toggle('swap-panels', settings.swap);
                 document.body.classList.toggle('show-controls', settings.showControls);
+                document.body.classList.toggle('tp-small', settings.tpSize === 'small');
+                document.body.classList.toggle('tp-large', settings.tpSize === 'large');
+                document.body.classList.toggle('tp-faint', settings.tpOpacity === 'faint');
+                document.body.classList.toggle('tp-solid', settings.tpOpacity === 'solid');
+                document.body.classList.toggle('tp-swap', settings.tpSwap);
                 document.body.classList.toggle('radio-gramophone', settings.radioSkin === 'gramophone');
                 document.body.classList.toggle('video-plain', settings.videoSkin === 'plain');
             }
@@ -6741,10 +6786,26 @@
             }
             const lang = settings.lang || detectLang();
             if (lang !== LANG) { LANG = lang; translateDom(); if (typeof updateUI === 'function' && typeof player !== 'undefined') try { updateUI(); } catch (e) { /* ещё не готово */ } }
+            if (document.querySelectorAll) {
+                document.querySelectorAll('#tpSizeOptions [data-tp-size]').forEach(b => b.classList.toggle('chosen', b.dataset.tpSize === settings.tpSize));
+                document.querySelectorAll('#tpOpacityOptions [data-tp-opacity]').forEach(b => b.classList.toggle('chosen', b.dataset.tpOpacity === settings.tpOpacity));
+            }
+            const tps = document.getElementById('tpSwap');
+            if (tps) tps.checked = settings.tpSwap;
             if (document.querySelectorAll) document.querySelectorAll('#langOptions [data-lang]').forEach(b => b.classList.toggle('chosen', b.dataset.lang === LANG));
             const z = settings.zoom / TILE_SIZE;
             if (z !== ZOOM) { ZOOM = z; if (typeof fitCanvasForDevice === 'function') fitCanvasForDevice(); }
             restackNotifications();
+        }
+
+        // Кнопки на телефоне: размер, прозрачность, сторона
+        function setTouchPad(what, value) {
+            if (what === 'size' && ['small', 'medium', 'large'].includes(value)) settings.tpSize = value;
+            else if (what === 'opacity' && ['faint', 'half', 'solid'].includes(value)) settings.tpOpacity = value;
+            else if (what === 'swap') settings.tpSwap = !!value;
+            else return false;
+            saveSettings(); applySettings();
+            return true;
         }
 
         function setLang(lang) {
