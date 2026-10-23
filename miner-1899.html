@@ -1323,6 +1323,29 @@
             height: 0;
         }
 
+        /* телефон: радио и видео — «шторка» снизу во всю ширину; кнопки управления на это
+           время прячутся, игра сверху остаётся видна */
+        body.touch #videoPanel.open,
+        body.touch #radioPanel.open {
+            top: auto !important;
+            left: 0 !important;
+            right: 0;
+            bottom: 0;
+            width: 100% !important;
+            max-height: 62vh !important;
+            border-radius: 16px 16px 0 0;
+            padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
+        }
+
+        body.touch.sheet-open #touchControls {
+            display: none;
+        }
+
+        body.touch #videoDetachBtn {
+            display: none;
+        }
+
         body.touch #videoPanel.open {
             position: fixed;
             top: calc(44px + env(safe-area-inset-top, 0px));
@@ -1893,10 +1916,32 @@
                     <button class="btn btn-secondary" data-tp-opacity="half" onclick="setTouchPad('opacity', 'half')">Полупрозрачные</button>
                     <button class="btn btn-secondary" data-tp-opacity="solid" onclick="setTouchPad('opacity', 'solid')">Плотные</button>
                 </div>
+                <div class="setting-label" style="margin-top: 8px;">Сводка сверху</div>
+                <div class="setting-options two" id="hudSizeOptions">
+                    <button class="btn btn-secondary" data-hud="normal" onclick="setTouchPad('hud', 'normal')">Обычная</button>
+                    <button class="btn btn-secondary" data-hud="large" onclick="setTouchPad('hud', 'large')">Крупная</button>
+                </div>
+                <label class="setting-check">
+                    <input type="checkbox" id="optVibrate" onchange="setTouchPad('vibrate', this.checked)" checked>
+                    Вибрация при уроне, обвале и взрыве
+                </label>
+                <label class="setting-check">
+                    <input type="checkbox" id="optKeepAwake" onchange="setTouchPad('keepAwake', this.checked)" checked>
+                    Не гасить экран во время игры
+                </label>
                 <label class="setting-check">
                     <input type="checkbox" id="tpSwap" onchange="setTouchPad('swap', this.checked)">
                     Для левой руки: крестовина справа, кирка слева
                 </label>
+            </div>
+            <div class="setting">
+                <div class="setting-label">Скорость</div>
+                <div class="setting-options" id="perfOptions">
+                    <button class="btn btn-secondary" data-perf="auto" onclick="setTouchPad('perf', 'auto')">Авто</button>
+                    <button class="btn btn-secondary" data-perf="fast" onclick="setTouchPad('perf', 'fast')">Быстро — для слабых устройств</button>
+                    <button class="btn btn-secondary" data-perf="quality" onclick="setTouchPad('perf', 'quality')">Красиво</button>
+                </div>
+                <div class="setting-note">«Быстро»: 30 кадров в секунду и обычная чёткость — меньше нагрузка и расход батареи. «Авто» включает его само на слабых телефонах.</div>
             </div>
             <div class="setting">
                 <div class="setting-label">Масштаб</div>
@@ -2489,7 +2534,17 @@
             "Почти прозрачные": "Nearly transparent",
             "Полупрозрачные": "Semi-transparent",
             "Плотные": "Solid",
-            "Для левой руки: крестовина справа, кирка слева": "Left-handed: D-pad on the right, pickaxe on the left"
+            "Для левой руки: крестовина справа, кирка слева": "Left-handed: D-pad on the right, pickaxe on the left",
+            "Сводка сверху": "Top summary",
+            "Обычная": "Normal",
+            "Крупная": "Large",
+            "Вибрация при уроне, обвале и взрыве": "Vibrate on damage, cave-ins and explosions",
+            "Не гасить экран во время игры": "Keep the screen on while playing",
+            "Скорость": "Performance",
+            "Авто": "Auto",
+            "Быстро — для слабых устройств": "Fast — for weaker devices",
+            "Красиво": "Pretty",
+            "«Быстро»: 30 кадров в секунду и обычная чёткость — меньше нагрузка и расход батареи. «Авто» включает его само на слабых телефонах.": "“Fast”: 30 frames per second and normal sharpness — less load and battery drain. “Auto” turns it on by itself on weak phones."
             };
         let LANG = 'ru';
 
@@ -2565,7 +2620,7 @@
                 h = tilesY * TILE_SIZE;
             }
             const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 0 ? devicePixelRatio : 1;
-            RENDER_SCALE = Math.min(2, Math.max(1, dpr));
+            RENDER_SCALE = typeof fastMode === 'function' && fastMode() ? 1 : Math.min(2, Math.max(1, dpr));
             const cw = Math.round(w * RENDER_SCALE), ch = Math.round(h * RENDER_SCALE);
             if (canvas.width !== cw || canvas.height !== ch) {
                 canvas.width = cw;
@@ -3660,6 +3715,7 @@
 
         function damage(amount, reason) {
             if (debug.on && debug.fly) return;     // в полёте отладки — бессмертие
+            if (amount >= 3) buzz(amount >= 20 ? 'heavy' : 'light');   // жар и газ по чуть-чуть — без вибрации
             health -= amount;
             lastDamageAt = hazardClock;
             damageFlash = Math.min(1, damageFlash + amount / 20 + 0.1);
@@ -3739,6 +3795,7 @@
             if (hazardRandom() >= CAVEIN_CHANCE) return;
             crumbling.push({ x, y, timer: CAVEIN_DELAY });
             showNotification(L('⚠️ Потолок трещит!'));
+            buzz('warn');
         }
 
         // Выпустить газ из кармана, к которому относится клетка (x, y)
@@ -5958,29 +6015,61 @@
         }
 
         // Краткая сводка поверх игры на телефоне (полная панель — по кнопке «☰»)
+        // Сводка сверху на телефоне: четыре «плашки» с иконками — здоровье (с полоской),
+        // глубина, рюкзак (с полоской заполнения), монеты. Размер — в настройках.
         function renderTouchHud() {
-            const depth = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN));
-            const text = L`❤ ${Math.ceil(health)}  ${depth} м  🎒 ${backpackCount()}/${backpackCapacity()}  ${stats.money}   `;
-            // холст на телефоне ужат — шрифт увеличиваем, чтобы на экране было ~13 px
             const scale = canvas.clientWidth ? LW / canvas.clientWidth : 1;
-            const size = Math.round(13 * scale);
+            let px = (settings.hudSize === 'large' ? 19 : 15);           // размер шрифта на экране
+            const depth = Math.floor(Math.max(0, player.y - DEPTH_ORIGIN));
+            const hpMax = maxHealth(), hp = Math.max(0, Math.ceil(health));
+            const bag = backpackCount(), cap = backpackCapacity();
+            const chips = [
+                { icon: '❤', text: String(hp), bar: hp / hpMax, barColor: hp <= hpMax * 0.3 ? '#ff5a5a' : hp <= hpMax * 0.6 ? '#ffd23c' : '#5ad25a', warn: hp <= hpMax * 0.3 },
+                { icon: '⛏', text: L`${depth} м` },
+                { icon: '🎒', text: `${bag}/${cap}`, bar: bag / cap, barColor: bag >= cap ? '#ff5a5a' : '#ffa500', warn: bag >= cap },
+                { icon: null, coin: true, text: String(stats.money) }
+            ];
             ctx.save();
-            ctx.font = `bold ${size}px "Courier New", monospace`;
-            const w = ctx.measureText ? ctx.measureText(text).width : 300;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-            ctx.fillRect(LW / 2 - w / 2 - 8, 4, w + 16, size * 1.6);
-            ctx.fillStyle = health <= 30 ? '#FF6B6B' : '#FFD27F';
-            ctx.textAlign = 'center';
-            ctx.fillText(text, LW / 2, 4 + size * 1.15);
-            // монета после суммы денег
-            const cx = LW / 2 + w / 2 - size * 0.55, cy = 4 + size * 0.8, r = size * 0.42;
-            ctx.beginPath();
-            ctx.arc(cx, cy, r, 0, Math.PI * 2);
-            ctx.fillStyle = '#F6C945';
-            ctx.fill();
-            ctx.lineWidth = Math.max(1, size * 0.08);
-            ctx.strokeStyle = '#8A5F0C';
-            ctx.stroke();
+            let size, pad, gap, widths, total;
+            const measure = () => {
+                size = Math.round(px * scale); pad = size * 0.45; gap = size * 0.35;
+                ctx.font = `bold ${size}px "Courier New", monospace`;
+                widths = chips.map(c => {
+                    const tw = ctx.measureText ? ctx.measureText(c.text).width : c.text.length * size * 0.6;
+                    return pad * 2 + size * 1.15 + tw;
+                });
+                total = widths.reduce((a, b) => a + b, 0) + gap * (chips.length - 1);
+            };
+            measure();
+            while (total > LW - 8 && px > 10) { px -= 1; measure(); }    // узкий экран — чуть мельче
+            const h = size * 1.75, top = 4;
+            let x = LW / 2 - total / 2;
+            const blink = Math.floor((typeof hazardClock === 'number' ? hazardClock : 0) * 3) & 1;
+            chips.forEach((c, k) => {
+                const w = widths[k];
+                ctx.fillStyle = c.warn && blink ? 'rgba(120, 20, 20, 0.75)' : 'rgba(0, 0, 0, 0.6)';
+                if (ctx.beginPath && ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, top, w, h, h * 0.3); ctx.fill(); }
+                else ctx.fillRect(x, top, w, h);
+                const ix = x + pad + size * 0.5, iy = top + h * 0.5 - (c.bar !== undefined ? size * 0.12 : 0);
+                if (c.coin) {
+                    ctx.beginPath(); ctx.arc(ix, iy, size * 0.42, 0, Math.PI * 2);
+                    ctx.fillStyle = '#F6C945'; ctx.fill();
+                    ctx.lineWidth = Math.max(1, size * 0.08); ctx.strokeStyle = '#8A5F0C'; ctx.stroke();
+                } else {
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillStyle = c.icon === '❤' ? '#ff5a5a' : '#FFD27F';
+                    ctx.fillText(c.icon, ix, iy);
+                }
+                ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = c.warn ? '#FF8A8A' : '#FFD27F';
+                ctx.fillText(c.text, x + pad + size * 1.15, iy);
+                if (c.bar !== undefined) {
+                    const bx = x + pad * 0.7, bw = w - pad * 1.4, by = top + h - size * 0.32, bh = Math.max(2, size * 0.16);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'; ctx.fillRect(bx, by, bw, bh);
+                    ctx.fillStyle = c.barColor; ctx.fillRect(bx, by, bw * Math.min(1, Math.max(0, c.bar)), bh);
+                }
+                x += w + gap;
+            });
             ctx.restore();
         }
 
@@ -6731,7 +6820,8 @@
         const NOTIFY_POSITIONS = ['top-right', 'top-left', 'top-center', 'bottom-right', 'bottom-left', 'bottom-center'];
         // вид радио и видео по умолчанию простой: граммофон и телевизор игрок включает сам
         const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false, zoom: 28, lang: null,
-            tpSize: 'medium', tpOpacity: 'half', tpSwap: false };
+            tpSize: 'medium', tpOpacity: 'half', tpSwap: false, hudSize: 'normal',
+            vibrate: true, keepAwake: true, perf: 'auto' };
         const RADIO_SKINS = ['plain', 'gramophone'];
         const VIDEO_SKINS = ['plain', 'tv'];
 
@@ -6745,6 +6835,10 @@
                 if (['small', 'medium', 'large'].includes(st.tpSize)) settings.tpSize = st.tpSize;
                 if (['faint', 'half', 'solid'].includes(st.tpOpacity)) settings.tpOpacity = st.tpOpacity;
                 settings.tpSwap = st.tpSwap === true;
+                if (st.hudSize === 'large' || st.hudSize === 'normal') settings.hudSize = st.hudSize;
+                if (typeof st.vibrate === 'boolean') settings.vibrate = st.vibrate;
+                if (typeof st.keepAwake === 'boolean') settings.keepAwake = st.keepAwake;
+                if (['auto', 'fast', 'quality'].includes(st.perf)) settings.perf = st.perf;
                 if (st.lang === 'ru' || st.lang === 'en') settings.lang = st.lang;
                 // ссылка с сайта: play/?lang=en — язык страницы сайта становится языком игры
                 const q = typeof location !== 'undefined' ? String(location.search || '').match(/[?&]lang=(ru|en)\b/) : null;
@@ -6789,20 +6883,75 @@
             if (document.querySelectorAll) {
                 document.querySelectorAll('#tpSizeOptions [data-tp-size]').forEach(b => b.classList.toggle('chosen', b.dataset.tpSize === settings.tpSize));
                 document.querySelectorAll('#tpOpacityOptions [data-tp-opacity]').forEach(b => b.classList.toggle('chosen', b.dataset.tpOpacity === settings.tpOpacity));
+                document.querySelectorAll('#hudSizeOptions [data-hud]').forEach(b => b.classList.toggle('chosen', b.dataset.hud === settings.hudSize));
+                document.querySelectorAll('#perfOptions [data-perf]').forEach(b => b.classList.toggle('chosen', b.dataset.perf === settings.perf));
             }
             const tps = document.getElementById('tpSwap');
             if (tps) tps.checked = settings.tpSwap;
+            const vb = document.getElementById('optVibrate'); if (vb) vb.checked = settings.vibrate;
+            const ka = document.getElementById('optKeepAwake'); if (ka) ka.checked = settings.keepAwake;
             if (document.querySelectorAll) document.querySelectorAll('#langOptions [data-lang]').forEach(b => b.classList.toggle('chosen', b.dataset.lang === LANG));
             const z = settings.zoom / TILE_SIZE;
             if (z !== ZOOM) { ZOOM = z; if (typeof fitCanvasForDevice === 'function') fitCanvasForDevice(); }
             restackNotifications();
         }
 
+        // ============ ТЕЛЕФОН: ВИБРАЦИЯ, ЭКРАН, СКОРОСТЬ ============
+        // Вибрация: в Telegram — его отклик (работает и на iPhone), иначе navigator.vibrate.
+        let lastBuzz = 0;
+        function buzz(kind) {
+            if (!settings.vibrate || !touchMode) return false;
+            const now = Date.now();
+            if (now - lastBuzz < 250) return false;          // не дребезжать каждый кадр
+            lastBuzz = now;
+            const tg = typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp;
+            if (tg && tg.HapticFeedback && typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('6.1')) {
+                try {
+                    if (kind === 'warn') tg.HapticFeedback.notificationOccurred('warning');
+                    else tg.HapticFeedback.impactOccurred(kind === 'heavy' ? 'heavy' : 'medium');
+                    return true;
+                } catch (e) { /* старый клиент */ }
+            }
+            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                navigator.vibrate(kind === 'heavy' ? [60, 40, 90] : kind === 'warn' ? [25, 60, 25] : 35);
+                return true;
+            }
+            return false;
+        }
+
+        // Не гасить экран: Screen Wake Lock (браузер сам отпускает его, когда вкладка скрыта)
+        let wakeLock = null;
+        async function keepAwake() {
+            if (!settings.keepAwake || !touchMode || typeof navigator === 'undefined' || !navigator.wakeLock) return false;
+            if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return false;
+            if (wakeLock) return true;
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                if (wakeLock && wakeLock.addEventListener) wakeLock.addEventListener('release', () => { wakeLock = null; });
+                return true;
+            } catch (e) { wakeLock = null; return false; }
+        }
+        function releaseAwake() {
+            if (wakeLock) { try { wakeLock.release(); } catch (e) { /* уже отпущен */ } wakeLock = null; }
+        }
+
+        // Скорость: «быстро» — обычная чёткость и 30 кадров в секунду
+        function lowEndDevice() {
+            if (typeof navigator === 'undefined') return false;
+            const mem = navigator.deviceMemory, cpu = navigator.hardwareConcurrency;
+            return (typeof mem === 'number' && mem <= 2) || (touchMode && typeof cpu === 'number' && cpu <= 4);
+        }
+        function fastMode() { return settings.perf === 'fast' || (settings.perf === 'auto' && lowEndDevice()); }
+
         // Кнопки на телефоне: размер, прозрачность, сторона
         function setTouchPad(what, value) {
             if (what === 'size' && ['small', 'medium', 'large'].includes(value)) settings.tpSize = value;
             else if (what === 'opacity' && ['faint', 'half', 'solid'].includes(value)) settings.tpOpacity = value;
             else if (what === 'swap') settings.tpSwap = !!value;
+            else if (what === 'hud' && ['normal', 'large'].includes(value)) settings.hudSize = value;
+            else if (what === 'vibrate') settings.vibrate = !!value;
+            else if (what === 'keepAwake') { settings.keepAwake = !!value; if (!settings.keepAwake) releaseAwake(); else keepAwake(); }
+            else if (what === 'perf' && ['auto', 'fast', 'quality'].includes(value)) { settings.perf = value; if (typeof fitCanvasForDevice === 'function') fitCanvasForDevice(); }
             else return false;
             saveSettings(); applySettings();
             return true;
@@ -6918,7 +7067,11 @@
         // следующий кадр запрашивается в любом случае, а об ошибке сообщается один раз
         let loopErrorShown = false;
 
+        let lastDrawn = 0;
         function gameLoop(currentTime) {
+            // «быстро» — не чаще 30 кадров в секунду
+            if (fastMode() && currentTime - lastDrawn < 31) { requestAnimationFrame(gameLoop); return; }
+            lastDrawn = currentTime;
             try {
                 gameFrame(currentTime);
             } catch (err) {
@@ -7160,7 +7313,17 @@
             const panel = document.getElementById('radioPanel');
             const show = open === undefined ? !panel.classList.contains('open') : open;
             panel.classList.toggle('open', show);
+            if (show && touchMode) videoPanelToggle(false);            // на телефоне — одна шторка за раз
+            updateSheet();
             return show;
+        }
+
+        // Шторка снизу на телефоне: пока открыта, кнопки управления спрятаны
+        function updateSheet() {
+            if (typeof document === 'undefined' || !document.body || !document.body.classList) return;
+            const r = document.getElementById('radioPanel'), v = document.getElementById('videoPanel');
+            const open = !!((r && r.classList.contains('open')) || (v && v.classList.contains('open')));
+            document.body.classList.toggle('sheet-open', touchMode && open);
         }
 
         // Значок поверх игры, пока играет радио
@@ -7342,6 +7505,8 @@
             const show = open === undefined ? !panel.classList.contains('open') : open;
             panel.classList.toggle('open', show);
             if (!show && video.on) videoStop();
+            if (show && touchMode) radioPanelToggle(false);
+            if (typeof updateSheet === 'function') updateSheet();
             return show;
         }
 
@@ -7580,6 +7745,7 @@
         window.addEventListener('pagehide', autoSave);
         if (typeof document.addEventListener === 'function') {
             document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && typeof keepAwake === 'function') keepAwake();
                 if (document.visibilityState === 'hidden') { releaseAllKeys(); autoSave(); }
             });
         }
@@ -7630,6 +7796,10 @@
         }
         loadSettings();
         applySettings();
+        if (typeof window !== 'undefined' && window.addEventListener) {
+            window.addEventListener('pointerdown', () => keepAwake(), { passive: true });
+        }
+
         loadAchievements();
         loadSprites();
         fitCanvasForDevice();      // масштаб и чёткость — сразу при запуске
