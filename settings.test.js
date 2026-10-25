@@ -95,7 +95,8 @@ check('по умолчанию: средние, полупрозрачные, к
 g.run("setTouchPad('size', 'small'); setTouchPad('opacity', 'faint'); setTouchPad('swap', true);");
 check('мелкие, почти прозрачные, для левой руки — классы на странице', g.body.classList.contains('tp-small') && g.body.classList.contains('tp-faint') && g.body.classList.contains('tp-swap'));
 check('в CSS: левша — крестовина справа, кирка слева', /body\.tp-swap #touchLeft \{ left: auto; right:/.test(html) && /body\.tp-swap #touchRight \{ right: auto; left:/.test(html));
-check('крупные ограничены шириной экрана — панели не наезжают', /tp-large \{ --tb: clamp\(42px, calc\(\(100vw - 64px\) \/ 6\)/.test(html));
+check('крупные ограничены шириной экрана — панели не наезжают', /tp-large \{ --tb: clamp\(40px, calc\(\(100vw - 96px\) \/ 6\)/.test(html));
+check('кнопки отодвинуты от краёв — зоны системных жестов', /--edge: 28px;/.test(html) && /#touchLeft \{\s*left: calc\(var\(--edge/.test(html) && /#touchRight \{\s*right: calc\(var\(--edge/.test(html));
 check('запоминается', (() => { const g2 = boot(g.store); return g2.body.classList.contains('tp-small') && g2.body.classList.contains('tp-swap'); })());
 check('чужие значения — нет', g.run("setTouchPad('size', 'huge')") === false && g.run("setTouchPad('color', 'red')") === false && g.run('settings.tpSize') === 'small');
 check('в настройках — только на сенсорном экране', /<div class="setting touch-only">\s*<div class="setting-label">Кнопки на телефоне/.test(html) && /body\.touch \.touch-only \{ display: block; \}/.test(html));

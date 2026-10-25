@@ -1438,26 +1438,31 @@
         }
 
         /* размер кнопки подстраивается под ширину экрана, чтобы две панели не наезжали */
+        /* У краёв экрана телефона — зона системных жестов («назад» слева и справа, «домой» снизу):
+           касание там телефон придерживает, пока решает, не жест ли это, — кнопка срабатывает
+           с задержкой. Поэтому кнопки отодвинуты от краёв на --edge. Размер кнопки подобран так,
+           чтобы обе панели с отступами помещались рядом: 6 кнопок + промежутки + края ≤ ширины. */
         body.touch {
-            --tb: clamp(42px, calc((100vw - 56px) / 6.4), 64px);
+            --edge: 28px;
+            --tb: clamp(40px, calc((100vw - 96px) / 6), 64px);
         }
 
         .touch-pad {
             position: fixed;
-            bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+            bottom: calc(16px + env(safe-area-inset-bottom, 0px));
             z-index: 800;
             display: grid;
             gap: 8px;
         }
 
         #touchLeft {
-            left: calc(10px + env(safe-area-inset-left, 0px));
+            left: calc(var(--edge, 10px) + env(safe-area-inset-left, 0px));
             grid-template-columns: repeat(3, var(--tb));
             grid-template-rows: repeat(3, var(--tb));
         }
 
         #touchRight {
-            right: calc(10px + env(safe-area-inset-right, 0px));
+            right: calc(var(--edge, 10px) + env(safe-area-inset-right, 0px));
             grid-template-columns: repeat(3, var(--tb));
             grid-template-rows: repeat(3, var(--tb));
         }
@@ -1489,13 +1494,13 @@
         }
 
         /* настройки кнопок на телефоне: размер, прозрачность, сторона (для левшей) */
-        body.touch.tp-small { --tb: clamp(36px, calc((100vw - 56px) / 7.8), 52px); }
-        body.touch.tp-large { --tb: clamp(42px, calc((100vw - 64px) / 6), 74px); }   /* обе панели помещаются рядом */
+        body.touch.tp-small { --tb: clamp(34px, calc((100vw - 96px) / 7.4), 52px); }
+        body.touch.tp-large { --tb: clamp(40px, calc((100vw - 96px) / 6), 76px); }   /* вертикально упирается в ширину; горизонтально — крупнее */
         body.tp-faint .tbtn { background: rgba(30, 30, 30, 0.18); border-color: rgba(255, 165, 0, 0.35); color: rgba(255, 210, 127, 0.75); }
         body.tp-solid .tbtn { background: rgba(30, 30, 30, 0.88); border-color: rgba(255, 165, 0, 0.85); }
         body.tp-faint .tbtn.down, body.tp-faint .tbtn.on { background: rgba(255, 165, 0, 0.45); color: #000; }
-        body.tp-swap #touchLeft { left: auto; right: calc(10px + env(safe-area-inset-right, 0px)); }
-        body.tp-swap #touchRight { right: auto; left: calc(10px + env(safe-area-inset-left, 0px)); }
+        body.tp-swap #touchLeft { left: auto; right: calc(var(--edge, 10px) + env(safe-area-inset-right, 0px)); }
+        body.tp-swap #touchRight { right: auto; left: calc(var(--edge, 10px) + env(safe-area-inset-left, 0px)); }
         .touch-only { display: none; }
         body.touch .touch-only { display: block; }
 
@@ -1932,6 +1937,14 @@
                 <label class="setting-check">
                     <input type="checkbox" id="tpSwap" onchange="setTouchPad('swap', this.checked)">
                     Для левой руки: крестовина справа, кирка слева
+                </label>
+            </div>
+            <div class="setting">
+                <div class="setting-label">Звук</div>
+                <label class="setting-check"><input type="checkbox" id="optSound" onchange="setSound('sound', this.checked)" checked> Звуки игры</label>
+                <label class="setting-check"><input type="checkbox" id="optAmbience" onchange="setSound('ambience', this.checked)" checked> Фон шахты: гул и капли</label>
+                <label class="radio-volume">Громкость
+                    <input type="range" id="optVolume" min="0" max="100" step="1" value="60" oninput="setSound('volume', this.value)">
                 </label>
             </div>
             <div class="setting">
@@ -2544,7 +2557,11 @@
             "Авто": "Auto",
             "Быстро — для слабых устройств": "Fast — for weaker devices",
             "Красиво": "Pretty",
-            "«Быстро»: 30 кадров в секунду и обычная чёткость — меньше нагрузка и расход батареи. «Авто» включает его само на слабых телефонах.": "“Fast”: 30 frames per second and normal sharpness — less load and battery drain. “Auto” turns it on by itself on weak phones."
+            "«Быстро»: 30 кадров в секунду и обычная чёткость — меньше нагрузка и расход батареи. «Авто» включает его само на слабых телефонах.": "“Fast”: 30 frames per second and normal sharpness — less load and battery drain. “Auto” turns it on by itself on weak phones.",
+            "Звук": "Sound",
+            "Звуки игры": "Game sounds",
+            "Фон шахты: гул и капли": "Mine ambience: rumble and drips",
+            "Громкость": "Volume"
             };
         let LANG = 'ru';
 
@@ -3264,7 +3281,7 @@
                 return false;
             }
             setBlock(cx, cy, BLOCK_TYPES.LADDER);
-            ladders--;
+            ladders--; sfx('place');
             updateUI();
             return true;
         }
@@ -3283,7 +3300,7 @@
                 setBlock(fx, fy + n, BLOCK_TYPES.ROPE);
                 n++;
             }
-            ropes--;
+            ropes--; sfx('rope');
             showNotification(L`🧗 Верёвка спущена на ${n} м`);
             updateUI();
             return n;
@@ -3315,7 +3332,7 @@
                 return 0;
             }
             for (const cx of cells) setBlock(cx, row, BLOCK_TYPES.BRIDGE);
-            ropes--;
+            ropes--; sfx('rope');
             showNotification(L`🧗 Переправа натянута: ${cells.length} м`);
             updateUI();
             return cells.length;
@@ -3431,6 +3448,7 @@
 
         function rideCage() {
             trip.gear = true;
+            sfx('cage');
             const depth = currentDepth();
             if (depth < CAGE_MIN_DEPTH) return false;
             const cost = cageCost(depth);
@@ -3456,7 +3474,7 @@
 
         function buyLadders() {
             if (stats.money < LADDER_PACK.price) { showNotification(L`💰 Не хватает ${LADDER_PACK.price - stats.money} ¤`); return false; }
-            stats.money -= LADDER_PACK.price;
+            stats.money -= LADDER_PACK.price; sfx('buy');
             ladders = Math.min(MAX_GEAR, ladders + LADDER_PACK.count);
             showNotification(L`🧗 Куплено ${LADDER_PACK.count} лестниц`);
             updateUI(); renderShopList();
@@ -3473,6 +3491,7 @@
             if (lampLit) { showNotification(L('🔥 Лампа и так горит')); return false; }
             if (matches <= 0) { showNotification(L('🔥 Спичек нет — купи коробок в лавке')); return false; }
             matches--;
+            sfx('match');
             const px = player.x + PLAYER_W / 2, py = player.y + 0.5;
             const cloud = gasClouds.find(g => Math.hypot(px - g.x, py - g.y) < g.radius);
             if (cloud) {
@@ -3489,7 +3508,7 @@
 
         function buyMatches() {
             if (stats.money < MATCHES_PACK.price) { showNotification(L`💰 Не хватает ${MATCHES_PACK.price - stats.money} ¤`); return false; }
-            stats.money -= MATCHES_PACK.price;
+            stats.money -= MATCHES_PACK.price; sfx('buy');
             matches = Math.min(MAX_GEAR, matches + MATCHES_PACK.count);
             showNotification(L`🔥 Куплен коробок спичек: ${MATCHES_PACK.count} шт.`);
             updateUI(); renderShopList();
@@ -3498,7 +3517,7 @@
 
         function buyRope() {
             if (stats.money < ROPE_PRICE) { showNotification(L`💰 Не хватает ${ROPE_PRICE - stats.money} ¤`); return false; }
-            stats.money -= ROPE_PRICE;
+            stats.money -= ROPE_PRICE; sfx('buy');
             ropes = Math.min(MAX_GEAR, ropes + 1);
             showNotification(L('🧗 Куплена верёвка'));
             updateUI(); renderShopList();
@@ -3515,6 +3534,7 @@
             if (fallTop !== null) {
                 const drop = player.y - fallTop;
                 fallTop = null;
+                if (drop > 1.5) sfx('land');
                 if (drop > SAFE_FALL) {
                     if (lampShines() && LAMPS[lampTier].open) {
                         lampLit = false;
@@ -3715,7 +3735,7 @@
 
         function damage(amount, reason) {
             if (debug.on && debug.fly) return;     // в полёте отладки — бессмертие
-            if (amount >= 3) buzz(amount >= 20 ? 'heavy' : 'light');   // жар и газ по чуть-чуть — без вибрации
+            if (amount >= 3) { buzz(amount >= 20 ? 'heavy' : 'light'); sfx('hurt'); }   // жар и газ по чуть-чуть — без вибрации и звука
             health -= amount;
             lastDamageAt = hazardClock;
             damageFlash = Math.min(1, damageFlash + amount / 20 + 0.1);
@@ -3725,6 +3745,7 @@
 
         function die(reason) {
             run.deaths++;
+            sfx('death');
             trip.maxDepth = 0; trip.gear = true;   // смерть — не «выбрался сам»
             run.reachedBottom = false;          // «вернуться живым»: дно засчитывается заново
             if (mode.hardcore && mode.variant === 'oneLife') { hardcoreGameOver(reason); return; }
@@ -3796,6 +3817,7 @@
             crumbling.push({ x, y, timer: CAVEIN_DELAY });
             showNotification(L('⚠️ Потолок трещит!'));
             buzz('warn');
+            sfx('crack');
         }
 
         // Выпустить газ из кармана, к которому относится клетка (x, y)
@@ -3823,6 +3845,7 @@
                 return cells.length;
             }
             gasClouds.push({ x: mx, y: my, radius, age: 0 });
+            sfx('gas');
             showNotification(L('☣️ Рудничный газ! Отойди подальше'));
             return cells.length;
         }
@@ -3837,6 +3860,7 @@
                     }
                 }
             lampLit = false;
+            sfx('boom');
             damageFlash = 1;
             showNotification(L('💥 Открытая лампа подожгла рудничный газ! Лампа погасла'));
             const deathsBefore = run.deaths;
@@ -3871,6 +3895,7 @@
                     if (type === BLOCK_TYPES.STONE || type === BLOCK_TYPES.CLAY) {
                         setBlock(c.x, c.y, BLOCK_TYPES.AIR);
                         fallingBlocks.push({ x: c.x, y: c.y, vy: 0, type });
+                        sfx('cavein');
                         maybeCrumble(c.x, c.y - 1);      // обвал может пойти дальше вверх
                     }
                 }
@@ -3921,7 +3946,7 @@
             const b = BELTS[tier];
             if (!b || tier <= beltTier) return false;
             if (stats.money < b.price) { showNotification(L`💰 Не хватает ${b.price - stats.money} ¤`); return false; }
-            stats.money -= b.price;
+            stats.money -= b.price; sfx('buy');
             beltTier = tier;
             showNotification(L`🩹 ${b.name}: ${b.bandages} бинтов и ${b.medkits} аптечки`);
             updateUI(); renderShopList();
@@ -3946,7 +3971,7 @@
             const amount = item === 'medkit' ? MEDKIT.heal : BANDAGE.heal;
             if (item === 'medkit') medkits--; else bandages--;
             const before = health;
-            health = Math.min(maxHealth(), health + amount);
+            health = Math.min(maxHealth(), health + amount); sfx('heal');
             lastHealAt = hazardClock;
             showNotification(L`${item === 'medkit' ? L('✚ Аптечка') : L('🩹 Бинт')}: +${Math.round(health - before)} здоровья`);
             updateUI();
@@ -3961,7 +3986,7 @@
                 return false;
             }
             if (stats.money < m.price) { showNotification(L`💰 Не хватает ${m.price - stats.money} ¤`); return false; }
-            stats.money -= m.price;
+            stats.money -= m.price; sfx('buy');
             if (kind === 'medkit') medkits = Math.min(MAX_MEDS, medkits + 1);
             else bandages = Math.min(MAX_MEDS, bandages + 1);
             updateUI(); renderShopList();
@@ -4221,6 +4246,7 @@
             if (c.bite > 0 || lampScares(c)) return;
             if (!boxesOverlap(creatureBox(c), playerBox())) return;
             c.bite = BITE_COOLDOWN / (mode.fierce ? HC_FIERCE_MULT : 1);
+            sfx(c.type === 'rat' ? 'rat' : c.type === 'salamander' ? 'spit' : c.type);
             if (c.type === 'rat') {
                 stealOre(c);
             } else {
@@ -4369,6 +4395,7 @@
         function killCreature(c) {
             c.hp = 0;
             run.kills++;
+            sfx('squash');
             if (c.type === 'rat') countUp('rat');
             if (c.type === 'spider') countUp('spider');
             if (c.type === 'salamander') unlock('salamander');
@@ -4392,6 +4419,7 @@
             for (let dy = -CANARY_RADIUS; dy <= CANARY_RADIUS && !canaryAlarm; dy++)
                 for (let dx = -CANARY_RADIUS; dx <= CANARY_RADIUS; dx++)
                     if (getBlock(cx + dx, cy + dy) === BLOCK_TYPES.GAS) { canaryAlarm = true; break; }
+            if (canaryAlarm) sfx('chirp');
             if (canaryAlarm && !was) showNotification(L('🐤 Канарейка беспокоится — где-то рядом газ!'));
             // в облаке газа канарейка гибнет — настоящая шахтёрская примета
             for (const g of gasClouds) {
@@ -4449,7 +4477,7 @@
             const l = LAMPS[tier];
             if (!l || tier <= lampTier) return false;
             if (stats.money < l.price) { showNotification(L`💰 Не хватает ${l.price - stats.money} ¤`); return false; }
-            stats.money -= l.price;
+            stats.money -= l.price; sfx('buy');
             lampTier = tier;
             lampLit = true;
             showNotification(tier === 2 ? L('🔦 Куплена лампа Дэви: не гаснет и не поджигает газ') : L('🔦 Куплена открытая лампа: береги её от падений и газа'));
@@ -4460,7 +4488,7 @@
         function buyCanary() {
             if (hasCanary) return false;
             if (stats.money < CANARY_PRICE) { showNotification(L`💰 Не хватает ${CANARY_PRICE - stats.money} ¤`); return false; }
-            stats.money -= CANARY_PRICE;
+            stats.money -= CANARY_PRICE; sfx('buy');
             hasCanary = true;
             showNotification(L('🐤 Куплена канарейка: она забеспокоится рядом с газом'));
             updateUI(); renderShopList();
@@ -4638,7 +4666,7 @@
             const b = BACKPACKS[tier];
             if (!b || tier <= backpackTier) return false;
             if (stats.money < b.price) { showNotification(L`💰 Не хватает ${b.price - stats.money} ¤`); return false; }
-            stats.money -= b.price;
+            stats.money -= b.price; sfx('buy');
             backpackTier = tier;
             showNotification(L`🎒 Куплен ${b.name.toLowerCase()}: ${b.capacity} мест`);
             updateUI(); renderShopList();
@@ -4793,6 +4821,7 @@
             const a = ACHIEVEMENTS.find(x => x.id === id);
             if (!a || ach.got[id]) return false;
             ach.got[id] = Date.now();
+            sfx('achievement');
             saveAchievements();
             showNotification(L`🏅 Достижение: ${a.name}`);
             renderAchievements();
@@ -4957,6 +4986,7 @@
         // Финальный экран
         function showFinal(title, reason) {
             gameState.paused = true;
+            if (!gameOver) sfx('fanfare');
             document.getElementById('finalTitle').textContent = title || L('🏆 Цель выполнена!');
             const cont = document.getElementById('finalContinue');
             if (cont && cont.style) cont.style.display = gameOver ? 'none' : '';
@@ -5048,7 +5078,7 @@
             if (have < need) { showNotification(L`${info.emoji} Мало очков: ${Math.floor(have)} из ${need}`); return false; }
             const price = tonicPrice(stat);
             if (stats.money < price) { showNotification(L`💰 Не хватает ${price - stats.money} ¤`); return false; }
-            stats.money -= price;
+            stats.money -= price; sfx('buy');
             hero[stat + 'Pts'] = Math.round((have - need) * 10) / 10;
             hero[stat]++;
             if (stat === 'end') health = Math.min(maxHealth(), health + 10);
@@ -5114,6 +5144,7 @@
             const earned = backpackValue();
             const count = backpackCount();
             if (count === 0) return 0;
+            sfx('coins');
             addPoints('str', backpackWeight());
             run.earned += earned;
             run.platinumSold += backpack.platinum || 0;
@@ -5146,7 +5177,7 @@
                 showNotification(L`💰 Не хватает ${p.price - stats.money} ¤`);
                 return false;
             }
-            stats.money -= p.price;
+            stats.money -= p.price; sfx('buy');
             pickaxeTier = tier;
             if (tier === 3) unlock('diamondPick');
             resetDig();
@@ -5164,7 +5195,7 @@
                 showNotification(L`💰 Не хватает ${sh.price - stats.money} ¤`);
                 return false;
             }
-            stats.money -= sh.price;
+            stats.money -= sh.price; sfx('buy');
             shovelTier = tier;
             resetDig();
             showNotification(L`🛠️ Куплена ${sh.name.toLowerCase()}`);
@@ -5470,6 +5501,7 @@
                 return;
             }
             digState.progress += dt / digTime(block, t.x, t.y);
+            sfx('hit', SOFT[block] !== undefined ? 'soft' : (ORES[block] ? 'ore' : 'hard'));
             if (digState.progress >= 1) {
                 breakBlock(t.x, t.y);
                 resetDig();
@@ -5504,10 +5536,11 @@
             if (block === BLOCK_TYPES.BRIDGE) { takeBridge(targetX, targetY); updateUI(); return; }
             if (block === BLOCK_TYPES.WEB) { setBlock(targetX, targetY, BLOCK_TYPES.AIR); return; }
             addPoints('end', SOFT[block] !== undefined ? 0.5 : 1);
+            sfx('break');
 
             if (block !== BLOCK_TYPES.AIR && block !== BLOCK_TYPES.BEDROCK) {
                 const result = addToBackpack(block);
-            if (result === 'added' || result === 'swapped') onOreMined(block);
+            if (result === 'added' || result === 'swapped') { onOreMined(block); sfx('ore'); }
                 if (result === 'added') {
                     addScore(ORES[block].score);
                     if (backpackCount() === backpackCapacity()) {
@@ -6821,7 +6854,7 @@
         // вид радио и видео по умолчанию простой: граммофон и телевизор игрок включает сам
         const settings = { notify: 'top-right', swap: false, radioSkin: 'plain', videoSkin: 'plain', showControls: false, zoom: 28, lang: null,
             tpSize: 'medium', tpOpacity: 'half', tpSwap: false, hudSize: 'normal',
-            vibrate: true, keepAwake: true, perf: 'auto' };
+            vibrate: true, keepAwake: true, perf: 'auto', sound: true, ambience: true, volume: 0.6 };
         const RADIO_SKINS = ['plain', 'gramophone'];
         const VIDEO_SKINS = ['plain', 'tv'];
 
@@ -6839,6 +6872,9 @@
                 if (typeof st.vibrate === 'boolean') settings.vibrate = st.vibrate;
                 if (typeof st.keepAwake === 'boolean') settings.keepAwake = st.keepAwake;
                 if (['auto', 'fast', 'quality'].includes(st.perf)) settings.perf = st.perf;
+                if (typeof st.sound === 'boolean') settings.sound = st.sound;
+                if (typeof st.ambience === 'boolean') settings.ambience = st.ambience;
+                if (Number.isFinite(st.volume) && st.volume >= 0 && st.volume <= 1) settings.volume = st.volume;
                 if (st.lang === 'ru' || st.lang === 'en') settings.lang = st.lang;
                 // ссылка с сайта: play/?lang=en — язык страницы сайта становится языком игры
                 const q = typeof location !== 'undefined' ? String(location.search || '').match(/[?&]lang=(ru|en)\b/) : null;
@@ -6889,11 +6925,180 @@
             const tps = document.getElementById('tpSwap');
             if (tps) tps.checked = settings.tpSwap;
             const vb = document.getElementById('optVibrate'); if (vb) vb.checked = settings.vibrate;
+            const so = document.getElementById('optSound'); if (so) so.checked = settings.sound;
+            const am = document.getElementById('optAmbience'); if (am) am.checked = settings.ambience;
+            const vo = document.getElementById('optVolume'); if (vo) vo.value = Math.round(settings.volume * 100);
             const ka = document.getElementById('optKeepAwake'); if (ka) ka.checked = settings.keepAwake;
             if (document.querySelectorAll) document.querySelectorAll('#langOptions [data-lang]').forEach(b => b.classList.toggle('chosen', b.dataset.lang === LANG));
             const z = settings.zoom / TILE_SIZE;
             if (z !== ZOOM) { ZOOM = z; if (typeof fitCanvasForDevice === 'function') fitCanvasForDevice(); }
             restackNotifications();
+        }
+
+        // ============ ЗВУК ============
+        // Все звуки создаются кодом (Web Audio) — без файлов: шум через фильтры и тоны.
+        // Браузеры разрешают звук только после касания или клавиши — звук включается на первом
+        // нажатии. Фон шахты свой в каждом пласте: гул и капли, на Огненном дне — треск.
+        const SFX = { ctx: null, master: null, amb: null, ambNodes: null, noise: null, ambBiome: -1, nextDrip: 0, last: {} };
+
+        function sfxReady() {
+            if (SFX.ctx) return SFX.ctx.state !== 'closed';
+            const AC = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+            if (!AC) return false;
+            try {
+                SFX.ctx = new AC();
+                SFX.master = SFX.ctx.createGain();
+                SFX.master.connect(SFX.ctx.destination);
+                SFX.amb = SFX.ctx.createGain();
+                SFX.amb.gain.value = 0;
+                SFX.amb.connect(SFX.master);
+                const len = SFX.ctx.sampleRate;                 // секунда белого шума — на все звуки
+                SFX.noise = SFX.ctx.createBuffer(1, len, len);
+                const d = SFX.noise.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+                sfxVolume();
+                return true;
+            } catch (e) { SFX.ctx = null; return false; }
+        }
+
+        function sfxVolume() {
+            if (!SFX.master) return;
+            SFX.master.gain.value = settings.sound ? settings.volume : 0;
+        }
+
+        // Первое касание или клавиша — разбудить звук (политика автозапуска браузеров)
+        function sfxUnlock() {
+            if (!settings.sound || !sfxReady()) return;
+            if (SFX.ctx.state === 'suspended' && SFX.ctx.resume) SFX.ctx.resume().catch(() => {});
+        }
+
+        function sfxNoise({ dur = 0.15, type = 'lowpass', freq = 1000, q = 1, gain = 0.3, attack = 0.002, at = 0, out } = {}) {
+            const c = SFX.ctx, t = c.currentTime + at;
+            const src = c.createBufferSource(); src.buffer = SFX.noise;
+            const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+            const g = c.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(gain, t + attack);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            src.connect(f); f.connect(g); g.connect(out || SFX.master);
+            src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.05);
+        }
+
+        function sfxTone({ freq = 440, to, type = 'sine', dur = 0.12, gain = 0.2, at = 0, out } = {}) {
+            const c = SFX.ctx, t = c.currentTime + at;
+            const o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, t);
+            if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+            const g = c.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(gain, t + 0.005);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            o.connect(g); g.connect(out || SFX.master);
+            o.start(t); o.stop(t + dur + 0.05);
+        }
+
+        // Звук события. Повторы одного звука чаще minGap секунд не играются.
+        const SFX_GAP = { step: 0.22, climb: 0.25, hurt: 0.25, hit: 0.2, crack: 0.3, cavein: 0.4, chirp: 0.6, heat: 0.5 };
+        function sfx(name, arg) {
+            if (!settings.sound || !SFX.ctx || SFX.ctx.state !== 'running') return false;
+            const now = SFX.ctx.currentTime, gap = SFX_GAP[name] || 0.03;
+            if (SFX.last[name] !== undefined && now - SFX.last[name] < gap) return false;
+            SFX.last[name] = now;
+            const r = (a, b) => a + Math.random() * (b - a);
+            switch (name) {
+                case 'hit':        // удар инструментом: мягкая порода, камень, руда
+                    if (arg === 'soft') sfxNoise({ dur: 0.09, freq: r(500, 700), gain: 0.25 });
+                    else { sfxNoise({ dur: 0.07, type: 'bandpass', freq: r(1600, 2200), q: 3, gain: 0.35 }); sfxTone({ freq: r(180, 220), to: 90, dur: 0.06, gain: 0.15 }); }
+                    if (arg === 'ore') sfxTone({ freq: r(1700, 1900), to: 1500, type: 'triangle', dur: 0.12, gain: 0.08 });
+                    return true;
+                case 'break':      sfxNoise({ dur: 0.18, freq: 900, gain: 0.35 }); sfxTone({ freq: 140, to: 60, dur: 0.15, gain: 0.25 }); return true;
+                case 'ore':        sfxTone({ freq: 660, dur: 0.07, gain: 0.12, type: 'triangle' }); sfxTone({ freq: 990, dur: 0.1, gain: 0.12, type: 'triangle', at: 0.07 }); return true;
+                case 'coins':      [1320, 1760, 2093, 1760, 2349].forEach((f, i) => sfxTone({ freq: f, dur: 0.12, gain: 0.1, type: 'triangle', at: i * 0.06 })); return true;
+                case 'buy':        sfxTone({ freq: 523, dur: 0.09, gain: 0.12, type: 'square' }); sfxTone({ freq: 784, dur: 0.14, gain: 0.12, type: 'square', at: 0.08 }); return true;
+                case 'deny':       sfxTone({ freq: 220, to: 180, dur: 0.16, gain: 0.12, type: 'square' }); return true;
+                case 'step':       sfxNoise({ dur: 0.05, freq: r(300, 450), gain: 0.1 }); return true;
+                case 'climb':      sfxTone({ freq: r(260, 320), to: 200, dur: 0.05, gain: 0.08, type: 'triangle' }); return true;
+                case 'land':       sfxNoise({ dur: 0.12, freq: 350, gain: 0.25 }); sfxTone({ freq: 110, to: 55, dur: 0.12, gain: 0.25 }); return true;
+                case 'place':      sfxTone({ freq: 330, to: 240, dur: 0.07, gain: 0.15, type: 'triangle' }); sfxNoise({ dur: 0.05, freq: 1200, gain: 0.1 }); return true;
+                case 'rope':       sfxNoise({ dur: 0.35, type: 'bandpass', freq: 2500, q: 0.7, gain: 0.12, attack: 0.05 }); return true;
+                case 'crack':      for (let i = 0; i < 4; i++) sfxNoise({ dur: 0.03, type: 'highpass', freq: 2500, gain: 0.25, at: r(0, 0.35) }); return true;
+                case 'cavein':     sfxNoise({ dur: 1.1, freq: 250, gain: 0.45, attack: 0.03 }); sfxTone({ freq: 70, to: 35, dur: 0.9, gain: 0.3 }); return true;
+                case 'gas':        sfxNoise({ dur: 1.2, type: 'highpass', freq: 3000, gain: 0.18, attack: 0.08 }); return true;
+                case 'boom':       sfxNoise({ dur: 1.4, freq: 400, gain: 0.7, attack: 0.005 }); sfxTone({ freq: 90, to: 30, dur: 1.0, gain: 0.5 }); return true;
+                case 'match':      sfxNoise({ dur: 0.25, type: 'highpass', freq: 2000, gain: 0.2, attack: 0.01 }); sfxNoise({ dur: 0.5, type: 'bandpass', freq: 600, q: 0.8, gain: 0.08, at: 0.12, attack: 0.05 }); return true;
+                case 'hurt':       sfxTone({ freq: 240, to: 110, dur: 0.16, gain: 0.18, type: 'square' }); return true;
+                case 'death':      [392, 330, 262, 196].forEach((f, i) => sfxTone({ freq: f, dur: 0.22, gain: 0.15, type: 'triangle', at: i * 0.18 })); return true;
+                case 'heal':       sfxTone({ freq: 523, to: 784, dur: 0.25, gain: 0.12 }); return true;
+                case 'rat':        sfxTone({ freq: 2400, to: 3000, dur: 0.06, gain: 0.08 }); sfxTone({ freq: 2600, to: 3200, dur: 0.06, gain: 0.08, at: 0.09 }); return true;
+                case 'bat':        sfxTone({ freq: 3200, to: 2400, dur: 0.08, gain: 0.07, type: 'sawtooth' }); return true;
+                case 'spider':     sfxNoise({ dur: 0.18, type: 'highpass', freq: 4000, gain: 0.12 }); return true;
+                case 'spit':       sfxNoise({ dur: 0.25, type: 'bandpass', freq: 900, q: 1.5, gain: 0.2 }); sfxTone({ freq: 400, to: 150, dur: 0.2, gain: 0.1, type: 'sawtooth' }); return true;
+                case 'squash':     sfxTone({ freq: 300, to: 80, dur: 0.12, gain: 0.15, type: 'square' }); return true;
+                case 'chirp':      [2600, 3100, 2600].forEach((f, i) => sfxTone({ freq: f, to: f * 1.15, dur: 0.05, gain: 0.07, at: i * 0.08 })); return true;
+                case 'cage':       for (let i = 0; i < 5; i++) sfxTone({ freq: r(700, 900), dur: 0.05, gain: 0.07, type: 'square', at: i * 0.07 }); return true;
+                case 'achievement':[523, 659, 784, 1047].forEach((f, i) => sfxTone({ freq: f, dur: 0.18, gain: 0.12, type: 'triangle', at: i * 0.1 })); return true;
+                case 'fanfare':    [523, 659, 784, 1047, 784, 1047].forEach((f, i) => sfxTone({ freq: f, dur: 0.25, gain: 0.13, type: 'square', at: i * 0.14 })); return true;
+            }
+            return false;
+        }
+
+        // Фон шахты: гул (шум через фильтр) — свой у каждого пласта; капли — случайно
+        const AMBIENCE = [
+            { freq: 180, q: 0.6, gain: 0.05, drip: 6 },     // Песчаный пласт — тихий шорох
+            { freq: 120, q: 0.8, gain: 0.06, drip: 2.5 },   // Глиняные штольни — сыро, капли чаще
+            { freq: 80,  q: 1.2, gain: 0.07, drip: 4 },     // Гранитные недра — глухой гул
+            { freq: 60,  q: 0.9, gain: 0.09, drip: 0, crackle: true }   // Огненное дно — рокот и треск
+        ];
+        function updateAmbience(dt) {
+            if (!SFX.ctx || SFX.ctx.state !== 'running') return;
+            const underground = settings.sound && settings.ambience && !gameState.paused && player.y >= SURFACE_Y + 2;
+            const target = underground ? 1 : 0;
+            const t = SFX.ctx.currentTime;
+            SFX.amb.gain.setTargetAtTime(target, t, 0.6);
+            if (!underground) return;
+            const bi = biomeIndexAt(Math.max(0, player.y - DEPTH_ORIGIN));
+            const a = AMBIENCE[bi] || AMBIENCE[0];
+            if (!SFX.ambNodes) {
+                const src = SFX.ctx.createBufferSource(); src.buffer = SFX.noise; src.loop = true;
+                const f = SFX.ctx.createBiquadFilter(); f.type = 'lowpass';
+                const g = SFX.ctx.createGain(); g.gain.value = 0;
+                src.connect(f); f.connect(g); g.connect(SFX.amb); src.start();
+                SFX.ambNodes = { src, f, g };
+            }
+            if (SFX.ambBiome !== bi) {
+                SFX.ambBiome = bi;
+                SFX.ambNodes.f.frequency.setTargetAtTime(a.freq, t, 1);
+                SFX.ambNodes.f.Q.setTargetAtTime(a.q, t, 1);
+                SFX.ambNodes.g.gain.setTargetAtTime(a.gain, t, 1);
+            }
+            SFX.nextDrip -= dt;
+            if (SFX.nextDrip <= 0) {
+                SFX.nextDrip = (a.drip || 1.2) * (0.5 + Math.random());
+                if (a.drip) sfxTone({ freq: 1400 + Math.random() * 900, to: 700, dur: 0.12, gain: 0.05, out: SFX.amb });
+                if (a.crackle) for (let i = 0; i < 3; i++) sfxNoise({ dur: 0.03, type: 'highpass', freq: 3000, gain: 0.06, at: Math.random() * 0.4, out: SFX.amb });
+            }
+        }
+
+        function setSound(what, value) {
+            if (what === 'sound') settings.sound = !!value;
+            else if (what === 'ambience') settings.ambience = !!value;
+            else if (what === 'volume') settings.volume = Math.max(0, Math.min(1, Number(value) / 100));
+            else return false;
+            saveSettings(); sfxVolume();
+            if (settings.sound) sfxUnlock();
+            return true;
+        }
+
+
+        // Шаги и лазанье — по пройденному пути; фон шахты
+        const sndMove = { x: null, y: null, step: 0, climb: 0 };
+        function soundTick(dt) {
+            if (sndMove.x === null) { sndMove.x = player.x; sndMove.y = player.y; }
+            const dx = Math.abs(player.x - sndMove.x), dy = Math.abs(player.y - sndMove.y);
+            sndMove.x = player.x; sndMove.y = player.y;
+            if (dx > 2 || dy > 2) return;                      // телепорт, клеть — не шаги
+            if (player.climbing) { sndMove.climb += dy; if (sndMove.climb >= 0.6) { sndMove.climb = 0; sfx('climb'); } }
+            else if (player.onGround) { sndMove.step += dx; if (sndMove.step >= 0.9) { sndMove.step = 0; sfx('step'); } }
+            updateAmbience(dt);
         }
 
         // ============ ТЕЛЕФОН: ВИБРАЦИЯ, ЭКРАН, СКОРОСТЬ ============
@@ -7098,6 +7303,7 @@
                 updateCage(dt);
                 checkShop();
                 updateGoal();
+                soundTick(dt);
                 updateBiome(currentTime);
                 updateCamera();
             }
@@ -7594,6 +7800,7 @@
         const ONE_SHOT_KEYS = new Set(['KeyE', 'KeyQ', 'KeyR', 'KeyT', 'KeyL', 'KeyC', 'KeyH', 'KeyM', 'KeyV', 'KeyP', 'Backquote', 'KeyG', 'Escape']);
 
         function onKeyDown(e) {
+            sfxUnlock();                       // звук браузеры разрешают только после нажатия
             // набор текста в полях (название станции, адрес, имя сохранения) — не управление
             if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.code !== 'Enter' && e.code !== 'Escape') return;
             keys[e.code] = true;
@@ -7797,7 +8004,7 @@
         loadSettings();
         applySettings();
         if (typeof window !== 'undefined' && window.addEventListener) {
-            window.addEventListener('pointerdown', () => keepAwake(), { passive: true });
+            window.addEventListener('pointerdown', () => { keepAwake(); sfxUnlock(); }, { passive: true });
         }
 
         loadAchievements();
